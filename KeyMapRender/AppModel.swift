@@ -39,6 +39,9 @@ final class AppModel: ObservableObject {
     private var latestKeymapDump: VialKeymapDump?
     private var hasAutoLoadedOnStartup = false
     private var isShuttingDown = false
+    private var manualSelectedLayerIndex = 0
+    private var matrixLayerPollTimer: DispatchSourceTimer?
+    private var matrixPollFailureCount = 0
 
     private enum DefaultsKey {
         static let targetKeyCode = "targetKeyCode"
@@ -79,6 +82,7 @@ final class AppModel: ObservableObject {
     func shutdown() {
         guard !isShuttingDown else { return }
         isShuttingDown = true
+        stopActiveLayerTracking()
         monitor.stop()
         monitor.onLongPressStart = nil
         monitor.onLongPressEnd = nil
@@ -108,6 +112,7 @@ final class AppModel: ObservableObject {
                     currentLayer: self.selectedLayerIndex,
                     totalLayers: self.availableLayerCount
                 )
+                self.startActiveLayerTrackingIfNeeded()
                 self.appendDiagnostics("オーバーレイ表示: L\(self.selectedLayerIndex)/\(max(0, self.availableLayerCount - 1))")
             }
         }
@@ -115,6 +120,8 @@ final class AppModel: ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
                 self.isOverlayVisible = false
+                self.stopActiveLayerTracking()
+                self.setDisplayedLayerIndex(self.manualSelectedLayerIndex, reason: "長押し終了", emitLog: false)
                 self.overlayWindowController.hide()
             }
         }
@@ -203,6 +210,7 @@ final class AppModel: ObservableObject {
                     self.layoutChoices = self.makeLayoutChoices(from: dump)
                     self.availableLayerCount = max(1, dump.layerCount)
                     self.setSelectedLayerIndex(self.selectedLayerIndex)
+                    self.startActiveLayerTrackingIfNeeded()
                     self.keymapStatusText = "取得成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
                     self.appendDiagnostics("全マップ読出し成功: \(self.keymapStatusText)")
                 case let .failure(.message(message)):
@@ -255,7 +263,19 @@ final class AppModel: ObservableObject {
 
     func setSelectedLayerIndex(_ newValue: Int) {
         let clamped = max(0, min(newValue, max(0, availableLayerCount - 1)))
+        manualSelectedLayerIndex = clamped
+        setDisplayedLayerIndex(clamped, reason: "手動", forceApply: true)
+    }
+
+    private func setDisplayedLayerIndex(
+        _ newValue: Int,
+        reason: String,
+        emitLog: Bool = true,
+        forceApply: Bool = false
+    ) {
+        let clamped = max(0, min(newValue, max(0, availableLayerCount - 1)))
         let changed = (selectedLayerIndex != clamped)
+        if !changed, !forceApply { return }
         selectedLayerIndex = clamped
         applySelectedLayerToLatestDump()
         if isOverlayVisible {
@@ -265,8 +285,8 @@ final class AppModel: ObservableObject {
                 totalLayers: availableLayerCount
             )
         }
-        if changed {
-            appendDiagnostics("表示レイヤー変更: L\(selectedLayerIndex)/\(max(0, availableLayerCount - 1))")
+        if changed, emitLog {
+            appendDiagnostics("表示レイヤー変更(\(reason)): L\(selectedLayerIndex)/\(max(0, availableLayerCount - 1))")
         }
     }
 
@@ -382,6 +402,123 @@ final class AppModel: ObservableObject {
         persistIgnoredDeviceIDs()
         appendDiagnostics("デバイス無視リストを全解除")
         refreshKeyboards()
+    }
+
+    private func startActiveLayerTrackingIfNeeded() {
+        guard isOverlayVisible else { return }
+        guard latestKeymapDump != nil else { return }
+        guard selectedKeyboard != nil else { return }
+        if matrixLayerPollTimer != nil { return }
+
+        matrixPollFailureCount = 0
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
+        timer.schedule(deadline: .now() + .milliseconds(50), repeating: .milliseconds(90))
+        timer.setEventHandler { [weak self] in
+            self?.pollActiveLayerFromKeyboard()
+        }
+        matrixLayerPollTimer = timer
+        timer.resume()
+        appendDiagnostics("アクティブレイヤー追従開始")
+    }
+
+    private func stopActiveLayerTracking() {
+        matrixLayerPollTimer?.setEventHandler {}
+        matrixLayerPollTimer?.cancel()
+        matrixLayerPollTimer = nil
+    }
+
+    private func pollActiveLayerFromKeyboard() {
+        guard !isShuttingDown else { return }
+        guard isOverlayVisible else { return }
+        guard let selected = selectedKeyboard else { return }
+        guard let dump = latestKeymapDump else { return }
+        let baseLayer = manualSelectedLayerIndex
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let result = VialRawHIDService.readSwitchMatrixState(
+                device: selected,
+                matrixRows: dump.matrixRows,
+                matrixCols: dump.matrixCols
+            )
+            Task { @MainActor in
+                guard let self else { return }
+                guard self.isOverlayVisible else { return }
+                switch result {
+                case let .success(state):
+                    self.matrixPollFailureCount = 0
+                    let trackedLayer = self.deriveTrackedLayer(
+                        from: state.pressed,
+                        dump: dump,
+                        baseLayer: baseLayer
+                    )
+                    self.setDisplayedLayerIndex(trackedLayer, reason: "押下追従", emitLog: false)
+                case let .failure(.message(message)):
+                    self.matrixPollFailureCount += 1
+                    if self.matrixPollFailureCount == 1 || self.matrixPollFailureCount % 20 == 0 {
+                        self.appendDiagnostics("アクティブレイヤー追従失敗: \(message)")
+                    }
+                }
+            }
+        }
+    }
+
+    private func deriveTrackedLayer(from pressed: [[Bool]], dump: VialKeymapDump, baseLayer: Int) -> Int {
+        guard !dump.keycodes.isEmpty else { return 0 }
+        let maxLayer = max(0, min(dump.layerCount - 1, dump.keycodes.count - 1))
+        var effective = max(0, min(baseLayer, maxLayer))
+
+        // Resolve nested MO/LT/LM holds with a few fixed-point iterations.
+        for _ in 0..<4 {
+            var next = max(0, min(baseLayer, maxLayer))
+            for row in 0..<min(pressed.count, dump.matrixRows) {
+                for col in 0..<min(pressed[row].count, dump.matrixCols) where pressed[row][col] {
+                    let activeKeycode = resolvedKeycodeAt(layer: effective, row: row, col: col, keycodes: dump.keycodes)
+                    if let target = layerHoldTarget(for: activeKeycode) {
+                        next = max(next, min(target, maxLayer))
+                    }
+                }
+            }
+            if next == effective { break }
+            effective = next
+        }
+        return effective
+    }
+
+    private func resolvedKeycodeAt(layer: Int, row: Int, col: Int, keycodes: [[[UInt16]]]) -> UInt16 {
+        let safeLayer = max(0, min(layer, keycodes.count - 1))
+        for current in stride(from: safeLayer, through: 0, by: -1) {
+            guard row >= 0, row < keycodes[current].count else { continue }
+            guard col >= 0, col < keycodes[current][row].count else { continue }
+            let code = keycodes[current][row][col]
+            if code != 0x0001 {
+                return code
+            }
+        }
+        return 0x0001
+    }
+
+    private func layerHoldTarget(for keycode: UInt16) -> Int? {
+        // LT(layer, kc)
+        if keycode >= 0x4000, keycode <= 0x4FFF {
+            return Int((keycode >> 8) & 0x0F)
+        }
+
+        // QMK v5/v6 MO(layer) families.
+        if keycode >= 0x5100, keycode <= 0x51FF {
+            return Int(keycode & 0x00FF) // v5 MO
+        }
+        if keycode >= 0x5220, keycode <= 0x523F {
+            return Int(keycode & 0x001F) // v6 MO
+        }
+
+        // LM(layer, mod): layer-while-hold
+        if keycode >= 0x5900, keycode <= 0x59FF {
+            return Int((keycode >> 4) & 0x0F) // v5 LM
+        }
+        if keycode >= 0x5000, keycode <= 0x51FF {
+            return Int((keycode >> 5) & 0x1F) // v6 LM
+        }
+        return nil
     }
 
     private func makePreview(from dump: VialKeymapDump, layer: Int, maxRows: Int, maxCols: Int) -> String {
@@ -634,6 +771,7 @@ final class AppModel: ObservableObject {
                     self.layoutChoices = self.makeLayoutChoices(from: dump)
                     self.availableLayerCount = max(1, dump.layerCount)
                     self.setSelectedLayerIndex(self.selectedLayerIndex)
+                    self.startActiveLayerTrackingIfNeeded()
                     self.keymapStatusText = "起動時読込成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
                     self.appendDiagnostics("起動時全マップ読出し成功: \(self.keymapStatusText)")
                 case let .failure(.message(message)):

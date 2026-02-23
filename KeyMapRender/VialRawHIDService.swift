@@ -26,6 +26,13 @@ struct VialMatrixInfo {
     let backend: String
 }
 
+struct VialSwitchMatrixState {
+    let rows: Int
+    let cols: Int
+    let pressed: [[Bool]]
+    let backend: String
+}
+
 enum VialProbeError: Error {
     case message(String)
 }
@@ -40,6 +47,7 @@ enum VialRawHIDService {
 
     private enum ViaCommand: UInt8 {
         case getProtocolVersion = 0x01
+        case getKeyboardValue = 0x02
         case dynamicKeymapGetKeycode = 0x04
         case dynamicKeymapGetLayerCount = 0x11
         case dynamicKeymapGetBuffer = 0x12
@@ -160,6 +168,55 @@ enum VialRawHIDService {
             return .success(text + "\n")
         } catch {
             return .failure(.message("definition の整形に失敗: \(error.localizedDescription)"))
+        }
+    }
+
+    static func readSwitchMatrixState(
+        device: HIDKeyboardDevice,
+        matrixRows: Int,
+        matrixCols: Int
+    ) -> Result<VialSwitchMatrixState, VialProbeError> {
+        guard matrixRows > 0, matrixCols > 0 else {
+            return .failure(.message("matrixRows と matrixCols は 1 以上で指定してください。"))
+        }
+        let rowSize = (matrixCols + 7) / 8
+        let payloadSize = rowSize * matrixRows
+        guard payloadSize <= 28 else {
+            return .failure(.message("matrix size exceeds VIA_SWITCH_MATRIX_STATE limit (rows=\(matrixRows), cols=\(matrixCols))"))
+        }
+
+        return withOpenedRawDevice(device: device) { raw in
+            let response = normalizeResponse(
+                try send(command: .getKeyboardValue, payload: [0x03], to: raw),
+                command: .getKeyboardValue
+            )
+            let expected = 2 + payloadSize
+            guard response.count >= expected else {
+                throw VialProbeError.message("matrix state 応答サイズ不足: expected>=\(expected), actual=\(response.count)")
+            }
+
+            var pressed = Array(
+                repeating: Array(repeating: false, count: matrixCols),
+                count: matrixRows
+            )
+            for row in 0..<matrixRows {
+                let start = 2 + row * rowSize
+                let end = start + rowSize
+                let rowData = Array(response[start..<end])
+                for col in 0..<matrixCols {
+                    let byteIndex = rowData.count - 1 - (col / 8)
+                    let bitIndex = col % 8
+                    let bit = (rowData[byteIndex] >> bitIndex) & 0x01
+                    pressed[row][col] = (bit == 1)
+                }
+            }
+
+            return VialSwitchMatrixState(
+                rows: matrixRows,
+                cols: matrixCols,
+                pressed: pressed,
+                backend: "native"
+            )
         }
     }
 
