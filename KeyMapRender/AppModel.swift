@@ -40,7 +40,8 @@ final class AppModel: ObservableObject {
     private var hasAutoLoadedOnStartup = false
     private var isShuttingDown = false
     private var manualSelectedLayerIndex = 0
-    private var matrixLayerPollTimer: DispatchSourceTimer?
+    private var activeLayerTrackingTask: Task<Void, Never>?
+    private var activeLayerTrackingGeneration: UInt64 = 0
     private var matrixPollFailureCount = 0
 
     private enum DefaultsKey {
@@ -408,56 +409,76 @@ final class AppModel: ObservableObject {
         guard isOverlayVisible else { return }
         guard latestKeymapDump != nil else { return }
         guard selectedKeyboard != nil else { return }
-        if matrixLayerPollTimer != nil { return }
+        if activeLayerTrackingTask != nil { return }
 
         matrixPollFailureCount = 0
-        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
-        timer.schedule(deadline: .now() + .milliseconds(50), repeating: .milliseconds(90))
-        timer.setEventHandler { [weak self] in
-            self?.pollActiveLayerFromKeyboard()
+        activeLayerTrackingGeneration &+= 1
+        let generation = activeLayerTrackingGeneration
+        activeLayerTrackingTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                await self.pollActiveLayerFromKeyboard(generation: generation)
+                try? await Task.sleep(for: .milliseconds(90))
+            }
         }
-        matrixLayerPollTimer = timer
-        timer.resume()
         appendDiagnostics("アクティブレイヤー追従開始")
     }
 
     private func stopActiveLayerTracking() {
-        matrixLayerPollTimer?.setEventHandler {}
-        matrixLayerPollTimer?.cancel()
-        matrixLayerPollTimer = nil
+        activeLayerTrackingGeneration &+= 1
+        activeLayerTrackingTask?.cancel()
+        activeLayerTrackingTask = nil
     }
 
-    private func pollActiveLayerFromKeyboard() {
+    private func pollActiveLayerFromKeyboard(generation: UInt64) async {
+        guard generation == activeLayerTrackingGeneration else { return }
+        guard !Task.isCancelled else { return }
         guard !isShuttingDown else { return }
         guard isOverlayVisible else { return }
         guard let selected = selectedKeyboard else { return }
         guard let dump = latestKeymapDump else { return }
         let baseLayer = manualSelectedLayerIndex
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let result = VialRawHIDService.readSwitchMatrixState(
-                device: selected,
-                matrixRows: dump.matrixRows,
-                matrixCols: dump.matrixCols
+        let result = await readSwitchMatrixStateAsync(
+            device: selected,
+            matrixRows: dump.matrixRows,
+            matrixCols: dump.matrixCols
+        )
+
+        guard generation == activeLayerTrackingGeneration else { return }
+        guard !Task.isCancelled else { return }
+        guard isOverlayVisible else { return }
+
+        switch result {
+        case let .success(state):
+            matrixPollFailureCount = 0
+            let trackedLayer = deriveTrackedLayer(
+                from: state.pressed,
+                dump: dump,
+                baseLayer: baseLayer
             )
-            Task { @MainActor in
-                guard let self else { return }
-                guard self.isOverlayVisible else { return }
-                switch result {
-                case let .success(state):
-                    self.matrixPollFailureCount = 0
-                    let trackedLayer = self.deriveTrackedLayer(
-                        from: state.pressed,
-                        dump: dump,
-                        baseLayer: baseLayer
-                    )
-                    self.setDisplayedLayerIndex(trackedLayer, reason: "押下追従", emitLog: false)
-                case let .failure(.message(message)):
-                    self.matrixPollFailureCount += 1
-                    if self.matrixPollFailureCount == 1 || self.matrixPollFailureCount % 20 == 0 {
-                        self.appendDiagnostics("アクティブレイヤー追従失敗: \(message)")
-                    }
-                }
+            setDisplayedLayerIndex(trackedLayer, reason: "押下追従", emitLog: false)
+        case let .failure(.message(message)):
+            matrixPollFailureCount += 1
+            if matrixPollFailureCount == 1 || matrixPollFailureCount % 20 == 0 {
+                appendDiagnostics("アクティブレイヤー追従失敗: \(message)")
+            }
+        }
+    }
+
+    private func readSwitchMatrixStateAsync(
+        device: HIDKeyboardDevice,
+        matrixRows: Int,
+        matrixCols: Int
+    ) async -> Result<VialSwitchMatrixState, VialProbeError> {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let result = VialRawHIDService.readSwitchMatrixState(
+                    device: device,
+                    matrixRows: matrixRows,
+                    matrixCols: matrixCols
+                )
+                continuation.resume(returning: result)
             }
         }
     }
