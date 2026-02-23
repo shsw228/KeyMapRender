@@ -93,6 +93,10 @@ struct KeyboardOverlayView: View {
                 Text(label)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.92))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.6)
+                    .padding(4)
             )
     }
 }

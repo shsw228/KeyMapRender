@@ -382,8 +382,21 @@ private struct PhysicalKeyCandidate {
 
 private enum KeycodeLabelFormatter {
     static func label(for keycode: UInt16) -> String {
+        if keycode >= 0x2000, keycode <= 0x3FFF {
+            return modTapLabel(for: keycode)
+        }
+        if keycode >= 0x4000, keycode <= 0x4FFF {
+            return layerTapLabel(for: keycode)
+        }
         if let named = specialNames[keycode] { return named }
 
+        if let basic = basicLabel(for: keycode) { return basic }
+
+        return String(format: "%04X", keycode)
+    }
+
+    private static func basicLabel(for keycode: UInt16) -> String? {
+        if let named = specialNames[keycode] { return named }
         if keycode >= 0x0004, keycode <= 0x001D {
             let offset = Int(keycode - 0x0004)
             let scalar = UnicodeScalar(UInt8(ascii: "A") + UInt8(offset))
@@ -392,8 +405,32 @@ private enum KeycodeLabelFormatter {
         if let number = numberNames[keycode] { return number }
         if let symbol = symbolNames[keycode] { return symbol }
         if let function = functionNames[keycode] { return function }
+        return nil
+    }
 
-        return String(format: "%04X", keycode)
+    private static func modTapLabel(for keycode: UInt16) -> String {
+        let mods = Int((keycode >> 8) & 0x1F)
+        let tap = UInt16(keycode & 0x00FF)
+        let tapLabel = basicLabel(for: tap) ?? String(format: "%02X", tap)
+        return "短: \(tapLabel)\n長: \(modsLabel(mods))"
+    }
+
+    private static func layerTapLabel(for keycode: UInt16) -> String {
+        let layer = Int((keycode >> 8) & 0x0F)
+        let tap = UInt16(keycode & 0x00FF)
+        let tapLabel = basicLabel(for: tap) ?? String(format: "%02X", tap)
+        return "短: \(tapLabel)\n長: L\(layer)"
+    }
+
+    private static func modsLabel(_ mods: Int) -> String {
+        let isRight = (mods & 0x10) != 0
+        let base = mods & 0x0F
+        var names: [String] = []
+        if (base & 0x01) != 0 { names.append(isRight ? "RCtrl" : "LCtrl") }
+        if (base & 0x02) != 0 { names.append(isRight ? "RShift" : "LShift") }
+        if (base & 0x04) != 0 { names.append(isRight ? "RAlt" : "LAlt") }
+        if (base & 0x08) != 0 { names.append(isRight ? "RCmd" : "LCmd") }
+        return names.isEmpty ? String(format: "MOD(0x%02X)", mods) : names.joined(separator: "+")
     }
 
     private static let specialNames: [UInt16: String] = [
