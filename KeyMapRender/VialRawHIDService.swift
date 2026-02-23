@@ -109,7 +109,11 @@ enum VialRawHIDService {
         guard let json = runPythonBridge(mode: .probe, device: device, rows: nil, cols: nil) else { return nil }
         guard let ok = json["ok"] as? Bool else { return .failure(.message("python bridge: invalid response")) }
         if !ok {
-            return .failure(.message("python bridge: \(json["error"] as? String ?? "unknown error")"))
+            let message = json["error"] as? String ?? "unknown error"
+            if shouldFallbackToNative(for: message) {
+                return nil
+            }
+            return .failure(.message("python bridge: \(message)"))
         }
         guard
             let protocolVersion = json["protocol_version"] as? String,
@@ -132,7 +136,11 @@ enum VialRawHIDService {
         guard let json = runPythonBridge(mode: .dump, device: device, rows: rows, cols: cols) else { return nil }
         guard let ok = json["ok"] as? Bool else { return .failure(.message("python bridge: invalid response")) }
         if !ok {
-            return .failure(.message("python bridge: \(json["error"] as? String ?? "unknown error")"))
+            let message = json["error"] as? String ?? "unknown error"
+            if shouldFallbackToNative(for: message) {
+                return nil
+            }
+            return .failure(.message("python bridge: \(message)"))
         }
 
         guard
@@ -221,6 +229,13 @@ enum VialRawHIDService {
             return ["ok": false, "error": "python bridge invalid json: \(raw) \(errString)"]
         }
         return dict
+    }
+
+    private static func shouldFallbackToNative(for message: String) -> Bool {
+        let lower = message.lowercased()
+        return lower.contains("python hid module is not available")
+            || lower.contains("no module named 'hid'")
+            || lower.contains("python bridge launch failed")
     }
 
     private static func withOpenedRawDevice<T>(
