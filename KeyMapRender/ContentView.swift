@@ -12,19 +12,43 @@ struct ContentView: View {
     @State private var selection: Pane = .general
 
     var body: some View {
-        NavigationSplitView {
-            List(Pane.allCases, selection: $selection) { pane in
-                Label(pane.title, systemImage: pane.icon)
-                    .tag(pane)
-            }
-            .navigationTitle("KeyMapRender")
-            .frame(minWidth: 180)
-        } detail: {
+        VStack(spacing: 0) {
+            settingsTabBar
+            Divider()
             detailView
-                .navigationTitle(selection.title)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .navigationSplitViewStyle(.balanced)
+    }
+
+    private var settingsTabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(Pane.allCases) { pane in
+                Button {
+                    selection = pane
+                } label: {
+                    VStack(spacing: 6) {
+                        Image(systemName: pane.icon)
+                            .font(.system(size: 16, weight: .semibold))
+                        Text(pane.title)
+                            .font(.caption)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .background(selection == pane ? Color.accentColor.opacity(0.14) : Color.clear)
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(selection == pane ? Color.accentColor : Color.clear)
+                        .frame(height: 2)
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
+        .background(Color(NSColor.windowBackgroundColor))
     }
 
     @ViewBuilder
@@ -32,7 +56,7 @@ struct ContentView: View {
         switch selection {
         case .general:
             Form {
-                Section("基本設定") {
+                Section("一般設定") {
                     TextField("対象キーコード (例: 49 = Space)", text: $appModel.targetKeyCodeText)
                         .textFieldStyle(.roundedBorder)
 
@@ -158,7 +182,7 @@ struct ContentView: View {
 
         case .status:
             Form {
-                Section("状態") {
+                Section("オーバーレイ状態") {
                     Text(appModel.permissionStatusText)
                     Text("オーバーレイ: \(appModel.isOverlayVisible ? "表示中" : "非表示")")
                     Text("レイアウト: \(appModel.layout.name)")
@@ -169,7 +193,7 @@ struct ContentView: View {
 
         case .diagnostics:
             Form {
-                Section("診断") {
+                Section("診断ログ") {
                     HStack {
                         Button("診断ログをコピー") {
                             appModel.copyDiagnosticsLog()
@@ -188,7 +212,7 @@ struct ContentView: View {
 
         case .help:
             Form {
-                Section("ヘルプ") {
+                Section("情報とライセンス") {
                     Text("初回はアクセシビリティ権限が必要です。")
                     Text("Vial/VIA JSON は `layouts.keymap` を解釈します。")
                     Button("Third-Party Licenses") {
@@ -213,11 +237,11 @@ private enum Pane: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .general: return "基本設定"
-        case .vial: return "Vial通信"
+        case .general: return "一般設定"
+        case .vial: return "デバイス/Vial"
         case .status: return "状態"
-        case .diagnostics: return "診断"
-        case .help: return "ヘルプ"
+        case .diagnostics: return "診断ログ"
+        case .help: return "情報"
         }
     }
 
