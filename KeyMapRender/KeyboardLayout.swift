@@ -182,6 +182,7 @@ enum KeyboardLayoutLoader {
         var candidates: [PhysicalKeyCandidate] = []
         var cursorY = 0.0
 
+        var align = 4
         keymapRows.enumerated().forEach { rowIndex, rowItems in
             if rowIndex > 0 {
                 cursorY += 1.0
@@ -190,7 +191,6 @@ enum KeyboardLayoutLoader {
             var height = 1.0
             var cursorX = 0.0
             var pendingDecal = false
-            var align = 4
 
             for item in rowItems {
                 if let dict = item as? [String: Any] {

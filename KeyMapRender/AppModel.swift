@@ -291,6 +291,13 @@ final class AppModel: ObservableObject {
                 self.isDiagnosticsRunning = false
                 switch result {
                 case let .success(prettyJSON):
+                    do {
+                        try validateVialDefinitionJSON(prettyJSON)
+                    } catch {
+                        self.keymapStatusText = "vial.json検証失敗: \(error.localizedDescription)"
+                        self.appendDiagnostics("vial.json検証失敗: \(error.localizedDescription)")
+                        return
+                    }
                     let panel = NSSavePanel()
                     panel.nameFieldStringValue = String(
                         format: "vial-%04X-%04X.json",
@@ -445,6 +452,53 @@ final class AppModel: ObservableObject {
             current >>= 1
         }
         return max(bits, 1)
+    }
+
+    private func validateVialDefinitionJSON(_ text: String) throws {
+        enum ValidationError: LocalizedError {
+            case notUTF8
+            case invalidJSON
+            case missingRootField(String)
+            case missingNestedField(String)
+            case invalidMatrix
+
+            var errorDescription: String? {
+                switch self {
+                case .notUTF8:
+                    return "UTF-8変換に失敗"
+                case .invalidJSON:
+                    return "JSONとして不正"
+                case let .missingRootField(name):
+                    return "必須フィールド欠落: \(name)"
+                case let .missingNestedField(name):
+                    return "必須フィールド欠落: \(name)"
+                case .invalidMatrix:
+                    return "matrix rows/cols が不正"
+                }
+            }
+        }
+
+        guard let data = text.data(using: .utf8) else { throw ValidationError.notUTF8 }
+        guard
+            let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            throw ValidationError.invalidJSON
+        }
+
+        guard object["layouts"] != nil else { throw ValidationError.missingRootField("layouts") }
+        guard object["matrix"] != nil else { throw ValidationError.missingRootField("matrix") }
+        guard let layouts = object["layouts"] as? [String: Any] else {
+            throw ValidationError.missingNestedField("layouts.keymap")
+        }
+        guard layouts["keymap"] is [Any] else {
+            throw ValidationError.missingNestedField("layouts.keymap")
+        }
+        guard let matrix = object["matrix"] as? [String: Any] else {
+            throw ValidationError.missingNestedField("matrix.rows/matrix.cols")
+        }
+        let rows = matrix["rows"] as? Int ?? 0
+        let cols = matrix["cols"] as? Int ?? 0
+        guard rows > 0, cols > 0 else { throw ValidationError.invalidMatrix }
     }
 
     private var selectedKeyboard: HIDKeyboardDevice? {
