@@ -273,7 +273,7 @@ final class AppModel: ObservableObject {
                 selectedLayoutOptions: selectedLayoutOptions(),
                 fallbackRows: dump.matrixRows,
                 fallbackCols: dump.matrixCols,
-                name: "Live \(dump.backend)"
+                name: "Keyboard"
             )
         } else {
             layout = KeyboardLayoutLoader.makeMatrixLayout(
@@ -281,7 +281,7 @@ final class AppModel: ObservableObject {
                 cols: dump.matrixCols,
                 keycodes: dump.keycodes,
                 layer: layer,
-                name: "Live \(dump.backend)"
+                name: "Keyboard"
             )
         }
         if isOverlayVisible {
