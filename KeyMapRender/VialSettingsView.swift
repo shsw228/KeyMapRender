@@ -1,4 +1,5 @@
 import SwiftUI
+import DataSource
 
 struct VialSettingsView: View {
     @EnvironmentObject private var appModel: AppModel

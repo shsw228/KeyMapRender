@@ -1,4 +1,5 @@
 import Foundation
+import DataSource
 
 struct VialRawHIDClient: DependencyClient {
     var probe: @Sendable (HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError>

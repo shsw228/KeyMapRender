@@ -1,41 +1,6 @@
 import Foundation
 import IOKit.hid
-
-nonisolated struct VialProbeResult {
-    let protocolVersion: String
-    let layerCount: Int
-    let keycodeL0R0C0: UInt16
-    let backend: String
-}
-
-nonisolated struct VialKeymapDump {
-    let protocolVersion: String
-    let layerCount: Int
-    let matrixRows: Int
-    let matrixCols: Int
-    let keycodes: [[[UInt16]]]
-    let layoutKeymapRows: [[Any]]?
-    let layoutLabels: [Any]?
-    let layoutOptions: UInt32?
-    let backend: String
-}
-
-nonisolated struct VialMatrixInfo {
-    let rows: Int
-    let cols: Int
-    let backend: String
-}
-
-nonisolated struct VialSwitchMatrixState {
-    let rows: Int
-    let cols: Int
-    let pressed: [[Bool]]
-    let backend: String
-}
-
-enum VialProbeError: Error {
-    case message(String)
-}
+import DataSource
 
 enum VialRawHIDService {
     private nonisolated static let reportLength = 32

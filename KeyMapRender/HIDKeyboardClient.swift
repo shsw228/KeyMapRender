@@ -1,4 +1,5 @@
 import Foundation
+import DataSource
 
 struct HIDKeyboardClient: DependencyClient {
     var listKeyboards: @Sendable () -> [HIDKeyboardDevice]

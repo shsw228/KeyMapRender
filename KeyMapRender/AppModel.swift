@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import DataSource
 import OSLog
 import ServiceManagement
 import SwiftUI

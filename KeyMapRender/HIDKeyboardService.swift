@@ -1,14 +1,6 @@
 import Foundation
 import IOKit.hid
-
-nonisolated struct HIDKeyboardDevice: Identifiable, Hashable {
-    let id: String
-    let vendorID: Int
-    let productID: Int
-    let locationID: Int
-    let productName: String
-    let manufacturerName: String
-}
+import DataSource
 
 nonisolated struct HIDInterfaceCandidate {
     let device: IOHIDDevice
