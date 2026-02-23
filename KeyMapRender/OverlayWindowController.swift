@@ -5,6 +5,14 @@ import SwiftUI
 final class OverlayWindowController {
     private var window: NSWindow?
     private let slideDistance: CGFloat = 96
+    private var showDuration: TimeInterval = 0.24
+    private var hideDuration: TimeInterval = 0.18
+    private var isAnimatingShow = false
+
+    func updateAnimationDurations(show: TimeInterval, hide: TimeInterval) {
+        showDuration = max(0.05, min(show, 1.2))
+        hideDuration = max(0.05, min(hide, 1.2))
+    }
 
     func show(layout: KeyboardLayout, currentLayer: Int, totalLayers: Int) {
         let window = window ?? makeWindow()
@@ -18,6 +26,10 @@ final class OverlayWindowController {
         )
         let targetFrame = targetPanelFrame()
         if wasVisible {
+            if isAnimatingShow {
+                self.window = window
+                return
+            }
             if window.frame != targetFrame {
                 window.setFrame(targetFrame, display: true)
             }
@@ -35,18 +47,22 @@ final class OverlayWindowController {
         window.alphaValue = 0
         window.setFrame(startFrame, display: true)
         window.orderFrontRegardless()
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.24
+        isAnimatingShow = true
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = showDuration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             window.animator().alphaValue = 1
             window.animator().setFrame(targetFrame, display: true)
-        }
+        }, completionHandler: { [weak self] in
+            self?.isAnimatingShow = false
+        })
         self.window = window
     }
 
     func hide() {
         guard let window else { return }
         guard window.isVisible else { return }
+        isAnimatingShow = false
         let endFrame = NSRect(
             x: window.frame.origin.x,
             y: window.frame.origin.y + slideDistance,
@@ -54,7 +70,7 @@ final class OverlayWindowController {
             height: window.frame.height
         )
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.18
+            context.duration = hideDuration
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
             window.animator().alphaValue = 0
             window.animator().setFrame(endFrame, display: true)
