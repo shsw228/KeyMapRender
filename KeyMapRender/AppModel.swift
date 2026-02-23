@@ -60,14 +60,6 @@ final class AppModel: ObservableObject {
         category: "AppModel"
     )
 
-    private enum DefaultsKey {
-        static let targetKeyCode = "targetKeyCode"
-        static let longPressDuration = "longPressDuration"
-        static let overlayShowAnimationDuration = "overlayShowAnimationDuration"
-        static let overlayHideAnimationDuration = "overlayHideAnimationDuration"
-        static let ignoredDeviceIDs = "ignoredDeviceIDs"
-    }
-
     static func shouldShowSettingsOnLaunchByDefault() -> Bool {
         UserDefaultsRepository(.liveValue).showSettingsOnLaunch
     }
@@ -77,27 +69,22 @@ final class AppModel: ObservableObject {
     }
 
     init(appDependencies: AppDependencies = .keyMapRenderLive) {
-        let defaults = UserDefaults.standard
-        let savedKey = defaults.object(forKey: DefaultsKey.targetKeyCode) as? Int ?? 49
-        let savedDuration = defaults.object(forKey: DefaultsKey.longPressDuration) as? Double ?? 0.45
-        let savedShowDuration = defaults.object(forKey: DefaultsKey.overlayShowAnimationDuration) as? Double ?? 0.24
-        let savedHideDuration = defaults.object(forKey: DefaultsKey.overlayHideAnimationDuration) as? Double ?? 0.18
         self.appDependencies = appDependencies
         self.rootStore = RootStore(appDependencies)
-        let savedShowSettingsOnLaunch = rootStore.showSettingsOnLaunch
-        self.targetKeyCodeText = "\(savedKey)"
-        self.longPressDuration = savedDuration
-        self.overlayShowAnimationDuration = savedShowDuration
-        self.overlayHideAnimationDuration = savedHideDuration
-        self.showSettingsOnLaunch = savedShowSettingsOnLaunch
+        let preferences = rootStore.loadAppPreferences()
+        self.targetKeyCodeText = "\(preferences.targetKeyCode)"
+        self.longPressDuration = preferences.longPressDuration
+        self.overlayShowAnimationDuration = preferences.overlayShowAnimationDuration
+        self.overlayHideAnimationDuration = preferences.overlayHideAnimationDuration
+        self.showSettingsOnLaunch = preferences.showSettingsOnLaunch
         self.layout = KeyboardLayoutLoader.loadDefaultLayout()
         self.matrixRowsText = "6"
         self.matrixColsText = "17"
-        self.ignoredDeviceIDs = Set(defaults.stringArray(forKey: DefaultsKey.ignoredDeviceIDs) ?? [])
+        self.ignoredDeviceIDs = Set(preferences.ignoredDeviceIDs)
         self.ignoredDeviceCount = self.ignoredDeviceIDs.count
         self.overlayWindowController.updateAnimationDurations(
-            show: savedShowDuration,
-            hide: savedHideDuration
+            show: preferences.overlayShowAnimationDuration,
+            hide: preferences.overlayHideAnimationDuration
         )
     }
 
@@ -175,10 +162,12 @@ final class AppModel: ObservableObject {
             return
         }
 
-        UserDefaults.standard.set(Int(keyCodeValue), forKey: DefaultsKey.targetKeyCode)
-        UserDefaults.standard.set(longPressDuration, forKey: DefaultsKey.longPressDuration)
-        UserDefaults.standard.set(overlayShowAnimationDuration, forKey: DefaultsKey.overlayShowAnimationDuration)
-        UserDefaults.standard.set(overlayHideAnimationDuration, forKey: DefaultsKey.overlayHideAnimationDuration)
+        rootStore.saveAppPreferences(
+            targetKeyCode: Int(keyCodeValue),
+            longPressDuration: longPressDuration,
+            overlayShowAnimationDuration: overlayShowAnimationDuration,
+            overlayHideAnimationDuration: overlayHideAnimationDuration
+        )
         rootStore.setShowSettingsOnLaunch(showSettingsOnLaunch)
         overlayWindowController.updateAnimationDurations(
             show: overlayShowAnimationDuration,
@@ -725,7 +714,7 @@ final class AppModel: ObservableObject {
     }
 
     private func persistIgnoredDeviceIDs() {
-        UserDefaults.standard.set(Array(ignoredDeviceIDs).sorted(), forKey: DefaultsKey.ignoredDeviceIDs)
+        rootStore.saveIgnoredDeviceIDs(Array(ignoredDeviceIDs).sorted())
         ignoredDeviceCount = ignoredDeviceIDs.count
     }
 

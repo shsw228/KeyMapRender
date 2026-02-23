@@ -71,6 +71,7 @@
 - 設定系・診断系・オーバーレイ系を子Storeへ分離
 - View は `EnvironmentObject` 依存を段階的に縮小
 - 状態: 起動時設定（showSettingsOnLaunch）の判定/保存ロジックを `Model/Stores/RootStore` 経由へ移行済み
+- 状態: `targetKeyCode` / `longPressDuration` / `overlayShowAnimationDuration` / `overlayHideAnimationDuration` / `ignoredDeviceIDs` の保存を `RootStore` + `UserDefaultsRepository` 経由へ移行済み
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

@@ -69,6 +69,7 @@
   - HID/Vial 通信の dependency client 契約（`HIDKeyboardClient` / `VialRawHIDClient`）を `DataSource` へ移設
   - `AppModel` の依存注入先を `Model.AppDependencies` ベースへ切替
   - 起動時設定（showSettingsOnLaunch）の状態管理を `Model.RootStore` へ移設
+  - 設定永続化（target key / long press / overlay animation / ignored devices）を `RootStore` + `UserDefaultsRepository` 経由へ移行
 - 未実装
   - 接続キーボードの自動識別とレイアウト自動切替
   - matrix rows/cols の自動推定

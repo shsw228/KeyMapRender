@@ -23,6 +23,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - `HIDKeyboardClient` / `VialRawHIDClient` の依存契約を `LocalPackage/Sources/DataSource/Dependencies` へ移設
 - アプリ実行時の依存コンテナを `Model.AppDependencies` ベースへ切替（アプリ側は live 実装注入のみ保持）
 - 起動時設定（設定ウィンドウ自動表示）の状態管理を `Model/Stores/RootStore` へ移設開始
+- `targetKeyCode` / `longPressDuration` / オーバーレイアニメーション / 無視デバイス設定の永続化を `RootStore` + `UserDefaultsRepository` 経由へ移行
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`
