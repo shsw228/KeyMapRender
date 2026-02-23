@@ -21,6 +21,7 @@ enum VialProbeError: Error {
 
 enum VialRawHIDService {
     private static let reportLength = 32
+    private static let reportIDs: [CFIndex] = [0, 1]
 
     private enum ViaCommand: UInt8 {
         case getProtocolVersion = 0x01
@@ -158,43 +159,58 @@ enum VialRawHIDService {
     }
 
     private static func send(command: ViaCommand, payload: [UInt8], to device: IOHIDDevice) throws -> [UInt8] {
-        var outbound = [UInt8](repeating: 0, count: reportLength)
-        outbound[0] = command.rawValue
-        for (index, byte) in payload.enumerated() where index + 1 < reportLength {
-            outbound[index + 1] = byte
+        var lastError = "未実行"
+
+        for reportID in reportIDs {
+            var outbound = [UInt8](repeating: 0, count: reportLength)
+            outbound[0] = command.rawValue
+            for (index, byte) in payload.enumerated() where index + 1 < reportLength {
+                outbound[index + 1] = byte
+            }
+
+            let setResult = outbound.withUnsafeMutableBufferPointer { buffer in
+                IOHIDDeviceSetReport(
+                    device,
+                    kIOHIDReportTypeOutput,
+                    reportID,
+                    buffer.baseAddress!,
+                    reportLength
+                )
+            }
+            if setResult != kIOReturnSuccess {
+                lastError = "HID送信失敗(reportID=\(reportID)): \(setResult)"
+                continue
+            }
+
+            var inbound = [UInt8](repeating: 0, count: reportLength)
+            var length = reportLength
+            let getResult = inbound.withUnsafeMutableBufferPointer { buffer in
+                IOHIDDeviceGetReport(
+                    device,
+                    kIOHIDReportTypeInput,
+                    reportID,
+                    buffer.baseAddress!,
+                    &length
+                )
+            }
+            if getResult != kIOReturnSuccess {
+                lastError = "HID受信失敗(reportID=\(reportID)): \(getResult)"
+                continue
+            }
+            if length <= 0 {
+                lastError = "HID受信長が0(reportID=\(reportID))"
+                continue
+            }
+
+            let response = Array(inbound.prefix(length))
+            if response.isEmpty || response[0] != command.rawValue {
+                lastError = "応答コマンド不一致(reportID=\(reportID)): expected=0x\(String(command.rawValue, radix: 16, uppercase: true)) actual=\(response.first.map { "0x" + String($0, radix: 16, uppercase: true) } ?? "nil")"
+                continue
+            }
+
+            return response
         }
 
-        let setResult = outbound.withUnsafeMutableBufferPointer { buffer in
-            IOHIDDeviceSetReport(
-                device,
-                kIOHIDReportTypeOutput,
-                CFIndex(0),
-                buffer.baseAddress!,
-                reportLength
-            )
-        }
-        guard setResult == kIOReturnSuccess else {
-            throw VialProbeError.message("HID送信失敗: \(setResult)")
-        }
-
-        var inbound = [UInt8](repeating: 0, count: reportLength)
-        var length = reportLength
-        let getResult = inbound.withUnsafeMutableBufferPointer { buffer in
-            IOHIDDeviceGetReport(
-                device,
-                kIOHIDReportTypeInput,
-                CFIndex(0),
-                buffer.baseAddress!,
-                &length
-            )
-        }
-        guard getResult == kIOReturnSuccess else {
-            throw VialProbeError.message("HID受信失敗: \(getResult)")
-        }
-
-        if length <= 0 {
-            throw VialProbeError.message("HID受信長が0です。")
-        }
-        return Array(inbound.prefix(length))
+        throw VialProbeError.message(lastError)
     }
 }
