@@ -9,12 +9,11 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var appModel: AppModel
-    @State private var isLicenseSheetPresented = false
-    @State private var licenseText = ""
+    @State private var diagnosticsExpanded = false
 
     var body: some View {
         Form {
-            Section("長押し設定") {
+            Section("基本設定") {
                 TextField("対象キーコード (例: 49 = Space)", text: $appModel.targetKeyCodeText)
                     .textFieldStyle(.roundedBorder)
 
@@ -30,7 +29,7 @@ struct ContentView: View {
                 }
             }
 
-            Section("接続キーボード") {
+            Section("Vial通信") {
                 Picker("対象デバイス", selection: $appModel.selectedKeyboardID) {
                     if appModel.connectedKeyboards.isEmpty {
                         Text("未検出").tag("")
@@ -73,18 +72,6 @@ struct ContentView: View {
                 Text(appModel.keymapPreviewText)
                     .font(.system(.caption, design: .monospaced))
                     .textSelection(.enabled)
-
-                HStack {
-                    Button("診断ログをコピー") {
-                        appModel.copyDiagnosticsLog()
-                    }
-                    Text("Xcodeログにも同内容を出力")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Text(appModel.diagnosticsLogText)
-                    .font(.system(.caption, design: .monospaced))
-                    .textSelection(.enabled)
             }
 
             Section("状態") {
@@ -93,34 +80,32 @@ struct ContentView: View {
                 Text("レイアウト: \(appModel.layout.name)")
             }
 
-            Section("補足") {
+            Section("診断") {
+                DisclosureGroup("通信ログ", isExpanded: $diagnosticsExpanded) {
+                    HStack {
+                        Button("診断ログをコピー") {
+                            appModel.copyDiagnosticsLog()
+                        }
+                        Text("Xcodeログにも同内容を出力")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(appModel.diagnosticsLogText)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                }
+            }
+
+            Section("ヘルプ") {
                 Text("初回はアクセシビリティ権限が必要です。")
                 Text("Vial/VIA JSON は `layouts.keymap` を解釈します。")
                 Button("Third-Party Licenses") {
-                    licenseText = ThirdPartyLicenses.load()
-                    isLicenseSheetPresented = true
+                    LicenseWindowController.shared.show()
                 }
             }
         }
         .formStyle(.grouped)
         .padding(12)
-        .sheet(isPresented: $isLicenseSheetPresented) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Third-Party Licenses")
-                    .font(.headline)
-                ScrollView {
-                    Text(licenseText)
-                        .font(.system(.caption, design: .monospaced))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                Button("閉じる") {
-                    isLicenseSheetPresented = false
-                }
-            }
-            .padding(16)
-            .frame(minWidth: 700, minHeight: 520)
-        }
     }
 }
 

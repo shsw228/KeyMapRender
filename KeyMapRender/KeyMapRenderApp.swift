@@ -20,5 +20,12 @@ struct KeyMapRenderApp: App {
                     appModel.start()
                 }
         }
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Third-Party Licenses…") {
+                    LicenseWindowController.shared.show()
+                }
+            }
+        }
     }
 }
