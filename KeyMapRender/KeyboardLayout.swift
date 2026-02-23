@@ -244,10 +244,17 @@ enum KeyboardLayoutLoader {
                 guard selected == opt else { continue }
             }
             if candidate.isDecal { continue }
+            guard candidate.matrixRow != nil, candidate.matrixCol != nil else { continue }
+            let resolvedLabel: String
+            if let raw = candidate.rawKeycode {
+                resolvedLabel = KeycodeLabelFormatter.label(for: raw)
+            } else {
+                resolvedLabel = candidate.label
+            }
             positioned.append(
                 PositionedKey(
                     id: "k\(keyIndex)",
-                    label: candidate.label,
+                    label: resolvedLabel,
                     x: candidate.x,
                     y: candidate.y,
                     width: candidate.width,
