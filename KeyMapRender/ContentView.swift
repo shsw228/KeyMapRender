@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var appModel: AppModel
+    @State private var isLicenseSheetPresented = false
+    @State private var licenseText = ""
 
     var body: some View {
         Form {
@@ -94,10 +96,31 @@ struct ContentView: View {
             Section("補足") {
                 Text("初回はアクセシビリティ権限が必要です。")
                 Text("Vial/VIA JSON は `layouts.keymap` を解釈します。")
+                Button("Third-Party Licenses") {
+                    licenseText = ThirdPartyLicenses.load()
+                    isLicenseSheetPresented = true
+                }
             }
         }
         .formStyle(.grouped)
         .padding(12)
+        .sheet(isPresented: $isLicenseSheetPresented) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Third-Party Licenses")
+                    .font(.headline)
+                ScrollView {
+                    Text(licenseText)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Button("閉じる") {
+                    isLicenseSheetPresented = false
+                }
+            }
+            .padding(16)
+            .frame(minWidth: 700, minHeight: 520)
+        }
     }
 }
 
