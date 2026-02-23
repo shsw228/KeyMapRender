@@ -522,15 +522,29 @@ enum KeycodeLabelFormatter {
     private static func modTapLabel(for keycode: UInt16) -> String {
         let mods = Int((keycode >> 8) & 0x1F)
         let tap = UInt16(keycode & 0x00FF)
-        let tapLabel = basicLabel(for: tap) ?? String(format: "%02X", tap)
+        let tapLabel = tapKeyLabel(for: tap) ?? String(format: "0x%02X", tap)
         return modTapMacroLabel(mods: mods, tapLabel: tapLabel)
     }
 
     private static func layerTapLabel(for keycode: UInt16) -> String {
         let layer = Int((keycode >> 8) & 0x0F)
         let tap = UInt16(keycode & 0x00FF)
-        let tapLabel = basicLabel(for: tap) ?? String(format: "%02X", tap)
+        let tapLabel = tapKeyLabel(for: tap) ?? String(format: "0x%02X", tap)
         return "LT\(layer)(\(tapLabel))"
+    }
+
+    // For LT/MT style composed keycodes, use unshifted key names.
+    private static func tapKeyLabel(for keycode: UInt16) -> String? {
+        if let named = specialNames[keycode] { return named }
+        if keycode >= 0x0004, keycode <= 0x001D {
+            let offset = Int(keycode - 0x0004)
+            let scalar = UnicodeScalar(UInt8(ascii: "A") + UInt8(offset))
+            return String(Character(scalar))
+        }
+        if let number = tapNumberNames[keycode] { return number }
+        if let symbol = tapSymbolNames[keycode] { return symbol }
+        if let function = functionNames[keycode] { return function }
+        return nil
     }
 
     private static func modsLabel(_ mods: Int) -> String {
@@ -593,6 +607,24 @@ enum KeycodeLabelFormatter {
         0x0050: "Left",
         0x0051: "Down",
         0x0052: "Up",
+        0x0053: "NumLock",
+        0x0054: "KP /",
+        0x0055: "KP *",
+        0x0056: "KP -",
+        0x0057: "KP +",
+        0x0058: "KP Enter",
+        0x0059: "KP 1",
+        0x005A: "KP 2",
+        0x005B: "KP 3",
+        0x005C: "KP 4",
+        0x005D: "KP 5",
+        0x005E: "KP 6",
+        0x005F: "KP 7",
+        0x0060: "KP 8",
+        0x0061: "KP 9",
+        0x0062: "KP 0",
+        0x0063: "KP .",
+        0x0067: "KP =",
         0x00E0: "LCtrl",
         0x00E1: "LShift",
         0x00E2: "LAlt",
@@ -616,6 +648,19 @@ enum KeycodeLabelFormatter {
         0x0027: ")\n0"
     ]
 
+    private static let tapNumberNames: [UInt16: String] = [
+        0x001E: "1",
+        0x001F: "2",
+        0x0020: "3",
+        0x0021: "4",
+        0x0022: "5",
+        0x0023: "6",
+        0x0024: "7",
+        0x0025: "8",
+        0x0026: "9",
+        0x0027: "0"
+    ]
+
     private static let symbolNames: [UInt16: String] = [
         0x002D: "_\n-",
         0x002E: "+\n=",
@@ -628,6 +673,20 @@ enum KeycodeLabelFormatter {
         0x0036: "<\n,",
         0x0037: ">\n.",
         0x0038: "?\n/"
+    ]
+
+    private static let tapSymbolNames: [UInt16: String] = [
+        0x002D: "-",
+        0x002E: "=",
+        0x002F: "[",
+        0x0030: "]",
+        0x0031: "\\",
+        0x0033: ";",
+        0x0034: "'",
+        0x0035: "`",
+        0x0036: ",",
+        0x0037: ".",
+        0x0038: "/"
     ]
 
     private static let functionNames: [UInt16: String] = [
