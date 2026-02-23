@@ -44,6 +44,7 @@ final class AppModel: ObservableObject {
     private let rootStore: RootStore
     private let activeLayerTrackingService = ActiveLayerTrackingService()
     private let activeLayerPollingService = ActiveLayerPollingService()
+    private let layerSelectionService = LayerSelectionService()
     private let vialPresentationService = VialPresentationService()
     private let vialDiagnosticsService = VialDiagnosticsService()
     private let diagnosticsLogBufferService = DiagnosticsLogBufferService()
@@ -337,7 +338,10 @@ final class AppModel: ObservableObject {
     }
 
     func setSelectedLayerIndex(_ newValue: Int) {
-        let clamped = max(0, min(newValue, max(0, availableLayerCount - 1)))
+        let clamped = layerSelectionService.clamp(
+            newValue,
+            totalLayers: availableLayerCount
+        )
         manualSelectedLayerIndex = clamped
         setDisplayedLayerIndex(clamped, reason: "手動", forceApply: true)
     }
@@ -348,10 +352,13 @@ final class AppModel: ObservableObject {
         emitLog: Bool = true,
         forceApply: Bool = false
     ) {
-        let clamped = max(0, min(newValue, max(0, availableLayerCount - 1)))
-        let changed = (selectedLayerIndex != clamped)
-        if !changed, !forceApply { return }
-        selectedLayerIndex = clamped
+        guard let update = layerSelectionService.resolveUpdate(
+            current: selectedLayerIndex,
+            requested: newValue,
+            totalLayers: availableLayerCount,
+            forceApply: forceApply
+        ) else { return }
+        selectedLayerIndex = update.clampedValue
         applySelectedLayerToLatestDump()
         if isOverlayVisible {
             rootStore.showOverlay(
@@ -360,7 +367,7 @@ final class AppModel: ObservableObject {
                 totalLayers: availableLayerCount
             )
         }
-        if changed, emitLog {
+        if update.changed, emitLog {
             appendDiagnostics("表示レイヤー変更(\(reason)): L\(selectedLayerIndex)/\(max(0, availableLayerCount - 1))")
         }
     }

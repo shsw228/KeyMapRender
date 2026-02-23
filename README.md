@@ -38,6 +38,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - キーボードレイアウト生成ロジックを `Model.KeyboardLayoutService` へ移設（App側は委譲のみ）
 - アクティブレイヤ追従ポーリング制御を `Model.ActiveLayerPollingService` へ移設
 - 診断ログの追記整形を `Model.DiagnosticsLogBufferService` へ移設
+- レイヤ選択のクランプ/変更判定を `Model.LayerSelectionService` へ移設
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`
