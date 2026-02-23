@@ -286,7 +286,22 @@ enum KeyboardLayoutLoader {
         if let rawCode = parseNumericKeycode(parsed.displayLabel) {
             return KeycodeLabelFormatter.label(for: rawCode)
         }
+        if let normalized = normalizeLiteralKeyLabel(parsed.displayLabel) {
+            return normalized
+        }
         return parsed.displayLabel.isEmpty ? "----" : parsed.displayLabel
+    }
+
+    nonisolated private static func normalizeLiteralKeyLabel(_ raw: String) -> String? {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !text.isEmpty else { return nil }
+        if ["TRNS", "KC_TRNS", "TRANSPARENT", "_______"].contains(text) {
+            return "TRNS"
+        }
+        if ["NO", "KC_NO", "XXXXXXX"].contains(text) {
+            return "NO"
+        }
+        return nil
     }
 
     nonisolated private static func parseNumericKeycode(_ raw: String) -> UInt16? {
@@ -326,12 +341,6 @@ enum KeyboardLayoutLoader {
     nonisolated private static func extractLayoutTag(fromOrdered labels: [String?]) -> (Int, Int)? {
         if labels.count > 8, let text = labels[8], let parsed = parseIntPair(text) {
             return parsed
-        }
-        // Fallback: scan any remaining labels for "x,y" layout tag.
-        for line in labels.compactMap({ $0 }).reversed() {
-            if let parsed = parseIntPair(line) {
-                return parsed
-            }
         }
         return nil
     }
