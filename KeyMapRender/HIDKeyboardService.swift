@@ -20,6 +20,7 @@ struct HIDInterfaceCandidate {
 enum HIDKeyboardService {
     nonisolated static func listKeyboards() -> [HIDKeyboardDevice] {
         let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
+        let options = IOOptionBits(kIOHIDOptionsTypeNone)
 
         let keyboardMatch: [String: Any] = [
             kIOHIDDeviceUsagePageKey as String: kHIDPage_GenericDesktop,
@@ -30,7 +31,11 @@ enum HIDKeyboardService {
             kIOHIDDeviceUsageKey as String: kHIDUsage_GD_Keypad
         ]
         IOHIDManagerSetDeviceMatchingMultiple(manager, [keyboardMatch, keypadMatch] as CFArray)
-        IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
+        let openResult = IOHIDManagerOpen(manager, options)
+        guard openResult == kIOReturnSuccess else {
+            return []
+        }
+        defer { IOHIDManagerClose(manager, options) }
 
         guard let set = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else {
             return []
@@ -46,13 +51,18 @@ enum HIDKeyboardService {
 
     nonisolated static func findCandidateInterfaces(for keyboard: HIDKeyboardDevice) -> [HIDInterfaceCandidate] {
         let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
+        let options = IOOptionBits(kIOHIDOptionsTypeNone)
 
         let match: [String: Any] = [
             kIOHIDVendorIDKey as String: keyboard.vendorID,
             kIOHIDProductIDKey as String: keyboard.productID
         ]
         IOHIDManagerSetDeviceMatching(manager, match as CFDictionary)
-        IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
+        let openResult = IOHIDManagerOpen(manager, options)
+        guard openResult == kIOReturnSuccess else {
+            return []
+        }
+        defer { IOHIDManagerClose(manager, options) }
 
         guard let set = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else {
             return []

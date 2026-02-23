@@ -38,6 +38,7 @@ final class AppModel: ObservableObject {
     private var ignoredDeviceIDs: Set<String> = []
     private var latestKeymapDump: VialKeymapDump?
     private var hasAutoLoadedOnStartup = false
+    private var isShuttingDown = false
 
     private enum DefaultsKey {
         static let targetKeyCode = "targetKeyCode"
@@ -59,6 +60,7 @@ final class AppModel: ObservableObject {
     }
 
     func start() {
+        guard !isShuttingDown else { return }
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         let axTrusted = AXIsProcessTrustedWithOptions(options)
         let listenTrusted = CGPreflightListenEventAccess()
@@ -74,7 +76,18 @@ final class AppModel: ObservableObject {
         autoLoadKeymapIfPossibleOnStartup()
     }
 
+    func shutdown() {
+        guard !isShuttingDown else { return }
+        isShuttingDown = true
+        monitor.stop()
+        monitor.onLongPressStart = nil
+        monitor.onLongPressEnd = nil
+        overlayWindowController.hide()
+        isOverlayVisible = false
+    }
+
     func applySettings() {
+        guard !isShuttingDown else { return }
         guard let keyCodeValue = UInt16(targetKeyCodeText), keyCodeValue <= 127 else {
             permissionStatusText = "キーコードは 0-127 の整数で入力してください。"
             return
@@ -145,6 +158,7 @@ final class AppModel: ObservableObject {
             let result = VialRawHIDService.probe(device: selected)
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
+                guard !self.isShuttingDown else { return }
                 self.isDiagnosticsRunning = false
                 switch result {
                 case let .success(probe):
@@ -176,6 +190,7 @@ final class AppModel: ObservableObject {
             let result = VialRawHIDService.readKeymap(device: selected, matrixRows: rows, matrixCols: cols)
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
+                guard !self.isShuttingDown else { return }
                 self.isDiagnosticsRunning = false
                 switch result {
                 case let .success(dump):
@@ -244,6 +259,7 @@ final class AppModel: ObservableObject {
             let result = VialRawHIDService.inferMatrix(device: selected)
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
+                guard !self.isShuttingDown else { return }
                 self.isDiagnosticsRunning = false
                 switch result {
                 case let .success(info):
@@ -271,6 +287,7 @@ final class AppModel: ObservableObject {
             let result = VialRawHIDService.readDefinition(device: selected)
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
+                guard !self.isShuttingDown else { return }
                 self.isDiagnosticsRunning = false
                 switch result {
                 case let .success(prettyJSON):
@@ -463,6 +480,7 @@ final class AppModel: ObservableObject {
 
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
+                guard !self.isShuttingDown else { return }
                 self.isDiagnosticsRunning = false
                 self.appendDiagnostics("起動時自動読込: \(matrixLog)")
                 switch matrixResult {

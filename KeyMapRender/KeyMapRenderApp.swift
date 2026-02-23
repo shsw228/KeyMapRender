@@ -19,6 +19,9 @@ struct KeyMapRenderApp: App {
                 .onAppear {
                     appModel.start()
                 }
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+                    appModel.shutdown()
+                }
         }
         .commands {
             CommandGroup(after: .appInfo) {
