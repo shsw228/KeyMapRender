@@ -16,16 +16,6 @@ enum ThirdPartyLicenses {
     }
 
     private static func loadHidapiLicenses() -> String? {
-        guard
-            let licensesDir = Bundle.main.url(
-                forResource: "licenses",
-                withExtension: nil,
-                subdirectory: "python_deps/hidapi-0.15.0.dist-info"
-            )
-        else {
-            return nil
-        }
-
         let files = [
             "LICENSE.txt",
             "LICENSE-bsd.txt",
@@ -36,17 +26,42 @@ enum ThirdPartyLicenses {
         var body: [String] = []
         body.append("## hidapi (cython-hidapi 0.15.0)")
 
+        // In app bundles, python wheel resources are flattened into Contents/Resources.
         for file in files {
-            let fileURL = licensesDir.appendingPathComponent(file)
-            guard let data = try? Data(contentsOf: fileURL),
-                  let text = String(data: data, encoding: .utf8) else {
+            guard let fileURL = resolveLicenseFileURL(named: file),
+                  let data = try? Data(contentsOf: fileURL),
+                  let text = String(data: data, encoding: .utf8)
+            else {
                 continue
             }
             body.append("### \(file)")
             body.append(text)
         }
 
-        return body.isEmpty ? nil : body.joined(separator: "\n\n")
+        return body.count > 1 ? body.joined(separator: "\n\n") : nil
+    }
+
+    private static func resolveLicenseFileURL(named file: String) -> URL? {
+        let name = URL(fileURLWithPath: file).deletingPathExtension().lastPathComponent
+        let ext = URL(fileURLWithPath: file).pathExtension
+
+        if let direct = Bundle.main.url(forResource: name, withExtension: ext) {
+            return direct
+        }
+        if let nested = Bundle.main.url(
+            forResource: name,
+            withExtension: ext,
+            subdirectory: "python_deps/hidapi-0.15.0.dist-info/licenses"
+        ) {
+            return nested
+        }
+        if let legacy = Bundle.main.url(
+            forResource: file,
+            withExtension: nil,
+            subdirectory: "python_deps/hidapi-0.15.0.dist-info/licenses"
+        ) {
+            return legacy
+        }
+        return nil
     }
 }
-
