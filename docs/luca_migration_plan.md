@@ -91,6 +91,7 @@
 - 状態: 長押しキー監視を `GlobalKeyMonitorClient` + `RootStore` API へ移し、`AppModel` の監視実体依存を削減
 - 状態: オーバーレイWindow表示制御を `OverlayWindowClient` + `RootStore` API へ移し、`AppModel` のWindow実体依存を削減
 - 状態: キーボードレイアウト生成ロジックを `Model/Services/KeyboardLayoutService` へ移し、`AppModel` から実装詳細を分離
+- 状態: アクティブレイヤ追従ポーリング制御を `Model/Services/ActiveLayerPollingService` へ移し、`AppModel` のループ責務を縮小
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

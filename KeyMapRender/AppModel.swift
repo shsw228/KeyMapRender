@@ -43,6 +43,7 @@ final class AppModel: ObservableObject {
     private var globalKeyMonitorSession: GlobalKeyMonitorSession?
     private let rootStore: RootStore
     private let activeLayerTrackingService = ActiveLayerTrackingService()
+    private let activeLayerPollingService = ActiveLayerPollingService()
     private let vialPresentationService = VialPresentationService()
     private let vialDiagnosticsService = VialDiagnosticsService()
     private let vialDefinitionValidationService = VialDefinitionValidationService()
@@ -482,13 +483,9 @@ final class AppModel: ObservableObject {
         matrixPollFailureCount = 0
         activeLayerTrackingGeneration &+= 1
         let generation = activeLayerTrackingGeneration
-        activeLayerTrackingTask = Task { [weak self] in
-            guard let self else { return }
-            while !Task.isCancelled {
-                let hasActivity = await self.pollActiveLayerFromKeyboard(generation: generation)
-                let delayMs = hasActivity ? 8 : 25
-                try? await Task.sleep(for: .milliseconds(delayMs))
-            }
+        activeLayerTrackingTask = activeLayerPollingService.makePollingTask { [weak self] in
+            guard let self else { return false }
+            return await self.pollActiveLayerFromKeyboard(generation: generation)
         }
         appendDiagnostics("アクティブレイヤー追従開始")
     }

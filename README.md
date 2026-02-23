@@ -36,6 +36,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - 長押しキー監視を `GlobalKeyMonitorClient` + `RootStore` API 経由へ移行
 - オーバーレイWindow表示制御を `OverlayWindowClient` + `RootStore` API 経由へ移行
 - キーボードレイアウト生成ロジックを `Model.KeyboardLayoutService` へ移設（App側は委譲のみ）
+- アクティブレイヤ追従ポーリング制御を `Model.ActiveLayerPollingService` へ移設
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`
