@@ -24,9 +24,7 @@ struct KeyMapRenderApp: App {
                     appModel.shutdown()
                 }
         }
-        .defaultLaunchBehavior(
-            AppModel.shouldShowSettingsOnLaunchByDefault() ? .presented : .suppressed
-        )
+        .defaultLaunchBehavior(.suppressed)
         MenuBarExtra("KeyMapRender", systemImage: "keyboard") {
             MenuBarContentView()
                 .environmentObject(appModel)
@@ -61,6 +59,10 @@ private struct MenuBarContentView: View {
         .onAppear {
             appModel.start()
             appModel.refreshLaunchAtLoginStatus()
+            if appModel.shouldOpenSettingsWindowOnLaunch() {
+                openWindow(id: "main")
+                NSApp.activate(ignoringOtherApps: true)
+            }
         }
     }
 }

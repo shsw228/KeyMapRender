@@ -50,6 +50,7 @@ final class AppModel: ObservableObject {
     private var activeLayerTrackingGeneration: UInt64 = 0
     private var matrixPollFailureCount = 0
     private var hasStarted = false
+    private var didConsumeInitialSettingsOpenRequest = false
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
         category: "AppModel"
@@ -66,6 +67,12 @@ final class AppModel: ObservableObject {
 
     static func shouldShowSettingsOnLaunchByDefault() -> Bool {
         UserDefaults.standard.object(forKey: DefaultsKey.showSettingsOnLaunch) as? Bool ?? true
+    }
+
+    func shouldOpenSettingsWindowOnLaunch() -> Bool {
+        guard !didConsumeInitialSettingsOpenRequest else { return false }
+        didConsumeInitialSettingsOpenRequest = true
+        return showSettingsOnLaunch
     }
 
     init() {
