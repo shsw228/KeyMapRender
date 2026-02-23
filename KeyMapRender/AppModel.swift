@@ -52,7 +52,6 @@ final class AppModel: ObservableObject {
     private var matrixPollFailureCount = 0
     private var hasStarted = false
     private var keyboardHotplugMonitor: HIDKeyboardHotplugMonitor?
-    private let appDependencies: AppDependencies
     private let rootStore: RootStore
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
@@ -68,7 +67,6 @@ final class AppModel: ObservableObject {
     }
 
     init(appDependencies: AppDependencies = .keyMapRenderLive) {
-        self.appDependencies = appDependencies
         self.rootStore = RootStore(appDependencies)
         let preferences = rootStore.loadAppPreferences()
         self.targetKeyCodeText = "\(preferences.targetKeyCode)"
@@ -206,7 +204,7 @@ final class AppModel: ObservableObject {
     }
 
     func refreshKeyboards() {
-        allDetectedKeyboards = appDependencies.hidKeyboardClient.listKeyboards()
+        allDetectedKeyboards = rootStore.listKeyboards()
         connectedKeyboards = rootStore.visibleKeyboards(from: allDetectedKeyboards)
         ignoredDeviceCount = rootStore.currentIgnoredDeviceIDs().count
         if connectedKeyboards.isEmpty {
@@ -238,10 +236,8 @@ final class AppModel: ObservableObject {
         }
         isDiagnosticsRunning = true
         vialStatusText = "Vial通信テスト中..."
-        let vialClient = appDependencies.vialRawHIDClient
-
         DispatchQueue.global(qos: .userInitiated).async {
-            let result = vialClient.probe(selected)
+            let result = self.rootStore.probeVial(on: selected)
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 guard !self.isShuttingDown else { return }
@@ -271,10 +267,8 @@ final class AppModel: ObservableObject {
         }
         isDiagnosticsRunning = true
         keymapStatusText = "全マップ読出し中..."
-        let vialClient = appDependencies.vialRawHIDClient
-
         DispatchQueue.global(qos: .userInitiated).async {
-            let result = vialClient.readKeymap(selected, rows, cols)
+            let result = self.rootStore.readVialKeymap(on: selected, rows: rows, cols: cols)
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 guard !self.isShuttingDown else { return }
@@ -381,10 +375,8 @@ final class AppModel: ObservableObject {
         }
         isDiagnosticsRunning = true
         keymapStatusText = "matrix自動取得中..."
-        let vialClient = appDependencies.vialRawHIDClient
-
         DispatchQueue.global(qos: .userInitiated).async {
-            let result = vialClient.inferMatrix(selected)
+            let result = self.rootStore.inferVialMatrix(on: selected)
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 guard !self.isShuttingDown else { return }
@@ -410,10 +402,8 @@ final class AppModel: ObservableObject {
         }
         isDiagnosticsRunning = true
         keymapStatusText = "vial.json取得中..."
-        let vialClient = appDependencies.vialRawHIDClient
-
         DispatchQueue.global(qos: .userInitiated).async {
-            let result = vialClient.readDefinition(selected)
+            let result = self.rootStore.readVialDefinition(on: selected)
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 guard !self.isShuttingDown else { return }
@@ -551,10 +541,13 @@ final class AppModel: ObservableObject {
         matrixRows: Int,
         matrixCols: Int
     ) async -> Result<VialSwitchMatrixState, VialProbeError> {
-        let vialClient = appDependencies.vialRawHIDClient
         return await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
-                let result = vialClient.readSwitchMatrixState(device, matrixRows, matrixCols)
+                let result = self.rootStore.readVialSwitchMatrixState(
+                    on: device,
+                    rows: matrixRows,
+                    cols: matrixCols
+                )
                 continuation.resume(returning: result)
             }
         }
@@ -923,10 +916,8 @@ final class AppModel: ObservableObject {
         keymapStatusText = "起動時自動読込中..."
         let initialRows = Int(matrixRowsText) ?? 6
         let initialCols = Int(matrixColsText) ?? 17
-        let vialClient = appDependencies.vialRawHIDClient
-
         DispatchQueue.global(qos: .userInitiated).async {
-            let matrixResult = vialClient.inferMatrix(selected)
+            let matrixResult = self.rootStore.inferVialMatrix(on: selected)
             var rows = initialRows
             var cols = initialCols
             var matrixLog = "matrix自動取得未実行"
@@ -939,7 +930,7 @@ final class AppModel: ObservableObject {
                 matrixLog = "matrix自動取得失敗: \(message)"
             }
 
-            let dumpResult = vialClient.readKeymap(selected, rows, cols)
+            let dumpResult = self.rootStore.readVialKeymap(on: selected, rows: rows, cols: cols)
 
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }

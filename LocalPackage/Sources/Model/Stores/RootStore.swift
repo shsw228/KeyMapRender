@@ -28,6 +28,7 @@ public final class RootStore: Composable {
         }
     }
 
+    private let appDependencies: AppDependencies
     private var userDefaultsRepository: UserDefaultsRepository
     private var didConsumeInitialSettingsOpenRequest: Bool
     private var ignoredDeviceIDs: Set<String>
@@ -41,6 +42,7 @@ public final class RootStore: Composable {
         didConsumeInitialSettingsOpenRequest: Bool = false,
         action: @escaping (Action) async -> Void = { _ in }
     ) {
+        self.appDependencies = appDependencies
         let userDefaultsRepository = UserDefaultsRepository(appDependencies.userDefaultsClient)
         let initialShowSettingsOnLaunch = showSettingsOnLaunch ?? userDefaultsRepository.showSettingsOnLaunch
         let initialIgnoredDeviceIDs = Set(userDefaultsRepository.ignoredDeviceIDs)
@@ -108,6 +110,10 @@ public final class RootStore: Composable {
         allDetected.filter { !ignoredDeviceIDs.contains($0.id) }
     }
 
+    public func listKeyboards() -> [HIDKeyboardDevice] {
+        appDependencies.hidKeyboardClient.listKeyboards()
+    }
+
     public func resolveSelectedKeyboardID(
         current selectedID: String,
         connectedKeyboards: [HIDKeyboardDevice]
@@ -135,6 +141,34 @@ public final class RootStore: Composable {
             return "検出: \(selectedKeyboard.manufacturerName) \(selectedKeyboard.productName) (VID:0x\(String(selectedKeyboard.vendorID, radix: 16, uppercase: true)) PID:0x\(String(selectedKeyboard.productID, radix: 16, uppercase: true))) / 無視: \(ignoredCount) 台"
         }
         return "検出: \(connectedKeyboards.count) 台 / 無視: \(ignoredCount) 台"
+    }
+
+    public func probeVial(on device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError> {
+        appDependencies.vialRawHIDClient.probe(device)
+    }
+
+    public func readVialKeymap(
+        on device: HIDKeyboardDevice,
+        rows: Int,
+        cols: Int
+    ) -> Result<VialKeymapDump, VialProbeError> {
+        appDependencies.vialRawHIDClient.readKeymap(device, rows, cols)
+    }
+
+    public func inferVialMatrix(on device: HIDKeyboardDevice) -> Result<VialMatrixInfo, VialProbeError> {
+        appDependencies.vialRawHIDClient.inferMatrix(device)
+    }
+
+    public func readVialDefinition(on device: HIDKeyboardDevice) -> Result<String, VialProbeError> {
+        appDependencies.vialRawHIDClient.readDefinition(device)
+    }
+
+    public func readVialSwitchMatrixState(
+        on device: HIDKeyboardDevice,
+        rows: Int,
+        cols: Int
+    ) -> Result<VialSwitchMatrixState, VialProbeError> {
+        appDependencies.vialRawHIDClient.readSwitchMatrixState(device, rows, cols)
     }
 
     public enum Action: Sendable {
