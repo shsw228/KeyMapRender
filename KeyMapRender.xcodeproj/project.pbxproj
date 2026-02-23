@@ -11,8 +11,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		C3D4E5F60718293A4B6C7D8E /* LocalPackage */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LocalPackage; path = LocalPackage; sourceTree = SOURCE_ROOT; };
 		B708161D2F4C6C7600F86499 /* KeyMapRender.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KeyMapRender.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C3D4E5F60718293A4B6C7D8E /* LocalPackage */ = {isa = PBXFileReference; lastKnownFileType = folder; path = LocalPackage; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */

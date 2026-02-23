@@ -20,6 +20,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - `luca --platform macOS` で生成した `LocalPackage` 雛形を取り込み済み（段階移行中）
 - `KeyMapRender.xcodeproj` から `LocalPackage`（`DataSource`）を参照する構成へ接続済み
 - `HIDKeyboardDevice` / `VialProbeResult` などの通信エンティティを `LocalPackage/Sources/DataSource/Entities` へ移設
+- `HIDKeyboardClient` / `VialRawHIDClient` の依存契約を `LocalPackage/Sources/DataSource/Dependencies` へ移設
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

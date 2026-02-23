@@ -66,6 +66,7 @@
   - LUCA移行の第一段として、DependencyClient / AppDependencies 経由の依存注入基盤を導入
   - `luca --platform macOS` 生成の `LocalPackage` 雛形（DataSource/Model/UserInterface）を導入
   - `KeyMapRender.xcodeproj` に `LocalPackage(DataSource)` を接続し、段階移行の実行経路を確立
+  - HID/Vial 通信の dependency client 契約（`HIDKeyboardClient` / `VialRawHIDClient`）を `DataSource` へ移設
 - 未実装
   - 接続キーボードの自動識別とレイアウト自動切替
   - matrix rows/cols の自動推定
