@@ -13,23 +13,23 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selection) {
-            Tab(Pane.general.title, systemImage: Pane.general.icon, value: .general) {
-                paneView(.general)
-            }
-            Tab(Pane.vial.title, systemImage: Pane.vial.icon, value: .vial) {
-                paneView(.vial)
-            }
-            Tab(Pane.status.title, systemImage: Pane.status.icon, value: .status) {
-                paneView(.status)
-            }
-            Tab(Pane.diagnostics.title, systemImage: Pane.diagnostics.icon, value: .diagnostics) {
-                paneView(.diagnostics)
-            }
-            Tab(Pane.help.title, systemImage: Pane.help.icon, value: .help) {
-                paneView(.help)
-            }
+            paneView(.general)
+                .tag(Pane.general)
+                .tabItem { Label(Pane.general.title, systemImage: Pane.general.icon) }
+            paneView(.vial)
+                .tag(Pane.vial)
+                .tabItem { Label(Pane.vial.title, systemImage: Pane.vial.icon) }
+            paneView(.status)
+                .tag(Pane.status)
+                .tabItem { Label(Pane.status.title, systemImage: Pane.status.icon) }
+            paneView(.diagnostics)
+                .tag(Pane.diagnostics)
+                .tabItem { Label(Pane.diagnostics.title, systemImage: Pane.diagnostics.icon) }
+            paneView(.help)
+                .tag(Pane.help)
+                .tabItem { Label(Pane.help.title, systemImage: Pane.help.icon) }
         }
-        .tabViewStyle(.grouped)
+        .tabViewStyle(.automatic)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
