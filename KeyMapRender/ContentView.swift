@@ -9,7 +9,6 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var appModel: AppModel
-    @State private var diagnosticsExpanded = false
     @State private var selection: Pane = .general
 
     var body: some View {
@@ -163,19 +162,17 @@ struct ContentView: View {
         case .diagnostics:
             Form {
                 Section("診断") {
-                    DisclosureGroup("通信ログ", isExpanded: $diagnosticsExpanded) {
-                        HStack {
-                            Button("診断ログをコピー") {
-                                appModel.copyDiagnosticsLog()
-                            }
-                            Text("Xcodeログにも同内容を出力")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    HStack {
+                        Button("診断ログをコピー") {
+                            appModel.copyDiagnosticsLog()
                         }
-                        Text(appModel.diagnosticsLogText)
-                            .font(.system(.caption, design: .monospaced))
-                            .textSelection(.enabled)
+                        Text("Xcodeログにも同内容を出力")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
+                    Text(appModel.diagnosticsLogText)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
                 }
             }
             .formStyle(.grouped)
