@@ -35,6 +35,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - キーボードホットプラグ監視を `HIDKeyboardHotplugClient` 経由へ移行
 - 長押しキー監視を `GlobalKeyMonitorClient` + `RootStore` API 経由へ移行
 - オーバーレイWindow表示制御を `OverlayWindowClient` + `RootStore` API 経由へ移行
+- キーボードレイアウト生成ロジックを `Model.KeyboardLayoutService` へ移設（App側は委譲のみ）
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`
