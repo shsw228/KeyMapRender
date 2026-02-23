@@ -237,6 +237,7 @@ final class AppModel: ObservableObject {
                 name: "Live \(dump.backend)"
             )
         }
+        logBottomLeftThirdKey(layer: layer)
     }
 
     func updateLayoutChoice(index: Int, selected: Int) {
@@ -452,6 +453,35 @@ final class AppModel: ObservableObject {
             current >>= 1
         }
         return max(bits, 1)
+    }
+
+    private func logBottomLeftThirdKey(layer: Int) {
+        let keys = layout.positionedKeys
+        guard !keys.isEmpty else { return }
+        guard let bottomY = keys.map(\.y).max() else { return }
+        let epsilon = 0.001
+        let bottomRow = keys
+            .filter { abs($0.y - bottomY) < epsilon }
+            .sorted { $0.x < $1.x }
+        guard bottomRow.count >= 3 else {
+            appendDiagnostics("キー検証 L\(layer): 最下段キー数不足 count=\(bottomRow.count)")
+            return
+        }
+        let target = bottomRow[2]
+        let rc: String
+        if let r = target.matrixRow, let c = target.matrixCol {
+            rc = "\(r),\(c)"
+        } else {
+            rc = "n/a"
+        }
+        let raw: String
+        if let rawCode = target.rawKeycode {
+            raw = String(format: "0x%04X", rawCode)
+        } else {
+            raw = "n/a"
+        }
+        let rendered = target.label.replacingOccurrences(of: "\n", with: " / ")
+        appendDiagnostics("キー検証 L\(layer): 最下段左3 x=\(String(format: "%.2f", target.x)) rc=\(rc) raw=\(raw) label=\(rendered)")
     }
 
     private func validateVialDefinitionJSON(_ text: String) throws {

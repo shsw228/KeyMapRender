@@ -22,6 +22,9 @@ struct PositionedKey: Identifiable {
     let y: Double
     let width: Double
     let height: Double
+    let matrixRow: Int?
+    let matrixCol: Int?
+    let rawKeycode: UInt16?
 }
 
 enum KeyboardLayoutLoader {
@@ -210,6 +213,7 @@ enum KeyboardLayoutLoader {
                 let raw = String(describing: item)
                 let parsed = parseRawLabel(raw, align: align)
                 let mappedLabel = mapKeyLabel(parsed: parsed, layer: layer, keycodes: keycodes)
+                let rawKeycode = rawKeycodeAt(parsed: parsed, layer: layer, keycodes: keycodes)
                 candidates.append(
                     PhysicalKeyCandidate(
                         label: mappedLabel,
@@ -217,6 +221,9 @@ enum KeyboardLayoutLoader {
                         y: cursorY,
                         width: width,
                         height: height,
+                        matrixRow: parsed.row,
+                        matrixCol: parsed.col,
+                        rawKeycode: rawKeycode,
                         layoutIndex: parsed.layoutIndex,
                         layoutOption: parsed.layoutOption,
                         isDecal: pendingDecal
@@ -244,7 +251,10 @@ enum KeyboardLayoutLoader {
                     x: candidate.x,
                     y: candidate.y,
                     width: candidate.width,
-                    height: candidate.height
+                    height: candidate.height,
+                    matrixRow: candidate.matrixRow,
+                    matrixCol: candidate.matrixCol,
+                    rawKeycode: candidate.rawKeycode
                 )
             )
             keyIndex += 1
@@ -271,6 +281,24 @@ enum KeyboardLayoutLoader {
             return normalized
         }
         return parsed.displayLabel.isEmpty ? "----" : parsed.displayLabel
+    }
+
+    nonisolated private static func rawKeycodeAt(
+        parsed: RawLabel,
+        layer: Int,
+        keycodes: [[[UInt16]]]
+    ) -> UInt16? {
+        guard
+            let row = parsed.row,
+            let col = parsed.col,
+            row >= 0,
+            col >= 0,
+            row < keycodes[layer].count,
+            col < keycodes[layer][row].count
+        else {
+            return nil
+        }
+        return keycodes[layer][row][col]
     }
 
     nonisolated private static func resolvedLayerAwareLabel(
@@ -448,6 +476,9 @@ private struct PhysicalKeyCandidate {
     let y: Double
     let width: Double
     let height: Double
+    let matrixRow: Int?
+    let matrixCol: Int?
+    let rawKeycode: UInt16?
     let layoutIndex: Int?
     let layoutOption: Int?
     let isDecal: Bool
