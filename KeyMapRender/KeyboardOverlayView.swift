@@ -16,7 +16,7 @@ struct KeyboardOverlayView: View {
                     .font(.headline)
                     .foregroundStyle(.white.opacity(0.9))
                 Text("Layer L\(currentLayer) / \(max(0, totalLayers - 1))")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(.subheadline, design: .monospaced).weight(.semibold))
                     .foregroundStyle(.white.opacity(0.82))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 3)
