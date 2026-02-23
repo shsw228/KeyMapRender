@@ -30,6 +30,7 @@ public final class RootStore: Composable {
 
     private var userDefaultsRepository: UserDefaultsRepository
     private var didConsumeInitialSettingsOpenRequest: Bool
+    private var ignoredDeviceIDs: Set<String>
 
     public var showSettingsOnLaunch: Bool
     public let action: (Action) async -> Void
@@ -42,8 +43,10 @@ public final class RootStore: Composable {
     ) {
         let userDefaultsRepository = UserDefaultsRepository(appDependencies.userDefaultsClient)
         let initialShowSettingsOnLaunch = showSettingsOnLaunch ?? userDefaultsRepository.showSettingsOnLaunch
+        let initialIgnoredDeviceIDs = Set(userDefaultsRepository.ignoredDeviceIDs)
         self.userDefaultsRepository = userDefaultsRepository
         self.showSettingsOnLaunch = initialShowSettingsOnLaunch
+        self.ignoredDeviceIDs = initialIgnoredDeviceIDs
         self.didConsumeInitialSettingsOpenRequest = didConsumeInitialSettingsOpenRequest
         self.action = action
     }
@@ -84,6 +87,54 @@ public final class RootStore: Composable {
 
     public func saveIgnoredDeviceIDs(_ ids: [String]) {
         userDefaultsRepository.ignoredDeviceIDs = ids
+        ignoredDeviceIDs = Set(ids)
+    }
+
+    public func currentIgnoredDeviceIDs() -> Set<String> {
+        ignoredDeviceIDs
+    }
+
+    public func addIgnoredDeviceID(_ id: String) {
+        ignoredDeviceIDs.insert(id)
+        userDefaultsRepository.ignoredDeviceIDs = Array(ignoredDeviceIDs).sorted()
+    }
+
+    public func clearIgnoredDeviceIDs() {
+        ignoredDeviceIDs.removeAll()
+        userDefaultsRepository.ignoredDeviceIDs = []
+    }
+
+    public func visibleKeyboards(from allDetected: [HIDKeyboardDevice]) -> [HIDKeyboardDevice] {
+        allDetected.filter { !ignoredDeviceIDs.contains($0.id) }
+    }
+
+    public func resolveSelectedKeyboardID(
+        current selectedID: String,
+        connectedKeyboards: [HIDKeyboardDevice]
+    ) -> String {
+        guard !connectedKeyboards.isEmpty else { return "" }
+        if connectedKeyboards.contains(where: { $0.id == selectedID }) {
+            return selectedID
+        }
+        return connectedKeyboards[0].id
+    }
+
+    public func keyboardStatusText(
+        allDetectedKeyboards: [HIDKeyboardDevice],
+        connectedKeyboards: [HIDKeyboardDevice],
+        selectedKeyboard: HIDKeyboardDevice?
+    ) -> String {
+        let ignoredCount = ignoredDeviceIDs.count
+        if connectedKeyboards.isEmpty {
+            if allDetectedKeyboards.isEmpty {
+                return "キーボード未検出"
+            }
+            return "表示対象なし（\(ignoredCount) 台を無視中）"
+        }
+        if let selectedKeyboard {
+            return "検出: \(selectedKeyboard.manufacturerName) \(selectedKeyboard.productName) (VID:0x\(String(selectedKeyboard.vendorID, radix: 16, uppercase: true)) PID:0x\(String(selectedKeyboard.productID, radix: 16, uppercase: true))) / 無視: \(ignoredCount) 台"
+        }
+        return "検出: \(connectedKeyboards.count) 台 / 無視: \(ignoredCount) 台"
     }
 
     public enum Action: Sendable {

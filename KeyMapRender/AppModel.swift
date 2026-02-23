@@ -43,7 +43,6 @@ final class AppModel: ObservableObject {
     private let monitor = GlobalKeyLongPressMonitor()
     private let overlayWindowController = OverlayWindowController()
     private var allDetectedKeyboards: [HIDKeyboardDevice] = []
-    private var ignoredDeviceIDs: Set<String> = []
     private var latestKeymapDump: VialKeymapDump?
     private var hasAutoLoadedOnStartup = false
     private var isShuttingDown = false
@@ -80,8 +79,7 @@ final class AppModel: ObservableObject {
         self.layout = KeyboardLayoutLoader.loadDefaultLayout()
         self.matrixRowsText = "6"
         self.matrixColsText = "17"
-        self.ignoredDeviceIDs = Set(preferences.ignoredDeviceIDs)
-        self.ignoredDeviceCount = self.ignoredDeviceIDs.count
+        self.ignoredDeviceCount = self.rootStore.currentIgnoredDeviceIDs().count
         self.overlayWindowController.updateAnimationDurations(
             show: preferences.overlayShowAnimationDuration,
             hide: preferences.overlayHideAnimationDuration
@@ -209,26 +207,27 @@ final class AppModel: ObservableObject {
 
     func refreshKeyboards() {
         allDetectedKeyboards = appDependencies.hidKeyboardClient.listKeyboards()
-        connectedKeyboards = allDetectedKeyboards.filter { !ignoredDeviceIDs.contains($0.id) }
+        connectedKeyboards = rootStore.visibleKeyboards(from: allDetectedKeyboards)
+        ignoredDeviceCount = rootStore.currentIgnoredDeviceIDs().count
         if connectedKeyboards.isEmpty {
             selectedKeyboardID = ""
-            if allDetectedKeyboards.isEmpty {
-                keyboardStatusText = "キーボード未検出"
-            } else {
-                keyboardStatusText = "表示対象なし（\(ignoredDeviceIDs.count) 台を無視中）"
-            }
+            keyboardStatusText = rootStore.keyboardStatusText(
+                allDetectedKeyboards: allDetectedKeyboards,
+                connectedKeyboards: connectedKeyboards,
+                selectedKeyboard: nil
+            )
             return
         }
 
-        if !connectedKeyboards.contains(where: { $0.id == selectedKeyboardID }) {
-            selectedKeyboardID = connectedKeyboards[0].id
-        }
-
-        if let selected = selectedKeyboard {
-            keyboardStatusText = "検出: \(selected.manufacturerName) \(selected.productName) (VID:0x\(String(selected.vendorID, radix: 16, uppercase: true)) PID:0x\(String(selected.productID, radix: 16, uppercase: true))) / 無視: \(ignoredDeviceIDs.count) 台"
-        } else {
-            keyboardStatusText = "検出: \(connectedKeyboards.count) 台 / 無視: \(ignoredDeviceIDs.count) 台"
-        }
+        selectedKeyboardID = rootStore.resolveSelectedKeyboardID(
+            current: selectedKeyboardID,
+            connectedKeyboards: connectedKeyboards
+        )
+        keyboardStatusText = rootStore.keyboardStatusText(
+            allDetectedKeyboards: allDetectedKeyboards,
+            connectedKeyboards: connectedKeyboards,
+            selectedKeyboard: selectedKeyboard
+        )
         autoLoadKeymapIfPossibleOnStartup()
     }
 
@@ -470,15 +469,15 @@ final class AppModel: ObservableObject {
             keyboardStatusText = "無視対象のキーボードを選択してください。"
             return
         }
-        ignoredDeviceIDs.insert(selected.id)
-        persistIgnoredDeviceIDs()
+        rootStore.addIgnoredDeviceID(selected.id)
+        persistIgnoredDeviceCount()
         appendDiagnostics("デバイス無視追加: \(selected.manufacturerName) \(selected.productName) id=\(selected.id)")
         refreshKeyboards()
     }
 
     func clearIgnoredKeyboards() {
-        ignoredDeviceIDs.removeAll()
-        persistIgnoredDeviceIDs()
+        rootStore.clearIgnoredDeviceIDs()
+        persistIgnoredDeviceCount()
         appendDiagnostics("デバイス無視リストを全解除")
         refreshKeyboards()
     }
@@ -713,9 +712,8 @@ final class AppModel: ObservableObject {
         return .debug
     }
 
-    private func persistIgnoredDeviceIDs() {
-        rootStore.saveIgnoredDeviceIDs(Array(ignoredDeviceIDs).sorted())
-        ignoredDeviceCount = ignoredDeviceIDs.count
+    private func persistIgnoredDeviceCount() {
+        ignoredDeviceCount = rootStore.currentIgnoredDeviceIDs().count
     }
 
     private func currentOverlayKeyboardName() -> String {
