@@ -64,6 +64,7 @@
   - Vial Raw HID 通信テスト（最小読出し）
   - 全キー行列読出し（rows/cols 手動指定）
   - LUCA移行の第一段として、DependencyClient / AppDependencies 経由の依存注入基盤を導入
+  - `luca --platform macOS` 生成の `LocalPackage` 雛形（DataSource/Model/UserInterface）を導入
 - 未実装
   - 接続キーボードの自動識別とレイアウト自動切替
   - matrix rows/cols の自動推定
@@ -86,3 +87,4 @@
 - 2026-02-24: LUCA適合方針（段階移行）を追記
 
 - 2026-02-24: LUCA依存注入基盤（DependencyClient / AppDependencies）を導入
+- 2026-02-24: `luca --platform macOS` 生成の LocalPackage 雛形を導入

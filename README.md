@@ -17,6 +17,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - 接続キーボード列挙と Vial Raw HID 通信テスト（protocol/layer/keycodeの最小取得）を実装
 - `Rows/Cols` 指定で Vial dynamic keymap buffer（0x12）から全キー行列を取得可能
 - LUCA移行の第一段として、依存注入基盤（DependencyClient / AppDependencies）を導入
+- `luca --platform macOS` で生成した `LocalPackage` 雛形を取り込み済み（段階移行中）
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

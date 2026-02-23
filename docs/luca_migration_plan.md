@@ -57,6 +57,7 @@
 - `LocalPackage` 追加（`DataSource`/`Model`/`UserInterface`）
 - `AppDependencies` と `DependencyClient` 最小セットを作成
 - 既存 target から package を参照
+ - 状態: 2026-02-24 時点で `luca --platform macOS` 生成結果を取り込み済み（未接続）
 
 ### Phase 1: インフラ抽出
 - `VialRawHIDService` / `HIDKeyboardService` / `GlobalKeyLongPressMonitor` / `OverlayWindowController` を DependencyClient 経由へ
@@ -95,4 +96,3 @@
 2. `DependencyClient` / `AppDependencies` / `Composable` を最小実装
 3. `VialRawHIDClient` と `HIDKeyboardClient` を追加し、既存実装を委譲
 4. `AppModel` の呼び出し先を client 経由に切替（機能同等）
-
