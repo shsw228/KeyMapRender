@@ -25,7 +25,7 @@ public struct VialDiagnosticsKey: Sendable {
     }
 }
 
-public enum VialDiagnosticLogLevel: Sendable {
+public enum VialDiagnosticLogLevel: Sendable, Equatable {
     case debug
     case info
     case notice

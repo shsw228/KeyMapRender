@@ -46,6 +46,7 @@ final class AppModel: ObservableObject {
     private let activeLayerPollingService = ActiveLayerPollingService()
     private let vialPresentationService = VialPresentationService()
     private let vialDiagnosticsService = VialDiagnosticsService()
+    private let diagnosticsLogBufferService = DiagnosticsLogBufferService()
     private let vialDefinitionValidationService = VialDefinitionValidationService()
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
@@ -547,25 +548,24 @@ final class AppModel: ObservableObject {
     }
 
     private func appendDiagnostics(_ message: String) {
-        let line = vialDiagnosticsService.timestampedLine(for: message)
-        if diagnosticsLogText == "-" {
-            diagnosticsLogText = line
-        } else {
-            diagnosticsLogText = diagnosticsLogText + "\n" + line
-        }
-        switch vialDiagnosticsService.logLevel(for: message) {
+        let result = diagnosticsLogBufferService.append(
+            existingText: diagnosticsLogText,
+            message: message
+        )
+        diagnosticsLogText = result.updatedText
+        switch result.level {
         case .debug:
-            logger.debug("\(line, privacy: .public)")
+            logger.debug("\(result.line, privacy: .public)")
         case .info:
-            logger.info("\(line, privacy: .public)")
+            logger.info("\(result.line, privacy: .public)")
         case .notice:
-            logger.notice("\(line, privacy: .public)")
+            logger.notice("\(result.line, privacy: .public)")
         case .warning:
-            logger.warning("\(line, privacy: .public)")
+            logger.warning("\(result.line, privacy: .public)")
         case .error:
-            logger.error("\(line, privacy: .public)")
+            logger.error("\(result.line, privacy: .public)")
         case .fault:
-            logger.fault("\(line, privacy: .public)")
+            logger.fault("\(result.line, privacy: .public)")
         }
     }
 
