@@ -7,6 +7,7 @@ final class OverlayWindowController {
 
     func show(layout: KeyboardLayout, currentLayer: Int, totalLayers: Int) {
         let window = window ?? makeWindow()
+        let wasVisible = window.isVisible
         window.contentView = NSHostingView(
             rootView: KeyboardOverlayView(
                 layout: layout,
@@ -15,9 +16,15 @@ final class OverlayWindowController {
             )
         )
         let targetFrame = targetPanelFrame()
-        if window.frame.size != targetFrame.size {
-            window.setFrame(targetFrame, display: true)
+        if wasVisible {
+            if window.frame != targetFrame {
+                window.setFrame(targetFrame, display: true)
+            }
+            window.alphaValue = 1
+            self.window = window
+            return
         }
+
         let startFrame = NSRect(
             x: targetFrame.origin.x,
             y: targetFrame.origin.y + 24,
@@ -38,6 +45,7 @@ final class OverlayWindowController {
 
     func hide() {
         guard let window else { return }
+        guard window.isVisible else { return }
         let endFrame = NSRect(
             x: window.frame.origin.x,
             y: window.frame.origin.y + 24,
