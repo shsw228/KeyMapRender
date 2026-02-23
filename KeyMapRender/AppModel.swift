@@ -17,6 +17,7 @@ final class AppModel: ObservableObject {
     @Published var matrixColsText: String
     @Published var keymapStatusText = "未実行"
     @Published var keymapPreviewText = "-"
+    @Published var diagnosticsLogText = "-"
 
     private let monitor = GlobalKeyLongPressMonitor()
     private let overlayWindowController = OverlayWindowController()
@@ -114,8 +115,10 @@ final class AppModel: ObservableObject {
         switch VialRawHIDService.probe(device: selected) {
         case let .success(result):
             vialStatusText = "Vial応答: protocol=\(result.protocolVersion), layers=\(result.layerCount), L0R0C0=0x\(String(result.keycodeL0R0C0, radix: 16, uppercase: true))"
+            appendDiagnostics("Vial通信テスト成功: \(vialStatusText)")
         case let .failure(.message(message)):
             vialStatusText = "Vial応答なし: \(message)"
+            appendDiagnostics("Vial通信テスト失敗: \(message)")
         }
     }
 
@@ -133,9 +136,17 @@ final class AppModel: ObservableObject {
         case let .success(dump):
             keymapStatusText = "取得成功: protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
             keymapPreviewText = makePreview(from: dump, maxRows: min(4, dump.matrixRows), maxCols: min(10, dump.matrixCols))
+            appendDiagnostics("全マップ読出し成功: \(keymapStatusText)")
         case let .failure(.message(message)):
             keymapStatusText = "取得失敗: \(message)"
+            appendDiagnostics("全マップ読出し失敗: \(message)")
         }
+    }
+
+    func copyDiagnosticsLog() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(diagnosticsLogText, forType: .string)
     }
 
     private func makePreview(from dump: VialKeymapDump, maxRows: Int, maxCols: Int) -> String {
@@ -150,6 +161,17 @@ final class AppModel: ObservableObject {
             lines.append("L0 R\(row): " + cols.joined(separator: " "))
         }
         return lines.joined(separator: "\n")
+    }
+
+    private func appendDiagnostics(_ message: String) {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let line = "[\(timestamp)] \(message)"
+        if diagnosticsLogText == "-" {
+            diagnosticsLogText = line
+        } else {
+            diagnosticsLogText = diagnosticsLogText + "\n" + line
+        }
+        NSLog("[KeyMapRender] %@", line)
     }
 
     private var selectedKeyboard: HIDKeyboardDevice? {

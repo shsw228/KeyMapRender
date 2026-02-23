@@ -65,6 +65,18 @@ struct ContentView: View {
                 Text(appModel.keymapPreviewText)
                     .font(.system(.caption, design: .monospaced))
                     .textSelection(.enabled)
+
+                HStack {
+                    Button("診断ログをコピー") {
+                        appModel.copyDiagnosticsLog()
+                    }
+                    Text("Xcodeログにも同内容を出力")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Text(appModel.diagnosticsLogText)
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
             }
 
             Section("状態") {
