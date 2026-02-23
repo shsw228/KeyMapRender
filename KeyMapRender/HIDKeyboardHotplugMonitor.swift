@@ -3,10 +3,10 @@ import IOKit.hid
 
 final class HIDKeyboardHotplugMonitor {
     private let manager: IOHIDManager
-    private let callback: @MainActor () -> Void
+    private let callback: @Sendable () -> Void
     private var isRunning = false
 
-    init(callback: @escaping @MainActor () -> Void) {
+    init(callback: @escaping @Sendable () -> Void) {
         self.manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
         self.callback = callback
     }
@@ -52,9 +52,7 @@ final class HIDKeyboardHotplugMonitor {
     }
 
     private func handleDeviceChanged() {
-        Task { @MainActor in
-            callback()
-        }
+        callback()
     }
 
     private static let deviceChangedCallback: IOHIDDeviceCallback = { context, _, _, _ in

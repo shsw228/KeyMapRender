@@ -124,9 +124,9 @@ extension FileSaveClient {
     )
 }
 
-@MainActor
 private final class HotplugMonitorRegistry {
     static let shared = HotplugMonitorRegistry()
+    private let lock = NSLock()
     private var monitors: [UUID: HIDKeyboardHotplugMonitor] = [:]
 
     private init() {}
@@ -139,12 +139,17 @@ private final class HotplugMonitorRegistry {
         guard monitor.start() else {
             return .failure(.message("start failed"))
         }
+        lock.lock()
         monitors[id] = monitor
+        lock.unlock()
         return .success(HIDKeyboardHotplugSession(id: id))
     }
 
     func stop(_ session: HIDKeyboardHotplugSession) {
-        guard let monitor = monitors.removeValue(forKey: session.id) else { return }
+        lock.lock()
+        let monitor = monitors.removeValue(forKey: session.id)
+        lock.unlock()
+        guard let monitor else { return }
         monitor.stop()
     }
 }
@@ -152,19 +157,10 @@ private final class HotplugMonitorRegistry {
 extension HIDKeyboardHotplugClient {
     static let keyMapRenderLiveValue = Self(
         start: { onChanged in
-            let container = DispatchSemaphore(value: 0)
-            var result: Result<HIDKeyboardHotplugSession, HIDKeyboardHotplugError> = .failure(.message("internal error"))
-            Task { @MainActor in
-                result = HotplugMonitorRegistry.shared.start(onChanged: onChanged)
-                container.signal()
-            }
-            container.wait()
-            return result
+            HotplugMonitorRegistry.shared.start(onChanged: onChanged)
         },
         stop: { session in
-            Task { @MainActor in
-                HotplugMonitorRegistry.shared.stop(session)
-            }
+            HotplugMonitorRegistry.shared.stop(session)
         }
     )
 }
