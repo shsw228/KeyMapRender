@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 final class OverlayWindowController {
     private var window: NSWindow?
+    private let slideDistance: CGFloat = 96
 
     func show(layout: KeyboardLayout, currentLayer: Int, totalLayers: Int) {
         let window = window ?? makeWindow()
@@ -27,7 +28,7 @@ final class OverlayWindowController {
 
         let startFrame = NSRect(
             x: targetFrame.origin.x,
-            y: targetFrame.origin.y + 24,
+            y: targetFrame.origin.y + slideDistance,
             width: targetFrame.width,
             height: targetFrame.height
         )
@@ -48,7 +49,7 @@ final class OverlayWindowController {
         guard window.isVisible else { return }
         let endFrame = NSRect(
             x: window.frame.origin.x,
-            y: window.frame.origin.y + 24,
+            y: window.frame.origin.y + slideDistance,
             width: window.frame.width,
             height: window.frame.height
         )
