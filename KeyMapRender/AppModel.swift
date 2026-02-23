@@ -36,6 +36,7 @@ final class AppModel: ObservableObject {
     private var allDetectedKeyboards: [HIDKeyboardDevice] = []
     private var ignoredDeviceIDs: Set<String> = []
     private var latestKeymapDump: VialKeymapDump?
+    private var hasAutoLoadedOnStartup = false
 
     private enum DefaultsKey {
         static let targetKeyCode = "targetKeyCode"
@@ -69,6 +70,7 @@ final class AppModel: ObservableObject {
         }
         refreshKeyboards()
         applySettings()
+        autoLoadKeymapIfPossibleOnStartup()
     }
 
     func applySettings() {
@@ -127,6 +129,7 @@ final class AppModel: ObservableObject {
         } else {
             keyboardStatusText = "検出: \(connectedKeyboards.count) 台 / 無視: \(ignoredDeviceIDs.count) 台"
         }
+        autoLoadKeymapIfPossibleOnStartup()
     }
 
     func probeVialOnSelectedKeyboard() {
@@ -325,20 +328,19 @@ final class AppModel: ObservableObject {
         }
         let optionBits = dump.layoutOptions.map(UInt.init) ?? 0
         var choices: [VialLayoutChoice] = []
-        var cursor = 0
+        var widths: [Int] = []
 
-        for (index, item) in labels.enumerated() {
+        for item in labels {
             if let title = item as? String {
-                let selected = Int((optionBits >> cursor) & 1)
-                cursor += 1
                 choices.append(
                     VialLayoutChoice(
-                        id: index,
+                        id: choices.count,
                         title: title,
                         options: ["Off", "On"],
-                        selected: selected
+                        selected: 0
                     )
                 )
+                widths.append(1)
                 continue
             }
             guard let array = item as? [Any], let rawTitle = array.first else {
@@ -347,18 +349,25 @@ final class AppModel: ObservableObject {
             let title = String(describing: rawTitle)
             let values = array.dropFirst().map { String(describing: $0) }
             guard !values.isEmpty else { continue }
-            let width = bitsNeeded(forChoiceCount: values.count)
-            let mask = (1 << width) - 1
-            let selected = min(Int((optionBits >> cursor) & UInt(mask)), max(0, values.count - 1))
-            cursor += width
             choices.append(
                 VialLayoutChoice(
-                    id: index,
+                    id: choices.count,
                     title: title,
                     options: values,
-                    selected: selected
+                    selected: 0
                 )
             )
+            widths.append(bitsNeeded(forChoiceCount: values.count))
+        }
+
+        // Vial/VIA stores layout option bits in reverse order.
+        var cursor = 0
+        for choiceIndex in choices.indices.reversed() {
+            let width = widths[choiceIndex]
+            let mask = (1 << width) - 1
+            let raw = Int((optionBits >> cursor) & UInt(mask))
+            choices[choiceIndex].selected = min(raw, max(0, choices[choiceIndex].options.count - 1))
+            cursor += width
         }
         return choices
     }
@@ -376,5 +385,61 @@ final class AppModel: ObservableObject {
 
     private var selectedKeyboard: HIDKeyboardDevice? {
         connectedKeyboards.first(where: { $0.id == selectedKeyboardID })
+    }
+
+    private func autoLoadKeymapIfPossibleOnStartup() {
+        guard !hasAutoLoadedOnStartup else { return }
+        guard let selected = selectedKeyboard else { return }
+        guard !isDiagnosticsRunning else { return }
+        hasAutoLoadedOnStartup = true
+
+        isDiagnosticsRunning = true
+        keymapStatusText = "起動時自動読込中..."
+        let initialRows = Int(matrixRowsText) ?? 6
+        let initialCols = Int(matrixColsText) ?? 17
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let matrixResult = VialRawHIDService.inferMatrix(device: selected)
+            var rows = initialRows
+            var cols = initialCols
+            var matrixLog = "matrix自動取得未実行"
+
+            if case let .success(info) = matrixResult {
+                rows = info.rows
+                cols = info.cols
+                matrixLog = "matrix自動取得成功(\(info.backend)): \(rows)x\(cols)"
+            } else if case let .failure(.message(message)) = matrixResult {
+                matrixLog = "matrix自動取得失敗: \(message)"
+            }
+
+            let dumpResult = VialRawHIDService.readKeymap(device: selected, matrixRows: rows, matrixCols: cols)
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.isDiagnosticsRunning = false
+                self.appendDiagnostics("起動時自動読込: \(matrixLog)")
+                switch matrixResult {
+                case let .success(info):
+                    self.matrixRowsText = "\(info.rows)"
+                    self.matrixColsText = "\(info.cols)"
+                case .failure:
+                    break
+                }
+
+                switch dumpResult {
+                case let .success(dump):
+                    self.latestKeymapDump = dump
+                    self.layoutChoices = self.makeLayoutChoices(from: dump)
+                    self.availableLayerCount = max(1, dump.layerCount)
+                    self.selectedLayerIndex = min(self.selectedLayerIndex, self.availableLayerCount - 1)
+                    self.keymapStatusText = "起動時読込成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
+                    self.applySelectedLayerToLatestDump()
+                    self.appendDiagnostics("起動時全マップ読出し成功: \(self.keymapStatusText)")
+                case let .failure(.message(message)):
+                    self.keymapStatusText = "起動時読込失敗: \(message)"
+                    self.appendDiagnostics("起動時全マップ読出し失敗: \(message)")
+                }
+            }
+        }
     }
 }
