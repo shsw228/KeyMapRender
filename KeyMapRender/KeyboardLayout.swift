@@ -229,39 +229,20 @@ enum KeyboardLayoutLoader {
             }
         }
 
-        var layoutMin: [Int: [Int: (x: Double, y: Double)]] = [:]
-        for candidate in candidates {
-            guard let idx = candidate.layoutIndex, let opt = candidate.layoutOption else { continue }
-            let current = layoutMin[idx]?[opt] ?? (x: Double.greatestFiniteMagnitude, y: Double.greatestFiniteMagnitude)
-            let next = (x: min(current.x, candidate.x), y: min(current.y, candidate.y))
-            var options = layoutMin[idx] ?? [:]
-            options[opt] = next
-            layoutMin[idx] = options
-        }
-
         var positioned: [PositionedKey] = []
         var keyIndex = 0
         for candidate in candidates {
-            let shifted: (x: Double, y: Double)?
             if let idx = candidate.layoutIndex, let opt = candidate.layoutOption {
                 let selected = selectedLayoutOptions[idx] ?? 0
                 guard selected == opt else { continue }
-                let origin = layoutMin[idx]?[0]
-                let selectedTopLeft = layoutMin[idx]?[selected]
-                let shiftX = (selectedTopLeft?.x ?? 0) - (origin?.x ?? 0)
-                let shiftY = (selectedTopLeft?.y ?? 0) - (origin?.y ?? 0)
-                shifted = (candidate.x - shiftX, candidate.y - shiftY)
-            } else {
-                shifted = (candidate.x, candidate.y)
             }
-            guard let point = shifted else { continue }
             if candidate.isDecal { continue }
             positioned.append(
                 PositionedKey(
                     id: "k\(keyIndex)",
                     label: candidate.label,
-                    x: point.x,
-                    y: point.y,
+                    x: candidate.x,
+                    y: candidate.y,
                     width: candidate.width,
                     height: candidate.height
                 )
