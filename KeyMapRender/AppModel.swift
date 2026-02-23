@@ -417,8 +417,9 @@ final class AppModel: ObservableObject {
         activeLayerTrackingTask = Task { [weak self] in
             guard let self else { return }
             while !Task.isCancelled {
-                await self.pollActiveLayerFromKeyboard(generation: generation)
-                try? await Task.sleep(for: .milliseconds(90))
+                let hasActivity = await self.pollActiveLayerFromKeyboard(generation: generation)
+                let delayMs = hasActivity ? 8 : 25
+                try? await Task.sleep(for: .milliseconds(delayMs))
             }
         }
         appendDiagnostics("アクティブレイヤー追従開始")
@@ -430,13 +431,13 @@ final class AppModel: ObservableObject {
         activeLayerTrackingTask = nil
     }
 
-    private func pollActiveLayerFromKeyboard(generation: UInt64) async {
-        guard generation == activeLayerTrackingGeneration else { return }
-        guard !Task.isCancelled else { return }
-        guard !isShuttingDown else { return }
-        guard isOverlayVisible else { return }
-        guard let selected = selectedKeyboard else { return }
-        guard let dump = latestKeymapDump else { return }
+    private func pollActiveLayerFromKeyboard(generation: UInt64) async -> Bool {
+        guard generation == activeLayerTrackingGeneration else { return false }
+        guard !Task.isCancelled else { return false }
+        guard !isShuttingDown else { return false }
+        guard isOverlayVisible else { return false }
+        guard let selected = selectedKeyboard else { return false }
+        guard let dump = latestKeymapDump else { return false }
         let baseLayer = manualSelectedLayerIndex
 
         let result = await readSwitchMatrixStateAsync(
@@ -445,9 +446,9 @@ final class AppModel: ObservableObject {
             matrixCols: dump.matrixCols
         )
 
-        guard generation == activeLayerTrackingGeneration else { return }
-        guard !Task.isCancelled else { return }
-        guard isOverlayVisible else { return }
+        guard generation == activeLayerTrackingGeneration else { return false }
+        guard !Task.isCancelled else { return false }
+        guard isOverlayVisible else { return false }
 
         switch result {
         case let .success(state):
@@ -458,11 +459,13 @@ final class AppModel: ObservableObject {
                 baseLayer: baseLayer
             )
             setDisplayedLayerIndex(trackedLayer, reason: "押下追従", emitLog: false)
+            return state.pressed.contains { row in row.contains(true) }
         case let .failure(.message(message)):
             matrixPollFailureCount += 1
             if matrixPollFailureCount == 1 || matrixPollFailureCount % 20 == 0 {
                 appendDiagnostics("アクティブレイヤー追従失敗: \(message)")
             }
+            return false
         }
     }
 

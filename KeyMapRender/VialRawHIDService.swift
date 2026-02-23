@@ -42,6 +42,9 @@ enum VialRawHIDService {
     private static let reportIDs: [CFIndex] = [0, 1]
     private static let hidSendRetries = 20
     private static let hidReadTimeoutSeconds: CFTimeInterval = 0.5
+    private static let matrixPollRetries = 2
+    private static let matrixPollReadTimeoutSeconds: CFTimeInterval = 0.02
+    private static let matrixPollRetrySleepSeconds: CFTimeInterval = 0.005
     // Do not seize the device to avoid interfering with keyboard input in other apps.
     private static let openOptions: [IOOptionBits] = [IOOptionBits(kIOHIDOptionsTypeNone)]
 
@@ -187,7 +190,14 @@ enum VialRawHIDService {
 
         return withOpenedRawDevice(device: device) { raw in
             let response = normalizeResponse(
-                try send(command: .getKeyboardValue, payload: [0x03], to: raw),
+                try send(
+                    command: .getKeyboardValue,
+                    payload: [0x03],
+                    to: raw,
+                    retries: matrixPollRetries,
+                    timeout: matrixPollReadTimeoutSeconds,
+                    retrySleep: matrixPollRetrySleepSeconds
+                ),
                 command: .getKeyboardValue
             )
             let expected = 2 + payloadSize
@@ -458,7 +468,14 @@ enum VialRawHIDService {
         return bytes
     }
 
-    private static func send(command: ViaCommand, payload: [UInt8], to device: IOHIDDevice) throws -> [UInt8] {
+    private static func send(
+        command: ViaCommand,
+        payload: [UInt8],
+        to device: IOHIDDevice,
+        retries: Int = hidSendRetries,
+        timeout: CFTimeInterval = hidReadTimeoutSeconds,
+        retrySleep: CFTimeInterval = 0.05
+    ) throws -> [UInt8] {
         var errors: [String] = []
         var outbound = [UInt8](repeating: 0, count: reportLength)
         outbound[0] = command.rawValue
@@ -466,7 +483,7 @@ enum VialRawHIDService {
             outbound[index + 1] = byte
         }
 
-        for retry in 0..<hidSendRetries {
+        for retry in 0..<max(1, retries) {
             for reportID in reportIDs {
                 let setResult = outbound.withUnsafeMutableBufferPointer { buffer in
                     IOHIDDeviceSetReport(
@@ -482,7 +499,7 @@ enum VialRawHIDService {
                     continue
                 }
 
-                if let callbackResponse = receiveViaInputCallback(device: device, timeout: hidReadTimeoutSeconds) {
+                if let callbackResponse = receiveViaInputCallback(device: device, timeout: timeout) {
                     if isCommandMatched(response: callbackResponse, command: command) {
                         return callbackResponse
                     }
@@ -491,9 +508,9 @@ enum VialRawHIDService {
                     continue
                 }
 
-                errors.append("retry=\(retry) reportID=\(reportID) 受信タイムアウト(\(hidReadTimeoutSeconds)s)")
+                errors.append("retry=\(retry) reportID=\(reportID) 受信タイムアウト(\(timeout)s)")
             }
-            Thread.sleep(forTimeInterval: 0.05)
+            Thread.sleep(forTimeInterval: retrySleep)
         }
 
         throw VialProbeError.message(errors.joined(separator: " | "))
