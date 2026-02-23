@@ -286,16 +286,9 @@ enum KeyboardLayoutLoader {
         let row = pair.count == 2 ? Int(pair[0]) : nil
         let col = pair.count == 2 ? Int(pair[1]) : nil
 
-        var layoutIndex: Int?
-        var layoutOption: Int?
-        if lines.count > 8 {
-            let layoutMeta = lines[8].trimmingCharacters(in: .whitespacesAndNewlines)
-            let parts = layoutMeta.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
-            if parts.count == 2 {
-                layoutIndex = Int(parts[0])
-                layoutOption = Int(parts[1])
-            }
-        }
+        let tagged = extractLayoutTag(from: lines)
+        let layoutIndex = tagged?.0
+        let layoutOption = tagged?.1
 
         return RawLabel(
             displayLabel: first,
@@ -304,6 +297,30 @@ enum KeyboardLayoutLoader {
             layoutIndex: layoutIndex,
             layoutOption: layoutOption
         )
+    }
+
+    nonisolated private static func extractLayoutTag(from lines: [String]) -> (Int, Int)? {
+        if lines.count > 8, let parsed = parseIntPair(lines[8]) {
+            return parsed
+        }
+        // Some Vial JSON serializers store layout tag at line 4 instead of line 9.
+        for line in lines.dropFirst().reversed() {
+            if let parsed = parseIntPair(line) {
+                return parsed
+            }
+        }
+        return nil
+    }
+
+    nonisolated private static func parseIntPair(_ value: String) -> (Int, Int)? {
+        let parts = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(separator: ",")
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+        guard parts.count == 2, let first = Int(parts[0]), let second = Int(parts[1]) else {
+            return nil
+        }
+        return (first, second)
     }
 
     nonisolated private static func makeLayout(
