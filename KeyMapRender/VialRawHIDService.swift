@@ -297,9 +297,15 @@ enum VialRawHIDService {
 
     private static func shouldFallbackToNative(for message: String) -> Bool {
         let lower = message.lowercased()
+        // If python bridge path is unstable, prefer native RawHID path.
         return lower.contains("python hid module is not available")
             || lower.contains("no module named 'hid'")
             || lower.contains("python bridge launch failed")
+            || lower.contains("input format not supported by decoder")
+            || lower.contains("invalid definition size")
+            || lower.contains("invalid layer count")
+            || lower.contains("open_path failed")
+            || lower.contains("path=")
     }
 
     private static func withOpenedRawDevice<T>(
