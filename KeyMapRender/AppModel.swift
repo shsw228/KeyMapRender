@@ -238,6 +238,7 @@ final class AppModel: ObservableObject {
             )
         }
         logBottomLeftThirdKey(layer: layer)
+        logNumericLabelDiagnostics(layer: layer)
     }
 
     func updateLayoutChoice(index: Int, selected: Int) {
@@ -482,6 +483,29 @@ final class AppModel: ObservableObject {
         }
         let rendered = target.label.replacingOccurrences(of: "\n", with: " / ")
         appendDiagnostics("キー検証 L\(layer): 最下段左3 x=\(String(format: "%.2f", target.x)) rc=\(rc) raw=\(raw) label=\(rendered)")
+    }
+
+    private func logNumericLabelDiagnostics(layer: Int) {
+        let numericOnly = layout.positionedKeys.filter { key in
+            let text = key.label.trimmingCharacters(in: .whitespacesAndNewlines)
+            return !text.isEmpty && text.allSatisfy(\.isNumber)
+        }
+        guard !numericOnly.isEmpty else { return }
+        for key in numericOnly {
+            let rc: String
+            if let r = key.matrixRow, let c = key.matrixCol {
+                rc = "\(r),\(c)"
+            } else {
+                rc = "n/a"
+            }
+            let raw: String
+            if let rawCode = key.rawKeycode {
+                raw = String(format: "0x%04X", rawCode)
+            } else {
+                raw = "n/a"
+            }
+            appendDiagnostics("数値ラベル検出 L\(layer): label=\(key.label) rc=\(rc) raw=\(raw) pos=(\(String(format: "%.2f", key.x)),\(String(format: "%.2f", key.y)))")
+        }
     }
 
     private func validateVialDefinitionJSON(_ text: String) throws {
