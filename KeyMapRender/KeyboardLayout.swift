@@ -118,4 +118,35 @@ enum KeyboardLayoutLoader {
             ]
         )
     }
+
+    nonisolated static func makeMatrixLayout(
+        rows: Int,
+        cols: Int,
+        keycodes: [[[UInt16]]],
+        layer: Int = 0,
+        name: String = "Vial Keymap"
+    ) -> KeyboardLayout {
+        guard rows > 0, cols > 0, layer >= 0, layer < keycodes.count else {
+            return KeyboardLayout(name: name + " (invalid)", rows: [])
+        }
+
+        let matrixRows: [[KeyboardKey]] = (0..<rows).map { row in
+            (0..<cols).map { col in
+                let value: UInt16
+                if row < keycodes[layer].count, col < keycodes[layer][row].count {
+                    value = keycodes[layer][row][col]
+                } else {
+                    value = 0
+                }
+                return KeyboardKey(
+                    label: String(format: "%04X", value),
+                    width: 1,
+                    height: 1,
+                    isSpacer: false
+                )
+            }
+        }
+
+        return KeyboardLayout(name: "\(name) L\(layer)", rows: matrixRows)
+    }
 }

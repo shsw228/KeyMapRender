@@ -164,6 +164,13 @@ final class AppModel: ObservableObject {
                 case let .success(dump):
                     self.keymapStatusText = "取得成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
                     self.keymapPreviewText = self.makePreview(from: dump, maxRows: min(4, dump.matrixRows), maxCols: min(10, dump.matrixCols))
+                    self.layout = KeyboardLayoutLoader.makeMatrixLayout(
+                        rows: dump.matrixRows,
+                        cols: dump.matrixCols,
+                        keycodes: dump.keycodes,
+                        layer: 0,
+                        name: "Live \(dump.backend)"
+                    )
                     self.appendDiagnostics("全マップ読出し成功: \(self.keymapStatusText)")
                 case let .failure(.message(message)):
                     self.keymapStatusText = "取得失敗: \(message)"
