@@ -28,12 +28,17 @@ enum VialRawHIDService {
         (kIOHIDReportTypeOutput, kIOHIDReportTypeInput),
         (kIOHIDReportTypeFeature, kIOHIDReportTypeFeature)
     ]
+    private static let callbackTimeoutSeconds: CFTimeInterval = 0.2
 
     private enum ViaCommand: UInt8 {
         case getProtocolVersion = 0x01
         case dynamicKeymapGetKeycode = 0x04
         case dynamicKeymapGetLayerCount = 0x11
         case dynamicKeymapGetBuffer = 0x12
+    }
+
+    private final class InputReportCapture {
+        var response: [UInt8]?
     }
 
     static func probe(device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError> {
@@ -217,6 +222,15 @@ enum VialRawHIDService {
                     )
                 }
                 if getResult != kIOReturnSuccess {
+                    // Some devices don't support synchronous GetReport for input path.
+                    if let callbackResponse = receiveViaInputCallback(device: device, timeout: callbackTimeoutSeconds) {
+                        if isCommandMatched(response: callbackResponse, command: command) {
+                            return callbackResponse
+                        }
+                        let head = callbackResponse.prefix(6).map { "0x" + String($0, radix: 16, uppercase: true) }.joined(separator: ",")
+                        errors.append("callback受信は成功したがコマンド不一致(type=\(pair.get.rawValue), reportID=\(reportID)): head=[\(head)]")
+                        continue
+                    }
                     errors.append("HID受信失敗(type=\(pair.get.rawValue), reportID=\(reportID)): \(getResult)")
                     continue
                 }
@@ -226,8 +240,7 @@ enum VialRawHIDService {
                 }
 
                 let response = Array(inbound.prefix(length))
-                let commandMatched = response.prefix(4).contains(command.rawValue)
-                if !commandMatched {
+                if !isCommandMatched(response: response, command: command) {
                     let head = response.prefix(6).map { "0x" + String($0, radix: 16, uppercase: true) }.joined(separator: ",")
                     errors.append("応答コマンド不一致(type=\(pair.get.rawValue), reportID=\(reportID)): expected=0x\(String(command.rawValue, radix: 16, uppercase: true)) head=[\(head)]")
                     continue
@@ -245,5 +258,51 @@ enum VialRawHIDService {
             return Array(response.dropFirst(idx))
         }
         return response
+    }
+
+    private static func isCommandMatched(response: [UInt8], command: ViaCommand) -> Bool {
+        response.prefix(4).contains(command.rawValue)
+    }
+
+    private static let inputReportCallback: IOHIDReportCallback = { context, _, _, _, _, report, reportLength in
+        guard let context else { return }
+        let capture = Unmanaged<InputReportCapture>.fromOpaque(context).takeUnretainedValue()
+        if capture.response == nil {
+            capture.response = Array(UnsafeBufferPointer(start: report, count: Int(reportLength)))
+        }
+    }
+
+    private static func receiveViaInputCallback(device: IOHIDDevice, timeout: CFTimeInterval) -> [UInt8]? {
+        let capture = InputReportCapture()
+        let retained = Unmanaged.passRetained(capture)
+        var reportBuffer = [UInt8](repeating: 0, count: reportLength)
+        let mode = CFRunLoopMode.defaultMode.rawValue
+        guard let runLoop = CFRunLoopGetCurrent() else {
+            retained.release()
+            return nil
+        }
+
+        IOHIDDeviceScheduleWithRunLoop(device, runLoop, mode)
+        IOHIDDeviceRegisterInputReportCallback(
+            device,
+            &reportBuffer,
+            reportBuffer.count,
+            inputReportCallback,
+            retained.toOpaque()
+        )
+
+        let deadline = CFAbsoluteTimeGetCurrent() + timeout
+        while CFAbsoluteTimeGetCurrent() < deadline {
+            if let response = capture.response {
+                IOHIDDeviceUnscheduleFromRunLoop(device, runLoop, mode)
+                retained.release()
+                return response
+            }
+            CFRunLoopRunInMode(CFRunLoopMode.defaultMode, 0.01, true)
+        }
+
+        IOHIDDeviceUnscheduleFromRunLoop(device, runLoop, mode)
+        retained.release()
+        return nil
     }
 }
