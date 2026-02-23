@@ -116,7 +116,7 @@ struct KeyboardOverlayView: View {
     private func keyLabelContent(label: String) -> some View {
         if let split = splitTapHoldLabel(label) {
             VStack(spacing: 2) {
-                Text(split.tap)
+                Text(normalizeDisplayLabel(split.tap))
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.95))
                     .multilineTextAlignment(.center)
@@ -128,7 +128,7 @@ struct KeyboardOverlayView: View {
                     .fill(Color.white.opacity(0.35))
                     .frame(height: 1)
 
-                Text(split.hold)
+                Text(normalizeDisplayLabel(split.hold))
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.78))
                     .multilineTextAlignment(.center)
@@ -137,7 +137,7 @@ struct KeyboardOverlayView: View {
                     .frame(maxWidth: .infinity)
             }
         } else {
-            Text(label)
+            Text(normalizeDisplayLabel(label))
                 .font(.system(size: 14, weight: .medium, design: .rounded))
                 .foregroundStyle(.white.opacity(0.92))
                 .multilineTextAlignment(.center)
@@ -145,6 +145,16 @@ struct KeyboardOverlayView: View {
                 .minimumScaleFactor(0.6)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    private func normalizeDisplayLabel(_ label: String) -> String {
+        if label == "TRNS" {
+            return "▽"
+        }
+        if label.hasPrefix("TRNS\n") {
+            return "▽" + label.dropFirst(4)
+        }
+        return label
     }
 
     private func splitTapHoldLabel(_ label: String) -> (tap: String, hold: String)? {
