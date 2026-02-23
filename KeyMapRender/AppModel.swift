@@ -470,13 +470,30 @@ final class AppModel: ObservableObject {
         // Resolve nested MO/LT/LM holds with a few fixed-point iterations.
         for _ in 0..<4 {
             var next = max(0, min(baseLayer, maxLayer))
+            var hasFnMo13 = false
+            var hasFnMo23 = false
             for row in 0..<min(pressed.count, dump.matrixRows) {
                 for col in 0..<min(pressed[row].count, dump.matrixCols) where pressed[row][col] {
                     let activeKeycode = resolvedKeycodeAt(layer: effective, row: row, col: col, keycodes: dump.keycodes)
+                    if isFnMo13(activeKeycode) {
+                        hasFnMo13 = true
+                        continue
+                    }
+                    if isFnMo23(activeKeycode) {
+                        hasFnMo23 = true
+                        continue
+                    }
                     if let target = layerHoldTarget(for: activeKeycode) {
                         next = max(next, min(target, maxLayer))
                     }
                 }
+            }
+            if hasFnMo13 && hasFnMo23 {
+                next = max(next, min(3, maxLayer))
+            } else if hasFnMo13 {
+                next = max(next, min(1, maxLayer))
+            } else if hasFnMo23 {
+                next = max(next, min(2, maxLayer))
             }
             if next == effective { break }
             effective = next
@@ -519,6 +536,14 @@ final class AppModel: ObservableObject {
             return Int((keycode >> 5) & 0x1F) // v6 LM
         }
         return nil
+    }
+
+    private func isFnMo13(_ keycode: UInt16) -> Bool {
+        keycode == 0x5F10 || keycode == 0x7C77
+    }
+
+    private func isFnMo23(_ keycode: UInt16) -> Bool {
+        keycode == 0x5F11 || keycode == 0x7C78
     }
 
     private func makePreview(from dump: VialKeymapDump, layer: Int, maxRows: Int, maxCols: Int) -> String {
