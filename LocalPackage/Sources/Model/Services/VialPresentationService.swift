@@ -1,11 +1,11 @@
 import DataSource
 import Foundation
 
-public struct VialLayoutChoiceValue: Sendable {
+public struct VialLayoutChoiceValue: Sendable, Identifiable {
     public let id: Int
     public let title: String
     public let options: [String]
-    public let selected: Int
+    public var selected: Int
 
     public init(id: Int, title: String, options: [String], selected: Int) {
         self.id = id

@@ -28,6 +28,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - Vial通信呼び出し（probe/readKeymap/inferMatrix/readDefinition/readSwitchMatrixState）を `RootStore` API 経由へ移設
 - 診断ログ分類/キー診断メッセージ生成と `vial.json` 構造検証を `Model/Services` へ移設し、`ModelTests` を追加
 - 起動時の matrix 自動推定→全マップ読出しフローを `RootStore.loadStartupKeymapAsync` に集約
+- レイアウト選択肢の型を `Model.VialLayoutChoiceValue` に統一し、`AppModel` 側の重複定義を削除
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

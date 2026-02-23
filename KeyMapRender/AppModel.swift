@@ -7,13 +7,6 @@ import ServiceManagement
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct VialLayoutChoice: Identifiable {
-    let id: Int
-    let title: String
-    let options: [String]
-    var selected: Int
-}
-
 @MainActor
 final class AppModel: ObservableObject {
     @Published var targetKeyCodeText: String
@@ -36,7 +29,7 @@ final class AppModel: ObservableObject {
     @Published var ignoredDeviceCount = 0
     @Published var availableLayerCount = 1
     @Published var selectedLayerIndex = 0
-    @Published var layoutChoices: [VialLayoutChoice] = []
+    @Published var layoutChoices: [VialLayoutChoiceValue] = []
     @Published var launchAtLoginEnabled = false
     @Published var showSettingsOnLaunch: Bool
 
@@ -273,7 +266,7 @@ final class AppModel: ObservableObject {
                     switch result {
                     case let .success(dump):
                         self.latestKeymapDump = dump
-                        self.layoutChoices = self.makeLayoutChoicesFromService(from: dump)
+                        self.layoutChoices = self.vialPresentationService.makeLayoutChoices(from: dump)
                         self.availableLayerCount = max(1, dump.layerCount)
                         self.setSelectedLayerIndex(self.selectedLayerIndex)
                         self.startActiveLayerTrackingIfNeeded()
@@ -595,12 +588,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func makeLayoutChoicesFromService(from dump: VialKeymapDump) -> [VialLayoutChoice] {
-        vialPresentationService.makeLayoutChoices(from: dump).map {
-            VialLayoutChoice(id: $0.id, title: $0.title, options: $0.options, selected: $0.selected)
-        }
-    }
-
     private var selectedKeyboard: HIDKeyboardDevice? {
         connectedKeyboards.first(where: { $0.id == selectedKeyboardID })
     }
@@ -649,7 +636,7 @@ final class AppModel: ObservableObject {
             switch startupLoad.dumpResult {
             case let .success(dump):
                 self.latestKeymapDump = dump
-                self.layoutChoices = self.makeLayoutChoicesFromService(from: dump)
+                self.layoutChoices = self.vialPresentationService.makeLayoutChoices(from: dump)
                 self.availableLayerCount = max(1, dump.layerCount)
                 self.setSelectedLayerIndex(self.selectedLayerIndex)
                 self.startActiveLayerTrackingIfNeeded()
