@@ -59,10 +59,6 @@ final class AppModel: ObservableObject {
         category: "AppModel"
     )
 
-    static func shouldShowSettingsOnLaunchByDefault() -> Bool {
-        UserDefaultsRepository(.liveValue).showSettingsOnLaunch
-    }
-
     func shouldOpenSettingsWindowOnLaunch() -> Bool {
         rootStore.shouldOpenSettingsWindowOnLaunch()
     }

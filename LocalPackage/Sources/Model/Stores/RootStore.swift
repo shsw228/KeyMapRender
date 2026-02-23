@@ -87,11 +87,6 @@ public final class RootStore: Composable {
         userDefaultsRepository.overlayHideAnimationDuration = overlayHideAnimationDuration
     }
 
-    public func saveIgnoredDeviceIDs(_ ids: [String]) {
-        userDefaultsRepository.ignoredDeviceIDs = ids
-        ignoredDeviceIDs = Set(ids)
-    }
-
     public func currentIgnoredDeviceIDs() -> Set<String> {
         ignoredDeviceIDs
     }
@@ -143,23 +138,11 @@ public final class RootStore: Composable {
         return "検出: \(connectedKeyboards.count) 台 / 無視: \(ignoredCount) 台"
     }
 
-    public nonisolated func probeVial(on device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError> {
-        appDependencies.vialRawHIDClient.probe(device)
-    }
-
     public nonisolated func probeVialAsync(on device: HIDKeyboardDevice) async -> Result<VialProbeResult, VialProbeError> {
         let client = appDependencies.vialRawHIDClient
         return await Task.detached(priority: .userInitiated) {
             client.probe(device)
         }.value
-    }
-
-    public nonisolated func readVialKeymap(
-        on device: HIDKeyboardDevice,
-        rows: Int,
-        cols: Int
-    ) -> Result<VialKeymapDump, VialProbeError> {
-        appDependencies.vialRawHIDClient.readKeymap(device, rows, cols)
     }
 
     public nonisolated func readVialKeymapAsync(
@@ -173,10 +156,6 @@ public final class RootStore: Composable {
         }.value
     }
 
-    public nonisolated func inferVialMatrix(on device: HIDKeyboardDevice) -> Result<VialMatrixInfo, VialProbeError> {
-        appDependencies.vialRawHIDClient.inferMatrix(device)
-    }
-
     public nonisolated func inferVialMatrixAsync(on device: HIDKeyboardDevice) async -> Result<VialMatrixInfo, VialProbeError> {
         let client = appDependencies.vialRawHIDClient
         return await Task.detached(priority: .userInitiated) {
@@ -184,23 +163,11 @@ public final class RootStore: Composable {
         }.value
     }
 
-    public nonisolated func readVialDefinition(on device: HIDKeyboardDevice) -> Result<String, VialProbeError> {
-        appDependencies.vialRawHIDClient.readDefinition(device)
-    }
-
     public nonisolated func readVialDefinitionAsync(on device: HIDKeyboardDevice) async -> Result<String, VialProbeError> {
         let client = appDependencies.vialRawHIDClient
         return await Task.detached(priority: .userInitiated) {
             client.readDefinition(device)
         }.value
-    }
-
-    public nonisolated func readVialSwitchMatrixState(
-        on device: HIDKeyboardDevice,
-        rows: Int,
-        cols: Int
-    ) -> Result<VialSwitchMatrixState, VialProbeError> {
-        appDependencies.vialRawHIDClient.readSwitchMatrixState(device, rows, cols)
     }
 
     public nonisolated func readVialSwitchMatrixStateAsync(
