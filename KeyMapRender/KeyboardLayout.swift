@@ -189,6 +189,7 @@ enum KeyboardLayoutLoader {
             var width = 1.0
             var height = 1.0
             var cursorX = 0.0
+            var pendingDecal = false
 
             for item in rowItems {
                 if let dict = item as? [String: Any] {
@@ -200,6 +201,7 @@ enum KeyboardLayoutLoader {
                     }
                     if let w = toDouble(dict["w"]) { width = w }
                     if let h = toDouble(dict["h"]) { height = h }
+                    if let d = dict["d"] as? Bool { pendingDecal = d }
                     continue
                 }
 
@@ -214,9 +216,11 @@ enum KeyboardLayoutLoader {
                         width: width,
                         height: height,
                         layoutIndex: parsed.layoutIndex,
-                        layoutOption: parsed.layoutOption
+                        layoutOption: parsed.layoutOption,
+                        isDecal: pendingDecal
                     )
                 )
+                pendingDecal = false
                 cursorX += width
                 width = 1.0
                 height = 1.0
@@ -249,6 +253,7 @@ enum KeyboardLayoutLoader {
                 shifted = (candidate.x, candidate.y)
             }
             guard let point = shifted else { continue }
+            if candidate.isDecal { continue }
             positioned.append(
                 PositionedKey(
                     id: "k\(keyIndex)",
@@ -372,4 +377,5 @@ private struct PhysicalKeyCandidate {
     let height: Double
     let layoutIndex: Int?
     let layoutOption: Int?
+    let isDecal: Bool
 }
