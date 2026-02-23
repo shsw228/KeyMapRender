@@ -281,7 +281,22 @@ enum KeyboardLayoutLoader {
             }
             return "----"
         }
+        if let rawCode = parseNumericKeycode(parsed.displayLabel) {
+            return KeycodeLabelFormatter.label(for: rawCode)
+        }
         return parsed.displayLabel.isEmpty ? "----" : parsed.displayLabel
+    }
+
+    nonisolated private static func parseNumericKeycode(_ raw: String) -> UInt16? {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        if text.hasPrefix("0x") || text.hasPrefix("0X") {
+            return UInt16(text.dropFirst(2), radix: 16)
+        }
+        guard let decimal = Int(text), decimal >= 0, decimal <= Int(UInt16.max) else {
+            return nil
+        }
+        return UInt16(decimal)
     }
 
     nonisolated private static func parseRawLabel(_ raw: String) -> RawLabel {
