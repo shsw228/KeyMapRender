@@ -8,6 +8,8 @@ final class OverlayWindowController {
     private var showDuration: TimeInterval = 0.24
     private var hideDuration: TimeInterval = 0.18
     private var isAnimatingShow = false
+    private var isAnimatingHide = false
+    private var animationGeneration: UInt64 = 0
 
     func updateAnimationDurations(show: TimeInterval, hide: TimeInterval) {
         showDuration = max(0.05, min(show, 1.2))
@@ -25,7 +27,8 @@ final class OverlayWindowController {
             )
         )
         let targetFrame = targetPanelFrame()
-        if wasVisible {
+        let shouldAnimateEntrance = !wasVisible || isAnimatingHide || window.alphaValue < 0.99
+        if wasVisible, !shouldAnimateEntrance {
             if isAnimatingShow {
                 self.window = window
                 return
@@ -38,6 +41,8 @@ final class OverlayWindowController {
             return
         }
 
+        animationGeneration &+= 1
+        isAnimatingHide = false
         let startFrame = NSRect(
             x: targetFrame.origin.x,
             y: targetFrame.origin.y + slideDistance,
@@ -48,13 +53,17 @@ final class OverlayWindowController {
         window.setFrame(startFrame, display: true)
         window.orderFrontRegardless()
         isAnimatingShow = true
+        let generation = animationGeneration
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = showDuration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             window.animator().alphaValue = 1
             window.animator().setFrame(targetFrame, display: true)
         }, completionHandler: { [weak self] in
-            self?.isAnimatingShow = false
+            guard let self else { return }
+            if self.animationGeneration == generation {
+                self.isAnimatingShow = false
+            }
         })
         self.window = window
     }
@@ -62,7 +71,10 @@ final class OverlayWindowController {
     func hide() {
         guard let window else { return }
         guard window.isVisible else { return }
+        animationGeneration &+= 1
+        let generation = animationGeneration
         isAnimatingShow = false
+        isAnimatingHide = true
         let endFrame = NSRect(
             x: window.frame.origin.x,
             y: window.frame.origin.y + slideDistance,
@@ -75,6 +87,8 @@ final class OverlayWindowController {
             window.animator().alphaValue = 0
             window.animator().setFrame(endFrame, display: true)
         }, completionHandler: {
+            guard self.animationGeneration == generation else { return }
+            self.isAnimatingHide = false
             window.orderOut(nil)
         })
     }
