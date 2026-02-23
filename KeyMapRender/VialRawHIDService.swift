@@ -5,6 +5,7 @@ struct VialProbeResult {
     let protocolVersion: String
     let layerCount: Int
     let keycodeL0R0C0: UInt16
+    let backend: String
 }
 
 struct VialKeymapDump {
@@ -13,6 +14,7 @@ struct VialKeymapDump {
     let matrixRows: Int
     let matrixCols: Int
     let keycodes: [[[UInt16]]]
+    let backend: String
 }
 
 enum VialProbeError: Error {
@@ -22,13 +24,10 @@ enum VialProbeError: Error {
 enum VialRawHIDService {
     private static let reportLength = 32
     private static let reportIDs: [CFIndex] = [0, 1]
+    private static let hidSendRetries = 20
+    private static let hidReadTimeoutSeconds: CFTimeInterval = 0.5
     // Do not seize the device to avoid interfering with keyboard input in other apps.
     private static let openOptions: [IOOptionBits] = [IOOptionBits(kIOHIDOptionsTypeNone)]
-    private static let reportTypePairs: [(set: IOHIDReportType, get: IOHIDReportType)] = [
-        (kIOHIDReportTypeOutput, kIOHIDReportTypeInput),
-        (kIOHIDReportTypeFeature, kIOHIDReportTypeFeature)
-    ]
-    private static let callbackTimeoutSeconds: CFTimeInterval = 0.2
 
     private enum ViaCommand: UInt8 {
         case getProtocolVersion = 0x01
@@ -37,12 +36,20 @@ enum VialRawHIDService {
         case dynamicKeymapGetBuffer = 0x12
     }
 
+    private enum BridgeMode: String {
+        case probe
+        case dump
+    }
+
     private final class InputReportCapture {
         var response: [UInt8]?
     }
 
     static func probe(device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError> {
-        withOpenedRawDevice(device: device) { raw in
+        if let bridge = probeViaPythonBridge(device: device) {
+            return bridge
+        }
+        return withOpenedRawDevice(device: device) { raw in
             let protocolVersion = try readProtocolVersion(from: raw)
             let layerCount = try readLayerCount(from: raw)
             let keycode = try readSingleKeycode(layer: 0, row: 0, col: 0, from: raw)
@@ -50,7 +57,8 @@ enum VialRawHIDService {
             return VialProbeResult(
                 protocolVersion: protocolVersion,
                 layerCount: layerCount,
-                keycodeL0R0C0: keycode
+                keycodeL0R0C0: keycode,
+                backend: "native"
             )
         }
     }
@@ -58,6 +66,10 @@ enum VialRawHIDService {
     static func readKeymap(device: HIDKeyboardDevice, matrixRows: Int, matrixCols: Int) -> Result<VialKeymapDump, VialProbeError> {
         guard matrixRows > 0, matrixCols > 0 else {
             return .failure(.message("matrixRows と matrixCols は 1 以上で指定してください。"))
+        }
+
+        if let bridge = dumpViaPythonBridge(device: device, rows: matrixRows, cols: matrixCols) {
+            return bridge
         }
 
         return withOpenedRawDevice(device: device) { raw in
@@ -87,9 +99,128 @@ enum VialRawHIDService {
                 layerCount: layerCount,
                 matrixRows: matrixRows,
                 matrixCols: matrixCols,
-                keycodes: keycodes
+                keycodes: keycodes,
+                backend: "native"
             )
         }
+    }
+
+    private static func probeViaPythonBridge(device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError>? {
+        guard let json = runPythonBridge(mode: .probe, device: device, rows: nil, cols: nil) else { return nil }
+        guard let ok = json["ok"] as? Bool else { return .failure(.message("python bridge: invalid response")) }
+        if !ok {
+            return .failure(.message("python bridge: \(json["error"] as? String ?? "unknown error")"))
+        }
+        guard
+            let protocolVersion = json["protocol_version"] as? String,
+            let layerCount = json["layer_count"] as? Int,
+            let keycode = json["keycode_l0_r0_c0"] as? Int
+        else {
+            return .failure(.message("python bridge: missing fields"))
+        }
+        return .success(
+            VialProbeResult(
+                protocolVersion: protocolVersion,
+                layerCount: layerCount,
+                keycodeL0R0C0: UInt16(clamping: keycode),
+                backend: "python"
+            )
+        )
+    }
+
+    private static func dumpViaPythonBridge(device: HIDKeyboardDevice, rows: Int, cols: Int) -> Result<VialKeymapDump, VialProbeError>? {
+        guard let json = runPythonBridge(mode: .dump, device: device, rows: rows, cols: cols) else { return nil }
+        guard let ok = json["ok"] as? Bool else { return .failure(.message("python bridge: invalid response")) }
+        if !ok {
+            return .failure(.message("python bridge: \(json["error"] as? String ?? "unknown error")"))
+        }
+
+        guard
+            let protocolVersion = json["protocol_version"] as? String,
+            let layerCount = json["layer_count"] as? Int,
+            let matrixRows = json["matrix_rows"] as? Int,
+            let matrixCols = json["matrix_cols"] as? Int,
+            let anyKeycodes = json["keycodes"] as? [[[Any]]]
+        else {
+            return .failure(.message("python bridge: missing fields"))
+        }
+
+        var keycodes: [[[UInt16]]] = []
+        keycodes.reserveCapacity(anyKeycodes.count)
+        for layer in anyKeycodes {
+            var rowsParsed: [[UInt16]] = []
+            rowsParsed.reserveCapacity(layer.count)
+            for row in layer {
+                rowsParsed.append(row.map {
+                    if let intValue = $0 as? Int {
+                        return UInt16(clamping: intValue)
+                    }
+                    if let number = $0 as? NSNumber {
+                        return UInt16(clamping: number.intValue)
+                    }
+                    return 0
+                })
+            }
+            keycodes.append(rowsParsed)
+        }
+
+        return .success(
+            VialKeymapDump(
+                protocolVersion: protocolVersion,
+                layerCount: layerCount,
+                matrixRows: matrixRows,
+                matrixCols: matrixCols,
+                keycodes: keycodes,
+                backend: "python"
+            )
+        )
+    }
+
+    private static func runPythonBridge(
+        mode: BridgeMode,
+        device: HIDKeyboardDevice,
+        rows: Int?,
+        cols: Int?
+    ) -> [String: Any]? {
+        guard let scriptURL = Bundle.main.url(forResource: "vial_hid_bridge", withExtension: "py") else {
+            return nil
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+        var args = [scriptURL.path, mode.rawValue, "--vid", "0x" + String(device.vendorID, radix: 16), "--pid", "0x" + String(device.productID, radix: 16)]
+        if mode == .dump, let rows, let cols {
+            args.append(contentsOf: ["--rows", "\(rows)", "--cols", "\(cols)"])
+        }
+        process.arguments = args
+
+        let stdout = Pipe()
+        let stderr = Pipe()
+        process.standardOutput = stdout
+        process.standardError = stderr
+
+        do {
+            try process.run()
+        } catch {
+            return ["ok": false, "error": "python bridge launch failed: \(error.localizedDescription)"]
+        }
+        process.waitUntilExit()
+
+        let outData = stdout.fileHandleForReading.readDataToEndOfFile()
+        let errData = stderr.fileHandleForReading.readDataToEndOfFile()
+        let errString = String(data: errData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        guard !outData.isEmpty else {
+            return ["ok": false, "error": "python bridge empty output \(errString)"]
+        }
+        guard
+            let object = try? JSONSerialization.jsonObject(with: outData),
+            let dict = object as? [String: Any]
+        else {
+            let raw = String(data: outData, encoding: .utf8) ?? "<non-utf8>"
+            return ["ok": false, "error": "python bridge invalid json: \(raw) \(errString)"]
+        }
+        return dict
     }
 
     private static func withOpenedRawDevice<T>(
@@ -187,67 +318,40 @@ enum VialRawHIDService {
 
     private static func send(command: ViaCommand, payload: [UInt8], to device: IOHIDDevice) throws -> [UInt8] {
         var errors: [String] = []
+        var outbound = [UInt8](repeating: 0, count: reportLength)
+        outbound[0] = command.rawValue
+        for (index, byte) in payload.enumerated() where index + 1 < reportLength {
+            outbound[index + 1] = byte
+        }
 
-        for pair in reportTypePairs {
+        for retry in 0..<hidSendRetries {
             for reportID in reportIDs {
-                var outbound = [UInt8](repeating: 0, count: reportLength)
-                outbound[0] = command.rawValue
-                for (index, byte) in payload.enumerated() where index + 1 < reportLength {
-                    outbound[index + 1] = byte
-                }
-
                 let setResult = outbound.withUnsafeMutableBufferPointer { buffer in
                     IOHIDDeviceSetReport(
                         device,
-                        pair.set,
+                        kIOHIDReportTypeOutput,
                         reportID,
                         buffer.baseAddress!,
                         reportLength
                     )
                 }
                 if setResult != kIOReturnSuccess {
-                    errors.append("HID送信失敗(type=\(pair.set.rawValue), reportID=\(reportID)): \(setResult)")
+                    errors.append("retry=\(retry) reportID=\(reportID) HID送信失敗(type=output): \(setResult)")
                     continue
                 }
 
-                var inbound = [UInt8](repeating: 0, count: reportLength)
-                var length = reportLength
-                let getResult = inbound.withUnsafeMutableBufferPointer { buffer in
-                    IOHIDDeviceGetReport(
-                        device,
-                        pair.get,
-                        reportID,
-                        buffer.baseAddress!,
-                        &length
-                    )
-                }
-                if getResult != kIOReturnSuccess {
-                    // Some devices don't support synchronous GetReport for input path.
-                    if let callbackResponse = receiveViaInputCallback(device: device, timeout: callbackTimeoutSeconds) {
-                        if isCommandMatched(response: callbackResponse, command: command) {
-                            return callbackResponse
-                        }
-                        let head = callbackResponse.prefix(6).map { "0x" + String($0, radix: 16, uppercase: true) }.joined(separator: ",")
-                        errors.append("callback受信は成功したがコマンド不一致(type=\(pair.get.rawValue), reportID=\(reportID)): head=[\(head)]")
-                        continue
+                if let callbackResponse = receiveViaInputCallback(device: device, timeout: hidReadTimeoutSeconds) {
+                    if isCommandMatched(response: callbackResponse, command: command) {
+                        return callbackResponse
                     }
-                    errors.append("HID受信失敗(type=\(pair.get.rawValue), reportID=\(reportID)): \(getResult)")
-                    continue
-                }
-                if length <= 0 {
-                    errors.append("HID受信長が0(type=\(pair.get.rawValue), reportID=\(reportID))")
+                    let head = callbackResponse.prefix(6).map { "0x" + String($0, radix: 16, uppercase: true) }.joined(separator: ",")
+                    errors.append("retry=\(retry) reportID=\(reportID) 受信はしたがコマンド不一致: expected=0x\(String(command.rawValue, radix: 16, uppercase: true)) head=[\(head)]")
                     continue
                 }
 
-                let response = Array(inbound.prefix(length))
-                if !isCommandMatched(response: response, command: command) {
-                    let head = response.prefix(6).map { "0x" + String($0, radix: 16, uppercase: true) }.joined(separator: ",")
-                    errors.append("応答コマンド不一致(type=\(pair.get.rawValue), reportID=\(reportID)): expected=0x\(String(command.rawValue, radix: 16, uppercase: true)) head=[\(head)]")
-                    continue
-                }
-
-                return response
+                errors.append("retry=\(retry) reportID=\(reportID) 受信タイムアウト(\(hidReadTimeoutSeconds)s)")
             }
+            Thread.sleep(forTimeInterval: 0.05)
         }
 
         throw VialProbeError.message(errors.joined(separator: " | "))

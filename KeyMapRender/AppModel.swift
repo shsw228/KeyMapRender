@@ -122,7 +122,7 @@ final class AppModel: ObservableObject {
                 self.isDiagnosticsRunning = false
                 switch result {
                 case let .success(probe):
-                    self.vialStatusText = "Vial応答: protocol=\(probe.protocolVersion), layers=\(probe.layerCount), L0R0C0=0x\(String(probe.keycodeL0R0C0, radix: 16, uppercase: true))"
+                    self.vialStatusText = "Vial応答(\(probe.backend)): protocol=\(probe.protocolVersion), layers=\(probe.layerCount), L0R0C0=0x\(String(probe.keycodeL0R0C0, radix: 16, uppercase: true))"
                     self.appendDiagnostics("Vial通信テスト成功: \(self.vialStatusText)")
                 case let .failure(.message(message)):
                     self.vialStatusText = "Vial応答なし: \(message)"
@@ -151,7 +151,7 @@ final class AppModel: ObservableObject {
                 self.isDiagnosticsRunning = false
                 switch result {
                 case let .success(dump):
-                    self.keymapStatusText = "取得成功: protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
+                    self.keymapStatusText = "取得成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
                     self.keymapPreviewText = self.makePreview(from: dump, maxRows: min(4, dump.matrixRows), maxCols: min(10, dump.matrixCols))
                     self.appendDiagnostics("全マップ読出し成功: \(self.keymapStatusText)")
                 case let .failure(.message(message)):
