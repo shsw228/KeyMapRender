@@ -41,7 +41,7 @@ final class AppModel: ObservableObject {
     private var activeLayerTrackingGeneration: UInt64 = 0
     private var matrixPollFailureCount = 0
     private var hasStarted = false
-    private var keyboardHotplugMonitor: HIDKeyboardHotplugMonitor?
+    private var keyboardHotplugSession: HIDKeyboardHotplugSession?
     private let rootStore: RootStore
     private let activeLayerTrackingService = ActiveLayerTrackingService()
     private let vialPresentationService = VialPresentationService()
@@ -99,8 +99,10 @@ final class AppModel: ObservableObject {
         guard !isShuttingDown else { return }
         isShuttingDown = true
         stopActiveLayerTracking()
-        keyboardHotplugMonitor?.stop()
-        keyboardHotplugMonitor = nil
+        if let keyboardHotplugSession {
+            rootStore.stopKeyboardHotplugMonitoring(keyboardHotplugSession)
+            self.keyboardHotplugSession = nil
+        }
         monitor.stop()
         monitor.onLongPressStart = nil
         monitor.onLongPressEnd = nil
@@ -584,17 +586,18 @@ final class AppModel: ObservableObject {
     }
 
     private func startKeyboardHotplugMonitor() {
-        guard keyboardHotplugMonitor == nil else { return }
-        let monitor = HIDKeyboardHotplugMonitor { [weak self] in
+        guard keyboardHotplugSession == nil else { return }
+        let result = rootStore.startKeyboardHotplugMonitoring { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
                 guard !self.isShuttingDown else { return }
                 self.refreshKeyboards()
             }
         }
-        if monitor.start() {
-            keyboardHotplugMonitor = monitor
-        } else {
+        switch result {
+        case let .success(session):
+            keyboardHotplugSession = session
+        case .failure:
             appendDiagnostics("キーボード接続監視の開始に失敗しました。")
         }
     }

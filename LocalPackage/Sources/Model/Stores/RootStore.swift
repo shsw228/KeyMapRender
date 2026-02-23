@@ -249,6 +249,16 @@ public final class RootStore: Composable {
         appDependencies.fileSaveClient.saveText(request)
     }
 
+    public nonisolated func startKeyboardHotplugMonitoring(
+        onChanged: @escaping @Sendable () -> Void
+    ) -> Result<HIDKeyboardHotplugSession, HIDKeyboardHotplugError> {
+        appDependencies.hidKeyboardHotplugClient.start(onChanged)
+    }
+
+    public nonisolated func stopKeyboardHotplugMonitoring(_ session: HIDKeyboardHotplugSession) {
+        appDependencies.hidKeyboardHotplugClient.stop(session)
+    }
+
     public enum Action: Sendable {
         case showSettingsOnLaunchToggleSwitched(Bool)
         case settingsWindowLaunchRequestConsumed

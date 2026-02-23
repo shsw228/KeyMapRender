@@ -1,4 +1,5 @@
 import os
+import Foundation
 import Testing
 
 @testable import DataSource
@@ -218,5 +219,36 @@ struct RootStoreTests {
         case .failure:
             Issue.record("Expected saveTextFile success.")
         }
+    }
+
+    @MainActor @Test
+    func keyboardHotplug_wrappersDelegateToDependencyClient() async {
+        let started = OSAllocatedUnfairLock(initialState: false)
+        let stopped = OSAllocatedUnfairLock(initialState: false)
+        let session = HIDKeyboardHotplugSession(id: UUID())
+        let sut = RootStore(.testDependencies(
+            hidKeyboardHotplugClient: testDependency(of: HIDKeyboardHotplugClient.self) {
+                $0.start = { onChanged in
+                    started.withLock { $0 = true }
+                    onChanged()
+                    return .success(session)
+                }
+                $0.stop = { _ in
+                    stopped.withLock { $0 = true }
+                }
+            }
+        ))
+
+        let start = sut.startKeyboardHotplugMonitoring(onChanged: {})
+        switch start {
+        case let .success(value):
+            #expect(value == session)
+            sut.stopKeyboardHotplugMonitoring(value)
+        case .failure:
+            Issue.record("Expected startKeyboardHotplugMonitoring success.")
+        }
+
+        #expect(started.withLock { $0 })
+        #expect(stopped.withLock { $0 })
     }
 }

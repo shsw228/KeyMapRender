@@ -11,6 +11,7 @@ public final class AppDependencies: Sendable {
     public let inputAccessClient: InputAccessClient
     public let clipboardClient: ClipboardClient
     public let fileSaveClient: FileSaveClient
+    public let hidKeyboardHotplugClient: HIDKeyboardHotplugClient
 
     public nonisolated init(
         appStateClient: AppStateClient = .liveValue,
@@ -21,7 +22,8 @@ public final class AppDependencies: Sendable {
         launchAtLoginClient: LaunchAtLoginClient = .liveValue,
         inputAccessClient: InputAccessClient = .liveValue,
         clipboardClient: ClipboardClient = .liveValue,
-        fileSaveClient: FileSaveClient = .liveValue
+        fileSaveClient: FileSaveClient = .liveValue,
+        hidKeyboardHotplugClient: HIDKeyboardHotplugClient = .liveValue
     ) {
         self.appStateClient = appStateClient
         self.loggingSystemClient = loggingSystemClient
@@ -32,6 +34,7 @@ public final class AppDependencies: Sendable {
         self.inputAccessClient = inputAccessClient
         self.clipboardClient = clipboardClient
         self.fileSaveClient = fileSaveClient
+        self.hidKeyboardHotplugClient = hidKeyboardHotplugClient
     }
 
     public static let shared = AppDependencies()
@@ -51,7 +54,8 @@ extension AppDependencies {
         launchAtLoginClient: LaunchAtLoginClient = .testValue,
         inputAccessClient: InputAccessClient = .testValue,
         clipboardClient: ClipboardClient = .testValue,
-        fileSaveClient: FileSaveClient = .testValue
+        fileSaveClient: FileSaveClient = .testValue,
+        hidKeyboardHotplugClient: HIDKeyboardHotplugClient = .testValue
     ) -> AppDependencies {
         AppDependencies(
             appStateClient: appStateClient,
@@ -62,7 +66,8 @@ extension AppDependencies {
             launchAtLoginClient: launchAtLoginClient,
             inputAccessClient: inputAccessClient,
             clipboardClient: clipboardClient,
-            fileSaveClient: fileSaveClient
+            fileSaveClient: fileSaveClient,
+            hidKeyboardHotplugClient: hidKeyboardHotplugClient
         )
     }
 }

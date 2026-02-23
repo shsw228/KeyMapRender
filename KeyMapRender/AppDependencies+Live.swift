@@ -13,7 +13,8 @@ extension AppDependencies {
         launchAtLoginClient: .keyMapRenderLiveValue,
         inputAccessClient: .keyMapRenderLiveValue,
         clipboardClient: .keyMapRenderLiveValue,
-        fileSaveClient: .keyMapRenderLiveValue
+        fileSaveClient: .keyMapRenderLiveValue,
+        hidKeyboardHotplugClient: .keyMapRenderLiveValue
     )
 }
 
@@ -118,6 +119,51 @@ extension FileSaveClient {
                 return .success(.saved(path: url.path))
             } catch {
                 return .failure(.message(error.localizedDescription))
+            }
+        }
+    )
+}
+
+@MainActor
+private final class HotplugMonitorRegistry {
+    static let shared = HotplugMonitorRegistry()
+    private var monitors: [UUID: HIDKeyboardHotplugMonitor] = [:]
+
+    private init() {}
+
+    func start(onChanged: @escaping @Sendable () -> Void) -> Result<HIDKeyboardHotplugSession, HIDKeyboardHotplugError> {
+        let id = UUID()
+        let monitor = HIDKeyboardHotplugMonitor {
+            onChanged()
+        }
+        guard monitor.start() else {
+            return .failure(.message("start failed"))
+        }
+        monitors[id] = monitor
+        return .success(HIDKeyboardHotplugSession(id: id))
+    }
+
+    func stop(_ session: HIDKeyboardHotplugSession) {
+        guard let monitor = monitors.removeValue(forKey: session.id) else { return }
+        monitor.stop()
+    }
+}
+
+extension HIDKeyboardHotplugClient {
+    static let keyMapRenderLiveValue = Self(
+        start: { onChanged in
+            let container = DispatchSemaphore(value: 0)
+            var result: Result<HIDKeyboardHotplugSession, HIDKeyboardHotplugError> = .failure(.message("internal error"))
+            Task { @MainActor in
+                result = HotplugMonitorRegistry.shared.start(onChanged: onChanged)
+                container.signal()
+            }
+            container.wait()
+            return result
+        },
+        stop: { session in
+            Task { @MainActor in
+                HotplugMonitorRegistry.shared.stop(session)
             }
         }
     )
