@@ -12,7 +12,7 @@ struct KeyMapRenderApp: App {
     @StateObject private var appModel = AppModel()
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             ContentView()
                 .environmentObject(appModel)
                 .frame(minWidth: 640, minHeight: 380)
@@ -23,12 +23,47 @@ struct KeyMapRenderApp: App {
                     appModel.shutdown()
                 }
         }
+        MenuBarExtra("KeyMapRender", systemImage: "keyboard") {
+            MenuBarContentView()
+                .environmentObject(appModel)
+        }
         .commands {
             CommandGroup(after: .appInfo) {
                 Button("Third-Party Licenses…") {
                     LicenseWindowController.shared.show()
                 }
             }
+        }
+    }
+}
+
+private struct MenuBarContentView: View {
+    @EnvironmentObject private var appModel: AppModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button("設定を開く") {
+                openWindow(id: "main")
+                NSApp.activate(ignoringOtherApps: true)
+            }
+            Toggle(
+                "PC起動時に自動起動",
+                isOn: Binding(
+                    get: { appModel.launchAtLoginEnabled },
+                    set: { appModel.setLaunchAtLogin($0) }
+                )
+            )
+            Divider()
+            Button("終了") {
+                appModel.shutdown()
+                NSApp.terminate(nil)
+            }
+        }
+        .padding(.horizontal, 4)
+        .onAppear {
+            appModel.start()
+            appModel.refreshLaunchAtLoginStatus()
         }
     }
 }

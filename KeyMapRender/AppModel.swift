@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import ServiceManagement
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -31,6 +32,7 @@ final class AppModel: ObservableObject {
     @Published var availableLayerCount = 1
     @Published var selectedLayerIndex = 0
     @Published var layoutChoices: [VialLayoutChoice] = []
+    @Published var launchAtLoginEnabled = false
 
     private let monitor = GlobalKeyLongPressMonitor()
     private let overlayWindowController = OverlayWindowController()
@@ -43,6 +45,7 @@ final class AppModel: ObservableObject {
     private var activeLayerTrackingTask: Task<Void, Never>?
     private var activeLayerTrackingGeneration: UInt64 = 0
     private var matrixPollFailureCount = 0
+    private var hasStarted = false
 
     private enum DefaultsKey {
         static let targetKeyCode = "targetKeyCode"
@@ -64,7 +67,9 @@ final class AppModel: ObservableObject {
     }
 
     func start() {
+        guard !hasStarted else { return }
         guard !isShuttingDown else { return }
+        hasStarted = true
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         let axTrusted = AXIsProcessTrustedWithOptions(options)
         let listenTrusted = CGPreflightListenEventAccess()
@@ -76,6 +81,7 @@ final class AppModel: ObservableObject {
             permissionStatusText = "権限不足: Accessibility と Input Monitoring を許可してください。"
         }
         refreshKeyboards()
+        refreshLaunchAtLoginStatus()
         applySettings()
         autoLoadKeymapIfPossibleOnStartup()
     }
@@ -89,6 +95,34 @@ final class AppModel: ObservableObject {
         monitor.onLongPressEnd = nil
         overlayWindowController.hide()
         isOverlayVisible = false
+    }
+
+    func refreshLaunchAtLoginStatus() {
+        guard #available(macOS 13.0, *) else {
+            launchAtLoginEnabled = false
+            return
+        }
+        launchAtLoginEnabled = (SMAppService.mainApp.status == .enabled)
+    }
+
+    func setLaunchAtLogin(_ enabled: Bool) {
+        guard #available(macOS 13.0, *) else {
+            launchAtLoginEnabled = false
+            appendDiagnostics("自動起動設定は macOS 13 以降で利用できます。")
+            return
+        }
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            refreshLaunchAtLoginStatus()
+            appendDiagnostics("自動起動設定を更新: \(launchAtLoginEnabled ? "ON" : "OFF")")
+        } catch {
+            refreshLaunchAtLoginStatus()
+            appendDiagnostics("自動起動設定の更新失敗: \(error.localizedDescription)")
+        }
     }
 
     func applySettings() {

@@ -46,6 +46,14 @@ struct ContentView: View {
                     Button("設定を保存して再適用") {
                         appModel.applySettings()
                     }
+
+                    Toggle(
+                        "PC起動時に自動起動",
+                        isOn: Binding(
+                            get: { appModel.launchAtLoginEnabled },
+                            set: { appModel.setLaunchAtLogin($0) }
+                        )
+                    )
                 }
             }
             .formStyle(.grouped)
