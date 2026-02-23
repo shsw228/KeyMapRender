@@ -83,6 +83,7 @@
 - 状態: 上記 Service の回帰防止として `ModelTests` に単体テストを追加
 - 状態: 起動時の matrix推定→keymap読込ユースケースを `RootStore.loadStartupKeymapAsync` へ移設
 - 状態: `AppModel` ローカルの `VialLayoutChoice` を廃止し、`Model.VialLayoutChoiceValue` を直接参照する形に統一
+- 状態: `RootStore` のキーボード選別/選択解決/状態文言ロジックに単体テストを追加
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

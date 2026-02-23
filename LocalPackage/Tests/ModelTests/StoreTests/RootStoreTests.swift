@@ -26,6 +26,15 @@ struct RootStoreTests {
         backend: "python"
     )
 
+    private let device2 = HIDKeyboardDevice(
+        id: "kbd-2",
+        vendorID: 0x1111,
+        productID: 0x2222,
+        locationID: 2,
+        productName: "Alt Keyboard",
+        manufacturerName: "Alt"
+    )
+
     @MainActor @Test
     func loadStartupKeymapAsync_usesInferredMatrixWhenAvailable() async {
         let requested = OSAllocatedUnfairLock(initialState: (rows: 0, cols: 0))
@@ -80,5 +89,37 @@ struct RootStoreTests {
         #expect(params.cols == 17)
         #expect(result.matrixInfo == nil)
         #expect(result.matrixMessage.contains("失敗"))
+    }
+
+    @MainActor @Test
+    func visibleKeyboards_excludesIgnoredDevices() async {
+        let sut = RootStore(.testDependencies())
+        sut.addIgnoredDeviceID(device.id)
+        let visible = sut.visibleKeyboards(from: [device, device2])
+        #expect(visible.map(\.id) == [device2.id])
+    }
+
+    @MainActor @Test
+    func resolveSelectedKeyboardID_fallsBackToFirstVisibleKeyboard() async {
+        let sut = RootStore(.testDependencies())
+        let resolved = sut.resolveSelectedKeyboardID(
+            current: "unknown",
+            connectedKeyboards: [device2, device]
+        )
+        #expect(resolved == device2.id)
+    }
+
+    @MainActor @Test
+    func keyboardStatusText_showsIgnoredCountAndSelection() async {
+        let sut = RootStore(.testDependencies())
+        sut.addIgnoredDeviceID(device2.id)
+        let message = sut.keyboardStatusText(
+            allDetectedKeyboards: [device, device2],
+            connectedKeyboards: [device],
+            selectedKeyboard: device
+        )
+        #expect(message.contains("検出:"))
+        #expect(message.contains("無視: 1 台"))
+        #expect(message.contains("VID:0x1234"))
     }
 }
