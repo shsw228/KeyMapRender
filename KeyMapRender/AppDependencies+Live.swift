@@ -14,7 +14,8 @@ extension AppDependencies {
         inputAccessClient: .keyMapRenderLiveValue,
         clipboardClient: .keyMapRenderLiveValue,
         fileSaveClient: .keyMapRenderLiveValue,
-        hidKeyboardHotplugClient: .keyMapRenderLiveValue
+        hidKeyboardHotplugClient: .keyMapRenderLiveValue,
+        globalKeyMonitorClient: .keyMapRenderLiveValue
     )
 }
 
@@ -161,6 +162,61 @@ extension HIDKeyboardHotplugClient {
         },
         stop: { session in
             HotplugMonitorRegistry.shared.stop(session)
+        }
+    )
+}
+
+private final class GlobalKeyMonitorRegistry {
+    static let shared = GlobalKeyMonitorRegistry()
+    private let lock = NSLock()
+    private var monitors: [UUID: GlobalKeyLongPressMonitor] = [:]
+
+    private init() {}
+
+    func start(
+        _ configuration: GlobalKeyMonitorConfiguration,
+        onLongPressStart: @escaping @Sendable () -> Void,
+        onLongPressEnd: @escaping @Sendable () -> Void
+    ) -> Result<GlobalKeyMonitorSession, GlobalKeyMonitorError> {
+        let id = UUID()
+        let monitor = GlobalKeyLongPressMonitor()
+        monitor.targetKeyCode = CGKeyCode(configuration.targetKeyCode)
+        monitor.longPressThreshold = configuration.longPressThreshold
+        monitor.onLongPressStart = {
+            onLongPressStart()
+        }
+        monitor.onLongPressEnd = {
+            onLongPressEnd()
+        }
+        guard monitor.start() else {
+            return .failure(.message("start failed"))
+        }
+        lock.lock()
+        monitors[id] = monitor
+        lock.unlock()
+        return .success(GlobalKeyMonitorSession(id: id))
+    }
+
+    func stop(_ session: GlobalKeyMonitorSession) {
+        lock.lock()
+        let monitor = monitors.removeValue(forKey: session.id)
+        lock.unlock()
+        guard let monitor else { return }
+        monitor.stop()
+    }
+}
+
+extension GlobalKeyMonitorClient {
+    static let keyMapRenderLiveValue = Self(
+        start: { configuration, onLongPressStart, onLongPressEnd in
+            GlobalKeyMonitorRegistry.shared.start(
+                configuration,
+                onLongPressStart: onLongPressStart,
+                onLongPressEnd: onLongPressEnd
+            )
+        },
+        stop: { session in
+            GlobalKeyMonitorRegistry.shared.stop(session)
         }
     )
 }

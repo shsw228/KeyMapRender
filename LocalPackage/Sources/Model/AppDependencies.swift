@@ -12,6 +12,7 @@ public final class AppDependencies: Sendable {
     public let clipboardClient: ClipboardClient
     public let fileSaveClient: FileSaveClient
     public let hidKeyboardHotplugClient: HIDKeyboardHotplugClient
+    public let globalKeyMonitorClient: GlobalKeyMonitorClient
 
     public nonisolated init(
         appStateClient: AppStateClient = .liveValue,
@@ -23,7 +24,8 @@ public final class AppDependencies: Sendable {
         inputAccessClient: InputAccessClient = .liveValue,
         clipboardClient: ClipboardClient = .liveValue,
         fileSaveClient: FileSaveClient = .liveValue,
-        hidKeyboardHotplugClient: HIDKeyboardHotplugClient = .liveValue
+        hidKeyboardHotplugClient: HIDKeyboardHotplugClient = .liveValue,
+        globalKeyMonitorClient: GlobalKeyMonitorClient = .liveValue
     ) {
         self.appStateClient = appStateClient
         self.loggingSystemClient = loggingSystemClient
@@ -35,6 +37,7 @@ public final class AppDependencies: Sendable {
         self.clipboardClient = clipboardClient
         self.fileSaveClient = fileSaveClient
         self.hidKeyboardHotplugClient = hidKeyboardHotplugClient
+        self.globalKeyMonitorClient = globalKeyMonitorClient
     }
 
     public static let shared = AppDependencies()
@@ -55,7 +58,8 @@ extension AppDependencies {
         inputAccessClient: InputAccessClient = .testValue,
         clipboardClient: ClipboardClient = .testValue,
         fileSaveClient: FileSaveClient = .testValue,
-        hidKeyboardHotplugClient: HIDKeyboardHotplugClient = .testValue
+        hidKeyboardHotplugClient: HIDKeyboardHotplugClient = .testValue,
+        globalKeyMonitorClient: GlobalKeyMonitorClient = .testValue
     ) -> AppDependencies {
         AppDependencies(
             appStateClient: appStateClient,
@@ -67,7 +71,8 @@ extension AppDependencies {
             inputAccessClient: inputAccessClient,
             clipboardClient: clipboardClient,
             fileSaveClient: fileSaveClient,
-            hidKeyboardHotplugClient: hidKeyboardHotplugClient
+            hidKeyboardHotplugClient: hidKeyboardHotplugClient,
+            globalKeyMonitorClient: globalKeyMonitorClient
         )
     }
 }

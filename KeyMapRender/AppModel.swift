@@ -30,7 +30,6 @@ final class AppModel: ObservableObject {
     @Published var launchAtLoginEnabled = false
     @Published var showSettingsOnLaunch: Bool
 
-    private let monitor = GlobalKeyLongPressMonitor()
     private let overlayWindowController = OverlayWindowController()
     private var allDetectedKeyboards: [HIDKeyboardDevice] = []
     private var latestKeymapDump: VialKeymapDump?
@@ -42,6 +41,7 @@ final class AppModel: ObservableObject {
     private var matrixPollFailureCount = 0
     private var hasStarted = false
     private var keyboardHotplugSession: HIDKeyboardHotplugSession?
+    private var globalKeyMonitorSession: GlobalKeyMonitorSession?
     private let rootStore: RootStore
     private let activeLayerTrackingService = ActiveLayerTrackingService()
     private let vialPresentationService = VialPresentationService()
@@ -103,9 +103,10 @@ final class AppModel: ObservableObject {
             rootStore.stopKeyboardHotplugMonitoring(keyboardHotplugSession)
             self.keyboardHotplugSession = nil
         }
-        monitor.stop()
-        monitor.onLongPressStart = nil
-        monitor.onLongPressEnd = nil
+        if let globalKeyMonitorSession {
+            rootStore.stopGlobalKeyMonitoring(globalKeyMonitorSession)
+            self.globalKeyMonitorSession = nil
+        }
         overlayWindowController.hide()
         isOverlayVisible = false
     }
@@ -154,35 +155,44 @@ final class AppModel: ObservableObject {
             hide: overlayHideAnimationDuration
         )
 
-        monitor.stop()
-        monitor.targetKeyCode = CGKeyCode(keyCodeValue)
-        monitor.longPressThreshold = longPressDuration
-        monitor.onLongPressStart = { [weak self] in
-            Task { @MainActor in
-                guard let self else { return }
-                self.isOverlayVisible = true
-                self.overlayWindowController.show(
-                    layout: self.layout,
-                    currentLayer: self.selectedLayerIndex,
-                    totalLayers: self.availableLayerCount
-                )
-                self.startActiveLayerTrackingIfNeeded()
-                self.appendDiagnostics("オーバーレイ表示: L\(self.selectedLayerIndex)/\(max(0, self.availableLayerCount - 1))")
-            }
+        if let globalKeyMonitorSession {
+            rootStore.stopGlobalKeyMonitoring(globalKeyMonitorSession)
+            self.globalKeyMonitorSession = nil
         }
-        monitor.onLongPressEnd = { [weak self] in
-            Task { @MainActor in
-                guard let self else { return }
-                self.isOverlayVisible = false
-                self.stopActiveLayerTracking()
-                self.setDisplayedLayerIndex(self.manualSelectedLayerIndex, reason: "長押し終了", emitLog: false)
-                self.overlayWindowController.hide()
+        let monitorResult = rootStore.startGlobalKeyMonitoring(
+            GlobalKeyMonitorConfiguration(
+                targetKeyCode: keyCodeValue,
+                longPressThreshold: longPressDuration
+            ),
+            onLongPressStart: { [weak self] in
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.isOverlayVisible = true
+                    self.overlayWindowController.show(
+                        layout: self.layout,
+                        currentLayer: self.selectedLayerIndex,
+                        totalLayers: self.availableLayerCount
+                    )
+                    self.startActiveLayerTrackingIfNeeded()
+                    self.appendDiagnostics("オーバーレイ表示: L\(self.selectedLayerIndex)/\(max(0, self.availableLayerCount - 1))")
+                }
+            },
+            onLongPressEnd: { [weak self] in
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.isOverlayVisible = false
+                    self.stopActiveLayerTracking()
+                    self.setDisplayedLayerIndex(self.manualSelectedLayerIndex, reason: "長押し終了", emitLog: false)
+                    self.overlayWindowController.hide()
+                }
             }
-        }
+        )
 
-        if monitor.start() {
+        switch monitorResult {
+        case let .success(session):
+            globalKeyMonitorSession = session
             permissionStatusText = "監視中: keyCode \(keyCodeValue), 長押し \(longPressDuration.formatted(.number.precision(.fractionLength(2)))) 秒"
-        } else {
+        case .failure:
             permissionStatusText = "キー監視を開始できませんでした。Accessibility / Input Monitoring を確認してください。"
         }
     }

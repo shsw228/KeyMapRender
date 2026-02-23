@@ -251,4 +251,48 @@ struct RootStoreTests {
         #expect(started.withLock { $0 })
         #expect(stopped.withLock { $0 })
     }
+
+    @MainActor @Test
+    func globalKeyMonitor_wrappersDelegateToDependencyClient() async {
+        let started = OSAllocatedUnfairLock(initialState: false)
+        let stopped = OSAllocatedUnfairLock(initialState: false)
+        let configuration = OSAllocatedUnfairLock(initialState: GlobalKeyMonitorConfiguration(
+            targetKeyCode: 0,
+            longPressThreshold: 0
+        ))
+        let session = GlobalKeyMonitorSession(id: UUID())
+        let sut = RootStore(.testDependencies(
+            globalKeyMonitorClient: testDependency(of: GlobalKeyMonitorClient.self) {
+                $0.start = { config, onLongPressStart, onLongPressEnd in
+                    started.withLock { $0 = true }
+                    configuration.withLock { $0 = config }
+                    onLongPressStart()
+                    onLongPressEnd()
+                    return .success(session)
+                }
+                $0.stop = { _ in
+                    stopped.withLock { $0 = true }
+                }
+            }
+        ))
+
+        let startResult = sut.startGlobalKeyMonitoring(
+            .init(targetKeyCode: 59, longPressThreshold: 0.3),
+            onLongPressStart: {},
+            onLongPressEnd: {}
+        )
+        switch startResult {
+        case let .success(value):
+            #expect(value == session)
+            sut.stopGlobalKeyMonitoring(value)
+        case .failure:
+            Issue.record("Expected startGlobalKeyMonitoring success.")
+        }
+
+        #expect(started.withLock { $0 })
+        #expect(stopped.withLock { $0 })
+        let actual = configuration.withLock { $0 }
+        #expect(actual.targetKeyCode == 59)
+        #expect(actual.longPressThreshold == 0.3)
+    }
 }

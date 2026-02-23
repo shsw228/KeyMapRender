@@ -259,6 +259,22 @@ public final class RootStore: Composable {
         appDependencies.hidKeyboardHotplugClient.stop(session)
     }
 
+    public nonisolated func startGlobalKeyMonitoring(
+        _ configuration: GlobalKeyMonitorConfiguration,
+        onLongPressStart: @escaping @Sendable () -> Void,
+        onLongPressEnd: @escaping @Sendable () -> Void
+    ) -> Result<GlobalKeyMonitorSession, GlobalKeyMonitorError> {
+        appDependencies.globalKeyMonitorClient.start(
+            configuration,
+            onLongPressStart,
+            onLongPressEnd
+        )
+    }
+
+    public nonisolated func stopGlobalKeyMonitoring(_ session: GlobalKeyMonitorSession) {
+        appDependencies.globalKeyMonitorClient.stop(session)
+    }
+
     public enum Action: Sendable {
         case showSettingsOnLaunchToggleSwitched(Bool)
         case settingsWindowLaunchRequestConsumed

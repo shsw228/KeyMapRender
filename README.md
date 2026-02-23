@@ -33,6 +33,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - 権限確認（Accessibility/Input Monitoring）を `InputAccessClient` 経由へ移行
 - クリップボード書き込みと `vial.json` 保存を `ClipboardClient` / `FileSaveClient` 経由へ移行
 - キーボードホットプラグ監視を `HIDKeyboardHotplugClient` 経由へ移行
+- 長押しキー監視を `GlobalKeyMonitorClient` + `RootStore` API 経由へ移行
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`
