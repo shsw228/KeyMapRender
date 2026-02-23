@@ -237,22 +237,20 @@ final class AppModel: ObservableObject {
         }
         isDiagnosticsRunning = true
         vialStatusText = "Vial通信テスト中..."
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.rootStore.probeVial(on: selected)
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                guard !self.isShuttingDown else { return }
-                self.isDiagnosticsRunning = false
-                switch result {
-                case let .success(probe):
-                    self.vialStatusText = "Vial応答(\(probe.backend)): protocol=\(probe.protocolVersion), layers=\(probe.layerCount), L0R0C0=0x\(String(probe.keycodeL0R0C0, radix: 16, uppercase: true))"
-                    self.availableLayerCount = max(1, probe.layerCount)
-                    self.setSelectedLayerIndex(self.selectedLayerIndex)
-                    self.appendDiagnostics("Vial通信テスト成功: \(self.vialStatusText)")
-                case let .failure(.message(message)):
-                    self.vialStatusText = "Vial応答なし: \(message)"
-                    self.appendDiagnostics("Vial通信テスト失敗: \(message)")
-                }
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await self.rootStore.probeVialAsync(on: selected)
+            guard !self.isShuttingDown else { return }
+            self.isDiagnosticsRunning = false
+            switch result {
+            case let .success(probe):
+                self.vialStatusText = "Vial応答(\(probe.backend)): protocol=\(probe.protocolVersion), layers=\(probe.layerCount), L0R0C0=0x\(String(probe.keycodeL0R0C0, radix: 16, uppercase: true))"
+                self.availableLayerCount = max(1, probe.layerCount)
+                self.setSelectedLayerIndex(self.selectedLayerIndex)
+                self.appendDiagnostics("Vial通信テスト成功: \(self.vialStatusText)")
+            case let .failure(.message(message)):
+                self.vialStatusText = "Vial応答なし: \(message)"
+                self.appendDiagnostics("Vial通信テスト失敗: \(message)")
             }
         }
     }
@@ -268,25 +266,23 @@ final class AppModel: ObservableObject {
         }
         isDiagnosticsRunning = true
         keymapStatusText = "全マップ読出し中..."
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.rootStore.readVialKeymap(on: selected, rows: rows, cols: cols)
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                guard !self.isShuttingDown else { return }
-                self.isDiagnosticsRunning = false
-                switch result {
-                case let .success(dump):
-                    self.latestKeymapDump = dump
-                    self.layoutChoices = self.makeLayoutChoices(from: dump)
-                    self.availableLayerCount = max(1, dump.layerCount)
-                    self.setSelectedLayerIndex(self.selectedLayerIndex)
-                    self.startActiveLayerTrackingIfNeeded()
-                    self.keymapStatusText = "取得成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
-                    self.appendDiagnostics("全マップ読出し成功: \(self.keymapStatusText)")
-                case let .failure(.message(message)):
-                    self.keymapStatusText = "取得失敗: \(message)"
-                    self.appendDiagnostics("全マップ読出し失敗: \(message)")
-                }
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await self.rootStore.readVialKeymapAsync(on: selected, rows: rows, cols: cols)
+            guard !self.isShuttingDown else { return }
+            self.isDiagnosticsRunning = false
+            switch result {
+            case let .success(dump):
+                self.latestKeymapDump = dump
+                self.layoutChoices = self.makeLayoutChoices(from: dump)
+                self.availableLayerCount = max(1, dump.layerCount)
+                self.setSelectedLayerIndex(self.selectedLayerIndex)
+                self.startActiveLayerTrackingIfNeeded()
+                self.keymapStatusText = "取得成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
+                self.appendDiagnostics("全マップ読出し成功: \(self.keymapStatusText)")
+            case let .failure(.message(message)):
+                self.keymapStatusText = "取得失敗: \(message)"
+                self.appendDiagnostics("全マップ読出し失敗: \(message)")
             }
         }
     }
@@ -376,22 +372,20 @@ final class AppModel: ObservableObject {
         }
         isDiagnosticsRunning = true
         keymapStatusText = "matrix自動取得中..."
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.rootStore.inferVialMatrix(on: selected)
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                guard !self.isShuttingDown else { return }
-                self.isDiagnosticsRunning = false
-                switch result {
-                case let .success(info):
-                    self.matrixRowsText = "\(info.rows)"
-                    self.matrixColsText = "\(info.cols)"
-                    self.keymapStatusText = "matrix自動取得成功(\(info.backend)): \(info.rows)x\(info.cols)"
-                    self.appendDiagnostics("matrix自動取得成功: \(info.rows)x\(info.cols)")
-                case let .failure(.message(message)):
-                    self.keymapStatusText = "matrix自動取得失敗: \(message)"
-                    self.appendDiagnostics("matrix自動取得失敗: \(message)")
-                }
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await self.rootStore.inferVialMatrixAsync(on: selected)
+            guard !self.isShuttingDown else { return }
+            self.isDiagnosticsRunning = false
+            switch result {
+            case let .success(info):
+                self.matrixRowsText = "\(info.rows)"
+                self.matrixColsText = "\(info.cols)"
+                self.keymapStatusText = "matrix自動取得成功(\(info.backend)): \(info.rows)x\(info.cols)"
+                self.appendDiagnostics("matrix自動取得成功: \(info.rows)x\(info.cols)")
+            case let .failure(.message(message)):
+                self.keymapStatusText = "matrix自動取得失敗: \(message)"
+                self.appendDiagnostics("matrix自動取得失敗: \(message)")
             }
         }
     }
@@ -403,48 +397,46 @@ final class AppModel: ObservableObject {
         }
         isDiagnosticsRunning = true
         keymapStatusText = "vial.json取得中..."
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = self.rootStore.readVialDefinition(on: selected)
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                guard !self.isShuttingDown else { return }
-                self.isDiagnosticsRunning = false
-                switch result {
-                case let .success(prettyJSON):
-                    do {
-                        try validateVialDefinitionJSON(prettyJSON)
-                    } catch {
-                        self.keymapStatusText = "vial.json検証失敗: \(error.localizedDescription)"
-                        self.appendDiagnostics("vial.json検証失敗: \(error.localizedDescription)")
-                        return
-                    }
-                    let panel = NSSavePanel()
-                    panel.nameFieldStringValue = String(
-                        format: "vial-%04X-%04X.json",
-                        selected.vendorID,
-                        selected.productID
-                    )
-                    panel.allowedContentTypes = [.json]
-                    panel.canCreateDirectories = true
-                    panel.title = "vial.json を保存"
-                    let response = panel.runModal()
-                    guard response == .OK, let url = panel.url else {
-                        self.keymapStatusText = "vial.json保存をキャンセルしました。"
-                        self.appendDiagnostics("vial.json保存キャンセル")
-                        return
-                    }
-                    do {
-                        try prettyJSON.write(to: url, atomically: true, encoding: .utf8)
-                        self.keymapStatusText = "vial.json保存完了: \(url.path)"
-                        self.appendDiagnostics("vial.json保存完了: \(url.path)")
-                    } catch {
-                        self.keymapStatusText = "vial.json保存失敗: \(error.localizedDescription)"
-                        self.appendDiagnostics("vial.json保存失敗: \(error.localizedDescription)")
-                    }
-                case let .failure(.message(message)):
-                    self.keymapStatusText = "vial.json取得失敗: \(message)"
-                    self.appendDiagnostics("vial.json取得失敗: \(message)")
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await self.rootStore.readVialDefinitionAsync(on: selected)
+            guard !self.isShuttingDown else { return }
+            self.isDiagnosticsRunning = false
+            switch result {
+            case let .success(prettyJSON):
+                do {
+                    try validateVialDefinitionJSON(prettyJSON)
+                } catch {
+                    self.keymapStatusText = "vial.json検証失敗: \(error.localizedDescription)"
+                    self.appendDiagnostics("vial.json検証失敗: \(error.localizedDescription)")
+                    return
                 }
+                let panel = NSSavePanel()
+                panel.nameFieldStringValue = String(
+                    format: "vial-%04X-%04X.json",
+                    selected.vendorID,
+                    selected.productID
+                )
+                panel.allowedContentTypes = [.json]
+                panel.canCreateDirectories = true
+                panel.title = "vial.json を保存"
+                let response = panel.runModal()
+                guard response == .OK, let url = panel.url else {
+                    self.keymapStatusText = "vial.json保存をキャンセルしました。"
+                    self.appendDiagnostics("vial.json保存キャンセル")
+                    return
+                }
+                do {
+                    try prettyJSON.write(to: url, atomically: true, encoding: .utf8)
+                    self.keymapStatusText = "vial.json保存完了: \(url.path)"
+                    self.appendDiagnostics("vial.json保存完了: \(url.path)")
+                } catch {
+                    self.keymapStatusText = "vial.json保存失敗: \(error.localizedDescription)"
+                    self.appendDiagnostics("vial.json保存失敗: \(error.localizedDescription)")
+                }
+            case let .failure(.message(message)):
+                self.keymapStatusText = "vial.json取得失敗: \(message)"
+                self.appendDiagnostics("vial.json取得失敗: \(message)")
             }
         }
     }
@@ -542,16 +534,7 @@ final class AppModel: ObservableObject {
         matrixRows: Int,
         matrixCols: Int
     ) async -> Result<VialSwitchMatrixState, VialProbeError> {
-        return await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let result = self.rootStore.readVialSwitchMatrixState(
-                    on: device,
-                    rows: matrixRows,
-                    cols: matrixCols
-                )
-                continuation.resume(returning: result)
-            }
-        }
+        await rootStore.readVialSwitchMatrixStateAsync(on: device, rows: matrixRows, cols: matrixCols)
     }
 
     private func makePreview(from dump: VialKeymapDump, layer: Int, maxRows: Int, maxCols: Int) -> String {
@@ -833,8 +816,9 @@ final class AppModel: ObservableObject {
         keymapStatusText = "起動時自動読込中..."
         let initialRows = Int(matrixRowsText) ?? 6
         let initialCols = Int(matrixColsText) ?? 17
-        DispatchQueue.global(qos: .userInitiated).async {
-            let matrixResult = self.rootStore.inferVialMatrix(on: selected)
+        Task { [weak self] in
+            guard let self else { return }
+            let matrixResult = await self.rootStore.inferVialMatrixAsync(on: selected)
             var rows = initialRows
             var cols = initialCols
             var matrixLog = "matrix自動取得未実行"
@@ -847,34 +831,30 @@ final class AppModel: ObservableObject {
                 matrixLog = "matrix自動取得失敗: \(message)"
             }
 
-            let dumpResult = self.rootStore.readVialKeymap(on: selected, rows: rows, cols: cols)
+            let dumpResult = await self.rootStore.readVialKeymapAsync(on: selected, rows: rows, cols: cols)
+            guard !self.isShuttingDown else { return }
+            self.isDiagnosticsRunning = false
+            self.appendDiagnostics("起動時自動読込: \(matrixLog)")
+            switch matrixResult {
+            case let .success(info):
+                self.matrixRowsText = "\(info.rows)"
+                self.matrixColsText = "\(info.cols)"
+            case .failure:
+                break
+            }
 
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                guard !self.isShuttingDown else { return }
-                self.isDiagnosticsRunning = false
-                self.appendDiagnostics("起動時自動読込: \(matrixLog)")
-                switch matrixResult {
-                case let .success(info):
-                    self.matrixRowsText = "\(info.rows)"
-                    self.matrixColsText = "\(info.cols)"
-                case .failure:
-                    break
-                }
-
-                switch dumpResult {
-                case let .success(dump):
-                    self.latestKeymapDump = dump
-                    self.layoutChoices = self.makeLayoutChoices(from: dump)
-                    self.availableLayerCount = max(1, dump.layerCount)
-                    self.setSelectedLayerIndex(self.selectedLayerIndex)
-                    self.startActiveLayerTrackingIfNeeded()
-                    self.keymapStatusText = "起動時読込成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
-                    self.appendDiagnostics("起動時全マップ読出し成功: \(self.keymapStatusText)")
-                case let .failure(.message(message)):
-                    self.keymapStatusText = "起動時読込失敗: \(message)"
-                    self.appendDiagnostics("起動時全マップ読出し失敗: \(message)")
-                }
+            switch dumpResult {
+            case let .success(dump):
+                self.latestKeymapDump = dump
+                self.layoutChoices = self.makeLayoutChoices(from: dump)
+                self.availableLayerCount = max(1, dump.layerCount)
+                self.setSelectedLayerIndex(self.selectedLayerIndex)
+                self.startActiveLayerTrackingIfNeeded()
+                self.keymapStatusText = "起動時読込成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
+                self.appendDiagnostics("起動時全マップ読出し成功: \(self.keymapStatusText)")
+            case let .failure(.message(message)):
+                self.keymapStatusText = "起動時読込失敗: \(message)"
+                self.appendDiagnostics("起動時全マップ読出し失敗: \(message)")
             }
         }
     }
