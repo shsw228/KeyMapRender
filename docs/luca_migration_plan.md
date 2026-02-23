@@ -57,7 +57,7 @@
 - `LocalPackage` 追加（`DataSource`/`Model`/`UserInterface`）
 - `AppDependencies` と `DependencyClient` 最小セットを作成
 - 既存 target から package を参照
- - 状態: 2026-02-24 時点で `luca --platform macOS` 生成結果を取り込み済み（未接続）
+ - 状態: 2026-02-24 時点で `luca --platform macOS` 生成結果を取り込み、`KeyMapRender.xcodeproj` へ `LocalPackage(DataSource)` を接続済み
 
 ### Phase 1: インフラ抽出
 - `VialRawHIDService` / `HIDKeyboardService` / `GlobalKeyLongPressMonitor` / `OverlayWindowController` を DependencyClient 経由へ
