@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import DataSource
 
 @MainActor
 final class OverlayWindowController {

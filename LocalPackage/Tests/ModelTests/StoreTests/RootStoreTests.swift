@@ -295,4 +295,47 @@ struct RootStoreTests {
         #expect(actual.targetKeyCode == 59)
         #expect(actual.longPressThreshold == 0.3)
     }
+
+    @MainActor @Test
+    func overlayWindow_wrappersDelegateToDependencyClient() async {
+        let updated = OSAllocatedUnfairLock(initialState: (show: 0.0, hide: 0.0))
+        let shown = OSAllocatedUnfairLock(initialState: false)
+        let hidden = OSAllocatedUnfairLock(initialState: false)
+        let sut = RootStore(.testDependencies(
+            overlayWindowClient: testDependency(of: OverlayWindowClient.self) {
+                $0.updateAnimationDurations = { show, hide in
+                    updated.withLock { $0 = (show: show, hide: hide) }
+                }
+                $0.show = { layout, currentLayer, totalLayers in
+                    #expect(layout.name == "Test Layout")
+                    #expect(currentLayer == 2)
+                    #expect(totalLayers == 6)
+                    shown.withLock { $0 = true }
+                }
+                $0.hide = {
+                    hidden.withLock { $0 = true }
+                }
+            }
+        ))
+
+        sut.updateOverlayAnimationDurations(show: 0.4, hide: 0.2)
+        sut.showOverlay(
+            layout: KeyboardLayout(
+                name: "Test Layout",
+                rows: [],
+                positionedKeys: [],
+                positionedWidth: 0,
+                positionedHeight: 0
+            ),
+            currentLayer: 2,
+            totalLayers: 6
+        )
+        sut.hideOverlay()
+
+        let durations = updated.withLock { $0 }
+        #expect(durations.show == 0.4)
+        #expect(durations.hide == 0.2)
+        #expect(shown.withLock { $0 })
+        #expect(hidden.withLock { $0 })
+    }
 }

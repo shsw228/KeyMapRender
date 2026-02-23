@@ -30,7 +30,6 @@ final class AppModel: ObservableObject {
     @Published var launchAtLoginEnabled = false
     @Published var showSettingsOnLaunch: Bool
 
-    private let overlayWindowController = OverlayWindowController()
     private var allDetectedKeyboards: [HIDKeyboardDevice] = []
     private var latestKeymapDump: VialKeymapDump?
     private var hasAutoLoadedOnStartup = false
@@ -68,7 +67,7 @@ final class AppModel: ObservableObject {
         self.matrixRowsText = "6"
         self.matrixColsText = "17"
         self.ignoredDeviceCount = self.rootStore.currentIgnoredDeviceIDs().count
-        self.overlayWindowController.updateAnimationDurations(
+        self.rootStore.updateOverlayAnimationDurations(
             show: preferences.overlayShowAnimationDuration,
             hide: preferences.overlayHideAnimationDuration
         )
@@ -107,7 +106,7 @@ final class AppModel: ObservableObject {
             rootStore.stopGlobalKeyMonitoring(globalKeyMonitorSession)
             self.globalKeyMonitorSession = nil
         }
-        overlayWindowController.hide()
+        rootStore.hideOverlay()
         isOverlayVisible = false
     }
 
@@ -150,7 +149,7 @@ final class AppModel: ObservableObject {
             overlayHideAnimationDuration: overlayHideAnimationDuration
         )
         rootStore.setShowSettingsOnLaunch(showSettingsOnLaunch)
-        overlayWindowController.updateAnimationDurations(
+        rootStore.updateOverlayAnimationDurations(
             show: overlayShowAnimationDuration,
             hide: overlayHideAnimationDuration
         )
@@ -168,7 +167,7 @@ final class AppModel: ObservableObject {
                 Task { @MainActor in
                     guard let self else { return }
                     self.isOverlayVisible = true
-                    self.overlayWindowController.show(
+                    self.rootStore.showOverlay(
                         layout: self.layout,
                         currentLayer: self.selectedLayerIndex,
                         totalLayers: self.availableLayerCount
@@ -183,7 +182,7 @@ final class AppModel: ObservableObject {
                     self.isOverlayVisible = false
                     self.stopActiveLayerTracking()
                     self.setDisplayedLayerIndex(self.manualSelectedLayerIndex, reason: "長押し終了", emitLog: false)
-                    self.overlayWindowController.hide()
+                    self.rootStore.hideOverlay()
                 }
             }
         )
@@ -310,7 +309,7 @@ final class AppModel: ObservableObject {
             )
         }
         if isOverlayVisible {
-            overlayWindowController.show(
+            rootStore.showOverlay(
                 layout: layout,
                 currentLayer: selectedLayerIndex,
                 totalLayers: availableLayerCount
@@ -353,7 +352,7 @@ final class AppModel: ObservableObject {
         selectedLayerIndex = clamped
         applySelectedLayerToLatestDump()
         if isOverlayVisible {
-            overlayWindowController.show(
+            rootStore.showOverlay(
                 layout: layout,
                 currentLayer: selectedLayerIndex,
                 totalLayers: availableLayerCount

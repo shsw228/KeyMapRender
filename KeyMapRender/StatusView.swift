@@ -1,4 +1,5 @@
 import SwiftUI
+import DataSource
 
 struct StatusView: View {
     @EnvironmentObject private var appModel: AppModel

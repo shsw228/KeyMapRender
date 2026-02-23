@@ -89,6 +89,7 @@
 - 状態: クリップボード書き込みと保存ダイアログを `ClipboardClient` / `FileSaveClient` + `RootStore` API へ移し、`AppModel` 直依存を削減
 - 状態: ホットプラグ監視を `HIDKeyboardHotplugClient` + `RootStore` API へ移し、`AppModel` の監視実体依存を削減
 - 状態: 長押しキー監視を `GlobalKeyMonitorClient` + `RootStore` API へ移し、`AppModel` の監視実体依存を削減
+- 状態: オーバーレイWindow表示制御を `OverlayWindowClient` + `RootStore` API へ移し、`AppModel` のWindow実体依存を削減
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

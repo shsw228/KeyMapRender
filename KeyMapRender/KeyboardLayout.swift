@@ -1,31 +1,5 @@
 import Foundation
-
-struct KeyboardLayout {
-    let name: String
-    let rows: [[KeyboardKey]]
-    let positionedKeys: [PositionedKey]
-    let positionedWidth: Double
-    let positionedHeight: Double
-}
-
-struct KeyboardKey {
-    let label: String
-    let width: Double
-    let height: Double
-    let isSpacer: Bool
-}
-
-struct PositionedKey: Identifiable {
-    let id: String
-    let label: String
-    let x: Double
-    let y: Double
-    let width: Double
-    let height: Double
-    let matrixRow: Int?
-    let matrixCol: Int?
-    let rawKeycode: UInt16?
-}
+import DataSource
 
 enum KeyboardLayoutLoader {
     nonisolated static func loadDefaultLayout() -> KeyboardLayout {

@@ -275,6 +275,22 @@ public final class RootStore: Composable {
         appDependencies.globalKeyMonitorClient.stop(session)
     }
 
+    public nonisolated func updateOverlayAnimationDurations(show: Double, hide: Double) {
+        appDependencies.overlayWindowClient.updateAnimationDurations(show, hide)
+    }
+
+    public nonisolated func showOverlay(
+        layout: KeyboardLayout,
+        currentLayer: Int,
+        totalLayers: Int
+    ) {
+        appDependencies.overlayWindowClient.show(layout, currentLayer, totalLayers)
+    }
+
+    public nonisolated func hideOverlay() {
+        appDependencies.overlayWindowClient.hide()
+    }
+
     public enum Action: Sendable {
         case showSettingsOnLaunchToggleSwitched(Bool)
         case settingsWindowLaunchRequestConsumed

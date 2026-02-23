@@ -15,7 +15,8 @@ extension AppDependencies {
         clipboardClient: .keyMapRenderLiveValue,
         fileSaveClient: .keyMapRenderLiveValue,
         hidKeyboardHotplugClient: .keyMapRenderLiveValue,
-        globalKeyMonitorClient: .keyMapRenderLiveValue
+        globalKeyMonitorClient: .keyMapRenderLiveValue,
+        overlayWindowClient: .keyMapRenderLiveValue
     )
 }
 
@@ -103,23 +104,25 @@ extension ClipboardClient {
 extension FileSaveClient {
     static let keyMapRenderLiveValue = Self(
         saveText: { request in
-            let panel = NSSavePanel()
-            panel.nameFieldStringValue = request.suggestedFileName
-            let contentTypes = request.allowedExtensions.compactMap { UTType(filenameExtension: $0) }
-            if !contentTypes.isEmpty {
-                panel.allowedContentTypes = contentTypes
-            }
-            panel.canCreateDirectories = true
-            panel.title = request.title
-            let response = panel.runModal()
-            guard response == .OK, let url = panel.url else {
-                return .success(.cancelled)
-            }
-            do {
-                try request.content.write(to: url, atomically: true, encoding: .utf8)
-                return .success(.saved(path: url.path))
-            } catch {
-                return .failure(.message(error.localizedDescription))
+            MainActor.assumeIsolated {
+                let panel = NSSavePanel()
+                panel.nameFieldStringValue = request.suggestedFileName
+                let contentTypes = request.allowedExtensions.compactMap { UTType(filenameExtension: $0) }
+                if !contentTypes.isEmpty {
+                    panel.allowedContentTypes = contentTypes
+                }
+                panel.canCreateDirectories = true
+                panel.title = request.title
+                let response = panel.runModal()
+                guard response == .OK, let url = panel.url else {
+                    return .success(.cancelled)
+                }
+                do {
+                    try request.content.write(to: url, atomically: true, encoding: .utf8)
+                    return .success(.saved(path: url.path))
+                } catch {
+                    return .failure(.message(error.localizedDescription))
+                }
             }
         }
     )
@@ -158,10 +161,14 @@ private final class HotplugMonitorRegistry {
 extension HIDKeyboardHotplugClient {
     static let keyMapRenderLiveValue = Self(
         start: { onChanged in
-            HotplugMonitorRegistry.shared.start(onChanged: onChanged)
+            MainActor.assumeIsolated {
+                HotplugMonitorRegistry.shared.start(onChanged: onChanged)
+            }
         },
         stop: { session in
-            HotplugMonitorRegistry.shared.stop(session)
+            MainActor.assumeIsolated {
+                HotplugMonitorRegistry.shared.stop(session)
+            }
         }
     )
 }
@@ -209,14 +216,77 @@ private final class GlobalKeyMonitorRegistry {
 extension GlobalKeyMonitorClient {
     static let keyMapRenderLiveValue = Self(
         start: { configuration, onLongPressStart, onLongPressEnd in
-            GlobalKeyMonitorRegistry.shared.start(
-                configuration,
-                onLongPressStart: onLongPressStart,
-                onLongPressEnd: onLongPressEnd
-            )
+            MainActor.assumeIsolated {
+                GlobalKeyMonitorRegistry.shared.start(
+                    configuration,
+                    onLongPressStart: onLongPressStart,
+                    onLongPressEnd: onLongPressEnd
+                )
+            }
         },
         stop: { session in
-            GlobalKeyMonitorRegistry.shared.stop(session)
+            MainActor.assumeIsolated {
+                GlobalKeyMonitorRegistry.shared.stop(session)
+            }
+        }
+    )
+}
+
+private final class OverlayWindowRegistry {
+    static let shared = OverlayWindowRegistry()
+    private let lock = NSLock()
+    private var controller: OverlayWindowController?
+
+    private init() {}
+
+    private func resolveController() -> OverlayWindowController {
+        lock.lock()
+        defer { lock.unlock() }
+        if let controller {
+            return controller
+        }
+        let newController = OverlayWindowController()
+        controller = newController
+        return newController
+    }
+
+    func updateAnimationDurations(show: Double, hide: Double) {
+        resolveController().updateAnimationDurations(show: show, hide: hide)
+    }
+
+    func show(layout: KeyboardLayout, currentLayer: Int, totalLayers: Int) {
+        resolveController().show(
+            layout: layout,
+            currentLayer: currentLayer,
+            totalLayers: totalLayers
+        )
+    }
+
+    func hide() {
+        resolveController().hide()
+    }
+}
+
+extension OverlayWindowClient {
+    static let keyMapRenderLiveValue = Self(
+        updateAnimationDurations: { show, hide in
+            MainActor.assumeIsolated {
+                OverlayWindowRegistry.shared.updateAnimationDurations(show: show, hide: hide)
+            }
+        },
+        show: { layout, currentLayer, totalLayers in
+            MainActor.assumeIsolated {
+                OverlayWindowRegistry.shared.show(
+                    layout: layout,
+                    currentLayer: currentLayer,
+                    totalLayers: totalLayers
+                )
+            }
+        },
+        hide: {
+            MainActor.assumeIsolated {
+                OverlayWindowRegistry.shared.hide()
+            }
         }
     )
 }

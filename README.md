@@ -34,6 +34,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - クリップボード書き込みと `vial.json` 保存を `ClipboardClient` / `FileSaveClient` 経由へ移行
 - キーボードホットプラグ監視を `HIDKeyboardHotplugClient` 経由へ移行
 - 長押しキー監視を `GlobalKeyMonitorClient` + `RootStore` API 経由へ移行
+- オーバーレイWindow表示制御を `OverlayWindowClient` + `RootStore` API 経由へ移行
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

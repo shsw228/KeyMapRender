@@ -13,6 +13,7 @@ public final class AppDependencies: Sendable {
     public let fileSaveClient: FileSaveClient
     public let hidKeyboardHotplugClient: HIDKeyboardHotplugClient
     public let globalKeyMonitorClient: GlobalKeyMonitorClient
+    public let overlayWindowClient: OverlayWindowClient
 
     public nonisolated init(
         appStateClient: AppStateClient = .liveValue,
@@ -25,7 +26,8 @@ public final class AppDependencies: Sendable {
         clipboardClient: ClipboardClient = .liveValue,
         fileSaveClient: FileSaveClient = .liveValue,
         hidKeyboardHotplugClient: HIDKeyboardHotplugClient = .liveValue,
-        globalKeyMonitorClient: GlobalKeyMonitorClient = .liveValue
+        globalKeyMonitorClient: GlobalKeyMonitorClient = .liveValue,
+        overlayWindowClient: OverlayWindowClient = .liveValue
     ) {
         self.appStateClient = appStateClient
         self.loggingSystemClient = loggingSystemClient
@@ -38,6 +40,7 @@ public final class AppDependencies: Sendable {
         self.fileSaveClient = fileSaveClient
         self.hidKeyboardHotplugClient = hidKeyboardHotplugClient
         self.globalKeyMonitorClient = globalKeyMonitorClient
+        self.overlayWindowClient = overlayWindowClient
     }
 
     public static let shared = AppDependencies()
@@ -59,7 +62,8 @@ extension AppDependencies {
         clipboardClient: ClipboardClient = .testValue,
         fileSaveClient: FileSaveClient = .testValue,
         hidKeyboardHotplugClient: HIDKeyboardHotplugClient = .testValue,
-        globalKeyMonitorClient: GlobalKeyMonitorClient = .testValue
+        globalKeyMonitorClient: GlobalKeyMonitorClient = .testValue,
+        overlayWindowClient: OverlayWindowClient = .testValue
     ) -> AppDependencies {
         AppDependencies(
             appStateClient: appStateClient,
@@ -72,7 +76,8 @@ extension AppDependencies {
             clipboardClient: clipboardClient,
             fileSaveClient: fileSaveClient,
             hidKeyboardHotplugClient: hidKeyboardHotplugClient,
-            globalKeyMonitorClient: globalKeyMonitorClient
+            globalKeyMonitorClient: globalKeyMonitorClient,
+            overlayWindowClient: overlayWindowClient
         )
     }
 }
