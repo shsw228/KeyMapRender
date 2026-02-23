@@ -412,7 +412,7 @@ private enum KeycodeLabelFormatter {
         let mods = Int((keycode >> 8) & 0x1F)
         let tap = UInt16(keycode & 0x00FF)
         let tapLabel = basicLabel(for: tap) ?? String(format: "%02X", tap)
-        return "短: \(tapLabel)\n長: \(modTapHoldLabel(mods))"
+        return "\(modTapMacroLabel(mods: mods, tapLabel: tapLabel))\n短: \(tapLabel)"
     }
 
     private static func layerTapLabel(for keycode: UInt16) -> String {
@@ -433,13 +433,13 @@ private enum KeycodeLabelFormatter {
         return names.isEmpty ? String(format: "MOD(0x%02X)", mods) : names.joined(separator: "+")
     }
 
-    private static func modTapHoldLabel(_ mods: Int) -> String {
+    private static func modTapMacroLabel(mods: Int, tapLabel: String) -> String {
         if let single = singleModName(mods) {
-            return single + "_T"
+            return "\(single)_T(\(tapLabel))"
         }
-        if mods == 0x07 { return "MEH_T" }
-        if mods == 0x0F { return "HYPR_T" }
-        return String(format: "MT(0x%02X)", mods)
+        if mods == 0x07 { return "MEH_T(\(tapLabel))" }
+        if mods == 0x0F { return "HYPR_T(\(tapLabel))" }
+        return String(format: "MT(0x%02X,%@)", mods, tapLabel)
     }
 
     private static func singleModName(_ mods: Int) -> String? {
