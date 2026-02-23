@@ -412,7 +412,7 @@ private enum KeycodeLabelFormatter {
         let mods = Int((keycode >> 8) & 0x1F)
         let tap = UInt16(keycode & 0x00FF)
         let tapLabel = basicLabel(for: tap) ?? String(format: "%02X", tap)
-        return "短: \(tapLabel)\n長: \(modsLabel(mods))"
+        return "短: \(tapLabel)\n長: \(modTapHoldLabel(mods))"
     }
 
     private static func layerTapLabel(for keycode: UInt16) -> String {
@@ -429,8 +429,29 @@ private enum KeycodeLabelFormatter {
         if (base & 0x01) != 0 { names.append(isRight ? "RCtrl" : "LCtrl") }
         if (base & 0x02) != 0 { names.append(isRight ? "RShift" : "LShift") }
         if (base & 0x04) != 0 { names.append(isRight ? "RAlt" : "LAlt") }
-        if (base & 0x08) != 0 { names.append(isRight ? "RCmd" : "LCmd") }
+        if (base & 0x08) != 0 { names.append(isRight ? "RGui" : "LGui") }
         return names.isEmpty ? String(format: "MOD(0x%02X)", mods) : names.joined(separator: "+")
+    }
+
+    private static func modTapHoldLabel(_ mods: Int) -> String {
+        if let single = singleModName(mods) {
+            return single + "_T"
+        }
+        if mods == 0x07 { return "MEH_T" }
+        if mods == 0x0F { return "HYPR_T" }
+        return String(format: "MT(0x%02X)", mods)
+    }
+
+    private static func singleModName(_ mods: Int) -> String? {
+        let isRight = (mods & 0x10) != 0
+        let base = mods & 0x0F
+        switch base {
+        case 0x01: return isRight ? "RCtrl" : "LCtrl"
+        case 0x02: return isRight ? "RShift" : "LShift"
+        case 0x04: return isRight ? "RAlt" : "LAlt"
+        case 0x08: return isRight ? "RGui" : "LGui"
+        default: return nil
+        }
     }
 
     private static let specialNames: [UInt16: String] = [
@@ -464,11 +485,11 @@ private enum KeycodeLabelFormatter {
         0x00E0: "LCtrl",
         0x00E1: "LShift",
         0x00E2: "LAlt",
-        0x00E3: "LCmd",
+        0x00E3: "LGui",
         0x00E4: "RCtrl",
         0x00E5: "RShift",
         0x00E6: "RAlt",
-        0x00E7: "RCmd"
+        0x00E7: "RGui"
     ]
 
     private static let numberNames: [UInt16: String] = [
