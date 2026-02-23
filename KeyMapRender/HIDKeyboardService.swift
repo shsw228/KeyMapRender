@@ -10,6 +10,13 @@ struct HIDKeyboardDevice: Identifiable, Hashable {
     let manufacturerName: String
 }
 
+struct HIDInterfaceCandidate {
+    let device: IOHIDDevice
+    let usagePage: Int
+    let usage: Int
+    let productName: String
+}
+
 enum HIDKeyboardService {
     nonisolated static func listKeyboards() -> [HIDKeyboardDevice] {
         let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
@@ -37,21 +44,21 @@ enum HIDKeyboardService {
         }
     }
 
-    nonisolated static func findRawHIDInterface(for keyboard: HIDKeyboardDevice) -> IOHIDDevice? {
+    nonisolated static func findCandidateInterfaces(for keyboard: HIDKeyboardDevice) -> [HIDInterfaceCandidate] {
         let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
 
-        let rawMatch: [String: Any] = [
-            kIOHIDDeviceUsagePageKey as String: 0xFF60,
-            kIOHIDDeviceUsageKey as String: 0x61
+        let match: [String: Any] = [
+            kIOHIDVendorIDKey as String: keyboard.vendorID,
+            kIOHIDProductIDKey as String: keyboard.productID
         ]
-        IOHIDManagerSetDeviceMatching(manager, rawMatch as CFDictionary)
+        IOHIDManagerSetDeviceMatching(manager, match as CFDictionary)
         IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
 
         guard let set = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else {
-            return nil
+            return []
         }
 
-        return set.first(where: { device in
+        let filtered = set.filter { device in
             let vendor = intProperty(device, key: kIOHIDVendorIDKey as CFString)
             let product = intProperty(device, key: kIOHIDProductIDKey as CFString)
             let location = intProperty(device, key: kIOHIDLocationIDKey as CFString)
@@ -63,7 +70,20 @@ enum HIDKeyboardService {
                 return location == keyboard.locationID
             }
             return true
-        })
+        }
+
+        let candidates = filtered.map { device in
+            HIDInterfaceCandidate(
+                device: device,
+                usagePage: intProperty(device, key: kIOHIDPrimaryUsagePageKey as CFString),
+                usage: intProperty(device, key: kIOHIDPrimaryUsageKey as CFString),
+                productName: stringProperty(device, key: kIOHIDProductKey as CFString) ?? "Unknown"
+            )
+        }
+
+        return candidates.sorted {
+            score(candidate: $0) > score(candidate: $1)
+        }
     }
 
     nonisolated private static func makeDeviceInfo(_ device: IOHIDDevice) -> HIDKeyboardDevice? {
@@ -96,6 +116,17 @@ enum HIDKeyboardService {
 
     nonisolated private static func stringProperty(_ device: IOHIDDevice, key: CFString) -> String? {
         IOHIDDeviceGetProperty(device, key) as? String
+    }
+
+    nonisolated private static func score(candidate: HIDInterfaceCandidate) -> Int {
+        // Prioritize the canonical VIA/Vial Raw HID interface first.
+        if candidate.usagePage == 0xFF60 && candidate.usage == 0x61 {
+            return 100
+        }
+        if candidate.usagePage >= 0xFF00 {
+            return 50
+        }
+        return 0
     }
 
     nonisolated private static func deduplicate(_ devices: [HIDKeyboardDevice]) -> [HIDKeyboardDevice] {
