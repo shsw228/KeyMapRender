@@ -44,6 +44,28 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct KeyboardRefreshResult: Sendable {
+        public let allDetectedKeyboards: [HIDKeyboardDevice]
+        public let connectedKeyboards: [HIDKeyboardDevice]
+        public let selectedKeyboardID: String
+        public let keyboardStatusText: String
+        public let ignoredDeviceCount: Int
+
+        public init(
+            allDetectedKeyboards: [HIDKeyboardDevice],
+            connectedKeyboards: [HIDKeyboardDevice],
+            selectedKeyboardID: String,
+            keyboardStatusText: String,
+            ignoredDeviceCount: Int
+        ) {
+            self.allDetectedKeyboards = allDetectedKeyboards
+            self.connectedKeyboards = connectedKeyboards
+            self.selectedKeyboardID = selectedKeyboardID
+            self.keyboardStatusText = keyboardStatusText
+            self.ignoredDeviceCount = ignoredDeviceCount
+        }
+    }
+
     private nonisolated let appDependencies: AppDependencies
     private var userDefaultsRepository: UserDefaultsRepository
     private var didConsumeInitialSettingsOpenRequest: Bool
@@ -123,6 +145,42 @@ public final class RootStore: Composable {
 
     public nonisolated func listKeyboards() -> [HIDKeyboardDevice] {
         appDependencies.hidKeyboardClient.listKeyboards()
+    }
+
+    public func refreshKeyboardSnapshot(currentSelectedID: String) -> KeyboardRefreshResult {
+        let allDetectedKeyboards = listKeyboards()
+        let connectedKeyboards = visibleKeyboards(from: allDetectedKeyboards)
+        let ignoredDeviceCount = ignoredDeviceIDs.count
+        guard !connectedKeyboards.isEmpty else {
+            return KeyboardRefreshResult(
+                allDetectedKeyboards: allDetectedKeyboards,
+                connectedKeyboards: connectedKeyboards,
+                selectedKeyboardID: "",
+                keyboardStatusText: keyboardStatusText(
+                    allDetectedKeyboards: allDetectedKeyboards,
+                    connectedKeyboards: connectedKeyboards,
+                    selectedKeyboard: nil
+                ),
+                ignoredDeviceCount: ignoredDeviceCount
+            )
+        }
+
+        let selectedKeyboardID = resolveSelectedKeyboardID(
+            current: currentSelectedID,
+            connectedKeyboards: connectedKeyboards
+        )
+        let selectedKeyboard = connectedKeyboards.first { $0.id == selectedKeyboardID }
+        return KeyboardRefreshResult(
+            allDetectedKeyboards: allDetectedKeyboards,
+            connectedKeyboards: connectedKeyboards,
+            selectedKeyboardID: selectedKeyboardID,
+            keyboardStatusText: keyboardStatusText(
+                allDetectedKeyboards: allDetectedKeyboards,
+                connectedKeyboards: connectedKeyboards,
+                selectedKeyboard: selectedKeyboard
+            ),
+            ignoredDeviceCount: ignoredDeviceCount
+        )
     }
 
     public func resolveSelectedKeyboardID(

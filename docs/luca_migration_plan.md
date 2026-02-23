@@ -94,6 +94,7 @@
 - 状態: アクティブレイヤ追従ポーリング制御を `Model/Services/ActiveLayerPollingService` へ移し、`AppModel` のループ責務を縮小
 - 状態: 診断ログの文字列更新責務を `Model/Services/DiagnosticsLogBufferService` へ移し、`AppModel` の表示整形ロジックを縮小
 - 状態: レイヤ選択のクランプ/変更判定を `Model/Services/LayerSelectionService` へ移し、`AppModel` の制御分岐を縮小
+- 状態: キーボード再読込時の選択補正/状態文言生成を `RootStore.refreshKeyboardSnapshot` へ集約
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

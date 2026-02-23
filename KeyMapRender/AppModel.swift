@@ -200,28 +200,15 @@ final class AppModel: ObservableObject {
     }
 
     func refreshKeyboards() {
-        allDetectedKeyboards = rootStore.listKeyboards()
-        connectedKeyboards = rootStore.visibleKeyboards(from: allDetectedKeyboards)
-        ignoredDeviceCount = rootStore.currentIgnoredDeviceIDs().count
-        if connectedKeyboards.isEmpty {
-            selectedKeyboardID = ""
-            keyboardStatusText = rootStore.keyboardStatusText(
-                allDetectedKeyboards: allDetectedKeyboards,
-                connectedKeyboards: connectedKeyboards,
-                selectedKeyboard: nil
-            )
-            return
-        }
-
-        selectedKeyboardID = rootStore.resolveSelectedKeyboardID(
-            current: selectedKeyboardID,
-            connectedKeyboards: connectedKeyboards
+        let snapshot = rootStore.refreshKeyboardSnapshot(
+            currentSelectedID: selectedKeyboardID
         )
-        keyboardStatusText = rootStore.keyboardStatusText(
-            allDetectedKeyboards: allDetectedKeyboards,
-            connectedKeyboards: connectedKeyboards,
-            selectedKeyboard: selectedKeyboard
-        )
+        allDetectedKeyboards = snapshot.allDetectedKeyboards
+        connectedKeyboards = snapshot.connectedKeyboards
+        selectedKeyboardID = snapshot.selectedKeyboardID
+        keyboardStatusText = snapshot.keyboardStatusText
+        ignoredDeviceCount = snapshot.ignoredDeviceCount
+        if connectedKeyboards.isEmpty { return }
         autoLoadKeymapIfPossibleOnStartup()
     }
 

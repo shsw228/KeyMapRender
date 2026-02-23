@@ -125,6 +125,38 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func refreshKeyboardSnapshot_selectsFirstVisibleKeyboardWhenCurrentMissing() async {
+        let sut = RootStore(.testDependencies(
+            hidKeyboardClient: testDependency(of: HIDKeyboardClient.self) {
+                $0.listKeyboards = { [device2, device] }
+            }
+        ))
+
+        let snapshot = sut.refreshKeyboardSnapshot(currentSelectedID: "missing")
+
+        #expect(snapshot.connectedKeyboards.map(\.id) == [device2.id, device.id])
+        #expect(snapshot.selectedKeyboardID == device2.id)
+        #expect(snapshot.keyboardStatusText.contains("検出:"))
+    }
+
+    @MainActor @Test
+    func refreshKeyboardSnapshot_returnsEmptySelectionWhenNoVisibleKeyboard() async {
+        let sut = RootStore(.testDependencies(
+            hidKeyboardClient: testDependency(of: HIDKeyboardClient.self) {
+                $0.listKeyboards = { [device] }
+            }
+        ))
+        sut.addIgnoredDeviceID(device.id)
+
+        let snapshot = sut.refreshKeyboardSnapshot(currentSelectedID: device.id)
+
+        #expect(snapshot.connectedKeyboards.isEmpty)
+        #expect(snapshot.selectedKeyboardID.isEmpty)
+        #expect(snapshot.keyboardStatusText.contains("表示対象なし"))
+        #expect(snapshot.ignoredDeviceCount == 1)
+    }
+
+    @MainActor @Test
     func launchAtLogin_wrappersDelegateToDependencyClient() async {
         let sut = RootStore(.testDependencies(
             launchAtLoginClient: testDependency(of: LaunchAtLoginClient.self) {
