@@ -523,7 +523,7 @@ enum KeycodeLabelFormatter {
         let layer = Int((keycode >> 8) & 0x0F)
         let tap = UInt16(keycode & 0x00FF)
         let tapLabel = basicLabel(for: tap) ?? String(format: "%02X", tap)
-        return "短: \(tapLabel)\n長: L\(layer)"
+        return "LT\(layer)(\(tapLabel))\n短: \(tapLabel)"
     }
 
     private static func modsLabel(_ mods: Int) -> String {
