@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import struct
 import sys
 import time
@@ -204,6 +205,11 @@ def parse_args() -> argparse.Namespace:
 
 
 if __name__ == "__main__":
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    deps_dir = os.path.join(base_dir, "python_deps")
+    if os.path.isdir(deps_dir) and deps_dir not in sys.path:
+        sys.path.insert(0, deps_dir)
+
     try:
         import hid  # type: ignore
     except Exception as exc:
