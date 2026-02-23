@@ -12,48 +12,39 @@ struct ContentView: View {
     @State private var selection: Pane = .general
 
     var body: some View {
-        VStack(spacing: 0) {
-            settingsTabBar
-            Divider()
-            detailView
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-
-    private var settingsTabBar: some View {
-        HStack(spacing: 0) {
-            ForEach(Pane.allCases) { pane in
-                Button {
-                    selection = pane
-                } label: {
-                    VStack(spacing: 6) {
-                        Image(systemName: pane.icon)
-                            .font(.system(size: 16, weight: .semibold))
-                        Text(pane.title)
-                            .font(.caption)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .contentShape(Rectangle())
+        TabView(selection: $selection) {
+            paneView(.general)
+                .tabItem {
+                    Label(Pane.general.title, systemImage: Pane.general.icon)
                 }
-                .buttonStyle(.plain)
-                .background(selection == pane ? Color.accentColor.opacity(0.14) : Color.clear)
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(selection == pane ? Color.accentColor : Color.clear)
-                        .frame(height: 2)
+                .tag(Pane.general)
+            paneView(.vial)
+                .tabItem {
+                    Label(Pane.vial.title, systemImage: Pane.vial.icon)
                 }
-            }
+                .tag(Pane.vial)
+            paneView(.status)
+                .tabItem {
+                    Label(Pane.status.title, systemImage: Pane.status.icon)
+                }
+                .tag(Pane.status)
+            paneView(.diagnostics)
+                .tabItem {
+                    Label(Pane.diagnostics.title, systemImage: Pane.diagnostics.icon)
+                }
+                .tag(Pane.diagnostics)
+            paneView(.help)
+                .tabItem {
+                    Label(Pane.help.title, systemImage: Pane.help.icon)
+                }
+                .tag(Pane.help)
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
-        .background(Color(NSColor.windowBackgroundColor))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
-    private var detailView: some View {
-        switch selection {
+    private func paneView(_ pane: Pane) -> some View {
+        switch pane {
         case .general:
             Form {
                 Section("一般設定") {
