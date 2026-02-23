@@ -78,6 +78,9 @@
 - 状態: レイヤ追従判定ロジックを `Model/Services/ActiveLayerTrackingService` へ分離し、`AppModel` から純ロジックを削減
 - 状態: `AppModel` の Vial 操作実行を `Task + RootStore` の非同期API呼び出しへ置換し、`DispatchQueue` 直書きを縮小
 - 状態: キーマップ表示整形（プレビュー文字列・レイアウト選択肢生成）を `Model/Services/VialPresentationService` へ分離
+- 状態: 診断ログ判定/キー診断文生成を `Model/Services/VialDiagnosticsService` へ分離
+- 状態: `vial.json` 構造検証を `Model/Services/VialDefinitionValidationService` へ分離
+- 状態: 上記 Service の回帰防止として `ModelTests` に単体テストを追加
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

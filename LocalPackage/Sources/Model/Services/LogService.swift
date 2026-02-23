@@ -5,10 +5,12 @@ import Logging
 struct LogService {
     private let appStateClient: AppStateClient
     private let loggingSystemClient: LoggingSystemClient
+    private let loggerLabel: String
 
     init(_ appDependencies: AppDependencies) {
         self.appStateClient = appDependencies.appStateClient
         self.loggingSystemClient = appDependencies.loggingSystemClient
+        self.loggerLabel = Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender.Model"
     }
 
     func bootstrap() {
@@ -30,7 +32,7 @@ struct LogService {
         function: String = #function,
         line: UInt = #line
     ) {
-        Logger(label: Bundle.main.bundleIdentifier!).notice(
+        Logger(label: loggerLabel).notice(
             event.message,
             metadata: event.metadata,
             source: source(),
@@ -47,7 +49,7 @@ struct LogService {
         function: String = #function,
         line: UInt = #line
     ) {
-        Logger(label: Bundle.main.bundleIdentifier!).error(
+        Logger(label: loggerLabel).error(
             event.message,
             metadata: event.metadata,
             source: source(),
@@ -64,7 +66,7 @@ struct LogService {
         function: String = #function,
         line: UInt = #line
     ) {
-        Logger(label: Bundle.main.bundleIdentifier!).critical(
+        Logger(label: loggerLabel).critical(
             event.message,
             metadata: event.metadata,
             source: source(),

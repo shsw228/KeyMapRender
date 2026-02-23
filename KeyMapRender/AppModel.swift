@@ -55,6 +55,8 @@ final class AppModel: ObservableObject {
     private let rootStore: RootStore
     private let activeLayerTrackingService = ActiveLayerTrackingService()
     private let vialPresentationService = VialPresentationService()
+    private let vialDiagnosticsService = VialDiagnosticsService()
+    private let vialDefinitionValidationService = VialDefinitionValidationService()
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
         category: "AppModel"
@@ -321,8 +323,22 @@ final class AppModel: ObservableObject {
             )
             appendDiagnostics("オーバーレイ更新: L\(selectedLayerIndex)/\(max(0, availableLayerCount - 1))")
         }
-        logBottomLeftThirdKey(layer: layer)
-        logNumericLabelDiagnostics(layer: layer)
+        let diagnosticKeys = layout.positionedKeys.map {
+            VialDiagnosticsKey(
+                label: $0.label,
+                x: $0.x,
+                y: $0.y,
+                matrixRow: $0.matrixRow,
+                matrixCol: $0.matrixCol,
+                rawKeycode: $0.rawKeycode
+            )
+        }
+        if let message = vialDiagnosticsService.bottomLeftThirdKeyMessage(layer: layer, keys: diagnosticKeys) {
+            appendDiagnostics(message)
+        }
+        for message in vialDiagnosticsService.numericLabelMessages(layer: layer, keys: diagnosticKeys) {
+            appendDiagnostics(message)
+        }
     }
 
     func setSelectedLayerIndex(_ newValue: Int) {
@@ -402,7 +418,7 @@ final class AppModel: ObservableObject {
             switch result {
             case let .success(prettyJSON):
                 do {
-                    try validateVialDefinitionJSON(prettyJSON)
+                    try vialDefinitionValidationService.validate(prettyJSON)
                 } catch {
                     self.keymapStatusText = "vial.json検証失敗: \(error.localizedDescription)"
                     self.appendDiagnostics("vial.json検証失敗: \(error.localizedDescription)")
@@ -539,14 +555,13 @@ final class AppModel: ObservableObject {
     }
 
     private func appendDiagnostics(_ message: String) {
-        let timestamp = ISO8601DateFormatter().string(from: Date())
-        let line = "[\(timestamp)] \(message)"
+        let line = vialDiagnosticsService.timestampedLine(for: message)
         if diagnosticsLogText == "-" {
             diagnosticsLogText = line
         } else {
             diagnosticsLogText = diagnosticsLogText + "\n" + line
         }
-        switch diagnosticLevel(for: message) {
+        switch vialDiagnosticsService.logLevel(for: message) {
         case .debug:
             logger.debug("\(line, privacy: .public)")
         case .info:
@@ -560,35 +575,6 @@ final class AppModel: ObservableObject {
         case .fault:
             logger.fault("\(line, privacy: .public)")
         }
-    }
-
-    private enum DiagnosticLevel {
-        case debug
-        case info
-        case notice
-        case warning
-        case error
-        case fault
-    }
-
-    private func diagnosticLevel(for message: String) -> DiagnosticLevel {
-        let text = message.lowercased()
-        if text.contains("crash") || text.contains("fatal") || message.contains("致命") {
-            return .fault
-        }
-        if message.contains("失敗") || message.contains("応答なし") || text.contains("error") {
-            return .error
-        }
-        if message.contains("不足") || message.contains("無効") || message.contains("キャンセル") {
-            return .warning
-        }
-        if message.contains("開始") || message.contains("更新") {
-            return .notice
-        }
-        if message.contains("成功") || message.contains("完了") {
-            return .info
-        }
-        return .debug
     }
 
     private func persistIgnoredDeviceCount() {
@@ -613,105 +599,6 @@ final class AppModel: ObservableObject {
         vialPresentationService.makeLayoutChoices(from: dump).map {
             VialLayoutChoice(id: $0.id, title: $0.title, options: $0.options, selected: $0.selected)
         }
-    }
-
-    private func logBottomLeftThirdKey(layer: Int) {
-        let keys = layout.positionedKeys
-        guard !keys.isEmpty else { return }
-        guard let bottomY = keys.map(\.y).max() else { return }
-        let epsilon = 0.001
-        let bottomRow = keys
-            .filter { abs($0.y - bottomY) < epsilon }
-            .sorted { $0.x < $1.x }
-        guard bottomRow.count >= 3 else {
-            appendDiagnostics("キー検証 L\(layer): 最下段キー数不足 count=\(bottomRow.count)")
-            return
-        }
-        let target = bottomRow[2]
-        let rc: String
-        if let r = target.matrixRow, let c = target.matrixCol {
-            rc = "\(r),\(c)"
-        } else {
-            rc = "n/a"
-        }
-        let raw: String
-        if let rawCode = target.rawKeycode {
-            raw = String(format: "0x%04X", rawCode)
-        } else {
-            raw = "n/a"
-        }
-        let rendered = target.label.replacingOccurrences(of: "\n", with: " / ")
-        appendDiagnostics("キー検証 L\(layer): 最下段左3 x=\(String(format: "%.2f", target.x)) rc=\(rc) raw=\(raw) label=\(rendered)")
-    }
-
-    private func logNumericLabelDiagnostics(layer: Int) {
-        let numericOnly = layout.positionedKeys.filter { key in
-            let text = key.label.trimmingCharacters(in: .whitespacesAndNewlines)
-            return !text.isEmpty && text.allSatisfy(\.isNumber)
-        }
-        guard !numericOnly.isEmpty else { return }
-        for key in numericOnly {
-            let rc: String
-            if let r = key.matrixRow, let c = key.matrixCol {
-                rc = "\(r),\(c)"
-            } else {
-                rc = "n/a"
-            }
-            let raw: String
-            if let rawCode = key.rawKeycode {
-                raw = String(format: "0x%04X", rawCode)
-            } else {
-                raw = "n/a"
-            }
-            appendDiagnostics("数値ラベル検出 L\(layer): label=\(key.label) rc=\(rc) raw=\(raw) pos=(\(String(format: "%.2f", key.x)),\(String(format: "%.2f", key.y)))")
-        }
-    }
-
-    private func validateVialDefinitionJSON(_ text: String) throws {
-        enum ValidationError: LocalizedError {
-            case notUTF8
-            case invalidJSON
-            case missingRootField(String)
-            case missingNestedField(String)
-            case invalidMatrix
-
-            var errorDescription: String? {
-                switch self {
-                case .notUTF8:
-                    return "UTF-8変換に失敗"
-                case .invalidJSON:
-                    return "JSONとして不正"
-                case let .missingRootField(name):
-                    return "必須フィールド欠落: \(name)"
-                case let .missingNestedField(name):
-                    return "必須フィールド欠落: \(name)"
-                case .invalidMatrix:
-                    return "matrix rows/cols が不正"
-                }
-            }
-        }
-
-        guard let data = text.data(using: .utf8) else { throw ValidationError.notUTF8 }
-        guard
-            let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else {
-            throw ValidationError.invalidJSON
-        }
-
-        guard object["layouts"] != nil else { throw ValidationError.missingRootField("layouts") }
-        guard object["matrix"] != nil else { throw ValidationError.missingRootField("matrix") }
-        guard let layouts = object["layouts"] as? [String: Any] else {
-            throw ValidationError.missingNestedField("layouts.keymap")
-        }
-        guard layouts["keymap"] is [Any] else {
-            throw ValidationError.missingNestedField("layouts.keymap")
-        }
-        guard let matrix = object["matrix"] as? [String: Any] else {
-            throw ValidationError.missingNestedField("matrix.rows/matrix.cols")
-        }
-        let rows = matrix["rows"] as? Int ?? 0
-        let cols = matrix["cols"] as? Int ?? 0
-        guard rows > 0, cols > 0 else { throw ValidationError.invalidMatrix }
     }
 
     private var selectedKeyboard: HIDKeyboardDevice? {

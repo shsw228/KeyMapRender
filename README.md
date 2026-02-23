@@ -26,6 +26,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - `targetKeyCode` / `longPressDuration` / オーバーレイアニメーション / 無視デバイス設定の永続化を `RootStore` + `UserDefaultsRepository` 経由へ移行
 - キーボード表示対象の選別（ignore適用）と選択ID解決・状態文言生成ロジックを `RootStore` へ移設
 - Vial通信呼び出し（probe/readKeymap/inferMatrix/readDefinition/readSwitchMatrixState）を `RootStore` API 経由へ移設
+- 診断ログ分類/キー診断メッセージ生成と `vial.json` 構造検証を `Model/Services` へ移設し、`ModelTests` を追加
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`
