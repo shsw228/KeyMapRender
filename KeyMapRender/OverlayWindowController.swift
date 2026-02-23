@@ -36,7 +36,7 @@ final class OverlayWindowController {
         window.setFrame(startFrame, display: true)
         window.orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.14
+            context.duration = 0.24
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             window.animator().alphaValue = 1
             window.animator().setFrame(targetFrame, display: true)
@@ -54,7 +54,7 @@ final class OverlayWindowController {
             height: window.frame.height
         )
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.12
+            context.duration = 0.18
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
             window.animator().alphaValue = 0
             window.animator().setFrame(endFrame, display: true)
