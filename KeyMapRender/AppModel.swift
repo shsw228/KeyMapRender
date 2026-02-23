@@ -54,6 +54,7 @@ final class AppModel: ObservableObject {
     private var keyboardHotplugMonitor: HIDKeyboardHotplugMonitor?
     private let rootStore: RootStore
     private let activeLayerTrackingService = ActiveLayerTrackingService()
+    private let vialPresentationService = VialPresentationService()
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
         category: "AppModel"
@@ -266,14 +267,14 @@ final class AppModel: ObservableObject {
             guard let self else { return }
             let result = await self.rootStore.readVialKeymapAsync(on: selected, rows: rows, cols: cols)
             guard !self.isShuttingDown else { return }
-            self.isDiagnosticsRunning = false
-            switch result {
-            case let .success(dump):
-                self.latestKeymapDump = dump
-                self.layoutChoices = self.makeLayoutChoices(from: dump)
-                self.availableLayerCount = max(1, dump.layerCount)
-                self.setSelectedLayerIndex(self.selectedLayerIndex)
-                self.startActiveLayerTrackingIfNeeded()
+                    self.isDiagnosticsRunning = false
+                    switch result {
+                    case let .success(dump):
+                        self.latestKeymapDump = dump
+                        self.layoutChoices = self.makeLayoutChoicesFromService(from: dump)
+                        self.availableLayerCount = max(1, dump.layerCount)
+                        self.setSelectedLayerIndex(self.selectedLayerIndex)
+                        self.startActiveLayerTrackingIfNeeded()
                 self.keymapStatusText = "取得成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
                 self.appendDiagnostics("全マップ読出し成功: \(self.keymapStatusText)")
             case let .failure(.message(message)):
@@ -288,7 +289,7 @@ final class AppModel: ObservableObject {
         let layer = max(0, min(selectedLayerIndex, dump.layerCount - 1))
         let overlayName = currentOverlayKeyboardName()
         keymapPreviewText = makePreview(
-            from: dump,
+            dump: dump,
             layer: layer,
             maxRows: min(4, dump.matrixRows),
             maxCols: min(10, dump.matrixCols)
@@ -533,19 +534,8 @@ final class AppModel: ObservableObject {
         await rootStore.readVialSwitchMatrixStateAsync(on: device, rows: matrixRows, cols: matrixCols)
     }
 
-    private func makePreview(from dump: VialKeymapDump, layer: Int, maxRows: Int, maxCols: Int) -> String {
-        guard !dump.keycodes.isEmpty else { return "(empty)" }
-        let safeLayer = max(0, min(layer, dump.keycodes.count - 1))
-        var lines: [String] = []
-        let keyLayer = dump.keycodes[safeLayer]
-        for row in 0..<maxRows {
-            let cols = (0..<maxCols).map { col -> String in
-                let value = keyLayer[row][col]
-                return String(format: "%04X", value)
-            }
-            lines.append("L\(safeLayer) R\(row): " + cols.joined(separator: " "))
-        }
-        return lines.joined(separator: "\n")
+    private func makePreview(dump: VialKeymapDump, layer: Int, maxRows: Int, maxCols: Int) -> String {
+        vialPresentationService.makePreview(from: dump, layer: layer, maxRows: maxRows, maxCols: maxCols)
     }
 
     private func appendDiagnostics(_ message: String) {
@@ -619,68 +609,10 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func makeLayoutChoices(from dump: VialKeymapDump) -> [VialLayoutChoice] {
-        guard
-            let labels = dump.layoutLabels,
-            !labels.isEmpty
-        else {
-            return []
+    private func makeLayoutChoicesFromService(from dump: VialKeymapDump) -> [VialLayoutChoice] {
+        vialPresentationService.makeLayoutChoices(from: dump).map {
+            VialLayoutChoice(id: $0.id, title: $0.title, options: $0.options, selected: $0.selected)
         }
-        let optionBits = dump.layoutOptions.map(UInt.init) ?? 0
-        var choices: [VialLayoutChoice] = []
-        var widths: [Int] = []
-
-        for (labelIndex, item) in labels.enumerated() {
-            if let title = item as? String {
-                choices.append(
-                    VialLayoutChoice(
-                        id: labelIndex,
-                        title: title,
-                        options: ["Off", "On"],
-                        selected: 0
-                    )
-                )
-                widths.append(1)
-                continue
-            }
-            guard let array = item as? [Any], let rawTitle = array.first else {
-                continue
-            }
-            let title = String(describing: rawTitle)
-            let values = array.dropFirst().map { String(describing: $0) }
-            guard !values.isEmpty else { continue }
-            choices.append(
-                VialLayoutChoice(
-                    id: labelIndex,
-                    title: title,
-                    options: values,
-                    selected: 0
-                )
-            )
-            widths.append(bitsNeeded(forChoiceCount: values.count))
-        }
-
-        // Vial/VIA stores layout option bits in reverse order.
-        var cursor = 0
-        for choiceIndex in choices.indices.reversed() {
-            let width = widths[choiceIndex]
-            let mask = (1 << width) - 1
-            let raw = Int((optionBits >> cursor) & UInt(mask))
-            choices[choiceIndex].selected = min(raw, max(0, choices[choiceIndex].options.count - 1))
-            cursor += width
-        }
-        return choices
-    }
-
-    private func bitsNeeded(forChoiceCount count: Int) -> Int {
-        let maxValue = max(1, count - 1)
-        var bits = 0
-        var current = maxValue
-        while current > 0 {
-            bits += 1
-            current >>= 1
-        }
-        return max(bits, 1)
     }
 
     private func logBottomLeftThirdKey(layer: Int) {
@@ -842,7 +774,7 @@ final class AppModel: ObservableObject {
             switch dumpResult {
             case let .success(dump):
                 self.latestKeymapDump = dump
-                self.layoutChoices = self.makeLayoutChoices(from: dump)
+                self.layoutChoices = self.makeLayoutChoicesFromService(from: dump)
                 self.availableLayerCount = max(1, dump.layerCount)
                 self.setSelectedLayerIndex(self.selectedLayerIndex)
                 self.startActiveLayerTrackingIfNeeded()

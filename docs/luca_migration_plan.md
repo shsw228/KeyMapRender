@@ -77,6 +77,7 @@
 - 状態: `HIDKeyboardDevice` を `Sendable` 化し、`RootStore` の通信APIを `nonisolated` で提供して並行実行時の警告を低減
 - 状態: レイヤ追従判定ロジックを `Model/Services/ActiveLayerTrackingService` へ分離し、`AppModel` から純ロジックを削減
 - 状態: `AppModel` の Vial 操作実行を `Task + RootStore` の非同期API呼び出しへ置換し、`DispatchQueue` 直書きを縮小
+- 状態: キーマップ表示整形（プレビュー文字列・レイアウト選択肢生成）を `Model/Services/VialPresentationService` へ分離
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出
