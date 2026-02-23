@@ -1,29 +1,12 @@
-import Foundation
 import DataSource
+import Foundation
+import Model
 
-final class AppDependencies: Sendable {
-    let hidKeyboardClient: HIDKeyboardClient
-    let vialRawHIDClient: VialRawHIDClient
-
-    init(
-        hidKeyboardClient: HIDKeyboardClient = .keyMapRenderLiveValue,
-        vialRawHIDClient: VialRawHIDClient = .keyMapRenderLiveValue
-    ) {
-        self.hidKeyboardClient = hidKeyboardClient
-        self.vialRawHIDClient = vialRawHIDClient
-    }
-
-    static let shared = AppDependencies()
-
-    static func testDependencies(
-        hidKeyboardClient: HIDKeyboardClient = .testValue,
-        vialRawHIDClient: VialRawHIDClient = .testValue
-    ) -> AppDependencies {
-        AppDependencies(
-            hidKeyboardClient: hidKeyboardClient,
-            vialRawHIDClient: vialRawHIDClient
-        )
-    }
+extension AppDependencies {
+    static let keyMapRenderLive = AppDependencies(
+        hidKeyboardClient: .keyMapRenderLiveValue,
+        vialRawHIDClient: .keyMapRenderLiveValue
+    )
 }
 
 extension HIDKeyboardClient {

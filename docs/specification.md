@@ -67,6 +67,7 @@
   - `luca --platform macOS` 生成の `LocalPackage` 雛形（DataSource/Model/UserInterface）を導入
   - `KeyMapRender.xcodeproj` に `LocalPackage(DataSource)` を接続し、段階移行の実行経路を確立
   - HID/Vial 通信の dependency client 契約（`HIDKeyboardClient` / `VialRawHIDClient`）を `DataSource` へ移設
+  - `AppModel` の依存注入先を `Model.AppDependencies` ベースへ切替
 - 未実装
   - 接続キーボードの自動識別とレイアウト自動切替
   - matrix rows/cols の自動推定

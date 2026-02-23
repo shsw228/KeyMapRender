@@ -64,6 +64,7 @@
 - 挙動を変えず `AppModel` 内呼び出し先のみ差し替え
 - 状態: `HIDKeyboardDevice` / `Vial*` 応答型を `DataSource/Entities` へ移設し、アプリ側は `DataSource` の公開型を参照する構成へ更新済み
 - 状態: `HIDKeyboardClient` / `VialRawHIDClient` の依存契約を `DataSource/Dependencies` へ移設し、アプリ側は live 実装の注入のみ保持
+- 状態: アプリ側の依存コンテナ実装を削除し、`Model.AppDependencies` を実行時DIの基準へ切替済み
 
 ### Phase 2: Store分割
 - `AppModel` を `RootStore` へ置換開始

@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import DataSource
+import Model
 import OSLog
 import ServiceManagement
 import SwiftUI
@@ -78,7 +79,7 @@ final class AppModel: ObservableObject {
         return showSettingsOnLaunch
     }
 
-    init(appDependencies: AppDependencies = .shared) {
+    init(appDependencies: AppDependencies = .keyMapRenderLive) {
         let defaults = UserDefaults.standard
         let savedKey = defaults.object(forKey: DefaultsKey.targetKeyCode) as? Int ?? 49
         let savedDuration = defaults.object(forKey: DefaultsKey.longPressDuration) as? Double ?? 0.45

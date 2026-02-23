@@ -5,18 +5,24 @@ public final class AppDependencies: Sendable {
     public let appStateClient: AppStateClient
     public let loggingSystemClient: LoggingSystemClient
     public let userDefaultsClient: UserDefaultsClient
+    public let hidKeyboardClient: HIDKeyboardClient
+    public let vialRawHIDClient: VialRawHIDClient
 
-    nonisolated init(
+    public nonisolated init(
         appStateClient: AppStateClient = .liveValue,
         loggingSystemClient: LoggingSystemClient = .liveValue,
-        userDefaultsClient: UserDefaultsClient = .liveValue
+        userDefaultsClient: UserDefaultsClient = .liveValue,
+        hidKeyboardClient: HIDKeyboardClient = .liveValue,
+        vialRawHIDClient: VialRawHIDClient = .liveValue
     ) {
         self.appStateClient = appStateClient
         self.loggingSystemClient = loggingSystemClient
         self.userDefaultsClient = userDefaultsClient
+        self.hidKeyboardClient = hidKeyboardClient
+        self.vialRawHIDClient = vialRawHIDClient
     }
 
-    static let shared = AppDependencies()
+    public static let shared = AppDependencies()
 }
 
 extension EnvironmentValues {
@@ -27,12 +33,16 @@ extension AppDependencies {
     public static func testDependencies(
         appStateClient: AppStateClient = .testValue,
         loggingSystemClient: LoggingSystemClient = .testValue,
-        userDefaultsClient: UserDefaultsClient = .testValue
+        userDefaultsClient: UserDefaultsClient = .testValue,
+        hidKeyboardClient: HIDKeyboardClient = .testValue,
+        vialRawHIDClient: VialRawHIDClient = .testValue
     ) -> AppDependencies {
         AppDependencies(
             appStateClient: appStateClient,
             loggingSystemClient: loggingSystemClient,
-            userDefaultsClient: userDefaultsClient
+            userDefaultsClient: userDefaultsClient,
+            hidKeyboardClient: hidKeyboardClient,
+            vialRawHIDClient: vialRawHIDClient
         )
     }
 }
