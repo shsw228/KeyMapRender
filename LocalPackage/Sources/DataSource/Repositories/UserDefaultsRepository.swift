@@ -12,6 +12,15 @@ public struct UserDefaultsRepository: Sendable {
         }
     }
 
+    public var showSettingsOnLaunch: Bool {
+        get {
+            userDefaultsClient.optionalBool("showSettingsOnLaunch") ?? true
+        }
+        nonmutating set {
+            userDefaultsClient.setBool(newValue, "showSettingsOnLaunch")
+        }
+    }
+
     public init(_ userDefaultsClient: UserDefaultsClient) {
         self.userDefaultsClient = userDefaultsClient
 

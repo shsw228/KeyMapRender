@@ -22,6 +22,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - `HIDKeyboardDevice` / `VialProbeResult` などの通信エンティティを `LocalPackage/Sources/DataSource/Entities` へ移設
 - `HIDKeyboardClient` / `VialRawHIDClient` の依存契約を `LocalPackage/Sources/DataSource/Dependencies` へ移設
 - アプリ実行時の依存コンテナを `Model.AppDependencies` ベースへ切替（アプリ側は live 実装注入のみ保持）
+- 起動時設定（設定ウィンドウ自動表示）の状態管理を `Model/Stores/RootStore` へ移設開始
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

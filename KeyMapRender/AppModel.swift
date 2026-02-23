@@ -52,9 +52,9 @@ final class AppModel: ObservableObject {
     private var activeLayerTrackingGeneration: UInt64 = 0
     private var matrixPollFailureCount = 0
     private var hasStarted = false
-    private var didConsumeInitialSettingsOpenRequest = false
     private var keyboardHotplugMonitor: HIDKeyboardHotplugMonitor?
     private let appDependencies: AppDependencies
+    private let rootStore: RootStore
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
         category: "AppModel"
@@ -66,17 +66,14 @@ final class AppModel: ObservableObject {
         static let overlayShowAnimationDuration = "overlayShowAnimationDuration"
         static let overlayHideAnimationDuration = "overlayHideAnimationDuration"
         static let ignoredDeviceIDs = "ignoredDeviceIDs"
-        static let showSettingsOnLaunch = "showSettingsOnLaunch"
     }
 
     static func shouldShowSettingsOnLaunchByDefault() -> Bool {
-        UserDefaults.standard.object(forKey: DefaultsKey.showSettingsOnLaunch) as? Bool ?? true
+        UserDefaultsRepository(.liveValue).showSettingsOnLaunch
     }
 
     func shouldOpenSettingsWindowOnLaunch() -> Bool {
-        guard !didConsumeInitialSettingsOpenRequest else { return false }
-        didConsumeInitialSettingsOpenRequest = true
-        return showSettingsOnLaunch
+        rootStore.shouldOpenSettingsWindowOnLaunch()
     }
 
     init(appDependencies: AppDependencies = .keyMapRenderLive) {
@@ -85,7 +82,9 @@ final class AppModel: ObservableObject {
         let savedDuration = defaults.object(forKey: DefaultsKey.longPressDuration) as? Double ?? 0.45
         let savedShowDuration = defaults.object(forKey: DefaultsKey.overlayShowAnimationDuration) as? Double ?? 0.24
         let savedHideDuration = defaults.object(forKey: DefaultsKey.overlayHideAnimationDuration) as? Double ?? 0.18
-        let savedShowSettingsOnLaunch = defaults.object(forKey: DefaultsKey.showSettingsOnLaunch) as? Bool ?? true
+        self.appDependencies = appDependencies
+        self.rootStore = RootStore(appDependencies)
+        let savedShowSettingsOnLaunch = rootStore.showSettingsOnLaunch
         self.targetKeyCodeText = "\(savedKey)"
         self.longPressDuration = savedDuration
         self.overlayShowAnimationDuration = savedShowDuration
@@ -96,7 +95,6 @@ final class AppModel: ObservableObject {
         self.matrixColsText = "17"
         self.ignoredDeviceIDs = Set(defaults.stringArray(forKey: DefaultsKey.ignoredDeviceIDs) ?? [])
         self.ignoredDeviceCount = self.ignoredDeviceIDs.count
-        self.appDependencies = appDependencies
         self.overlayWindowController.updateAnimationDurations(
             show: savedShowDuration,
             hide: savedHideDuration
@@ -166,8 +164,8 @@ final class AppModel: ObservableObject {
     }
 
     func setShowSettingsOnLaunch(_ enabled: Bool) {
+        rootStore.setShowSettingsOnLaunch(enabled)
         showSettingsOnLaunch = enabled
-        UserDefaults.standard.set(enabled, forKey: DefaultsKey.showSettingsOnLaunch)
     }
 
     func applySettings() {
@@ -181,7 +179,7 @@ final class AppModel: ObservableObject {
         UserDefaults.standard.set(longPressDuration, forKey: DefaultsKey.longPressDuration)
         UserDefaults.standard.set(overlayShowAnimationDuration, forKey: DefaultsKey.overlayShowAnimationDuration)
         UserDefaults.standard.set(overlayHideAnimationDuration, forKey: DefaultsKey.overlayHideAnimationDuration)
-        UserDefaults.standard.set(showSettingsOnLaunch, forKey: DefaultsKey.showSettingsOnLaunch)
+        rootStore.setShowSettingsOnLaunch(showSettingsOnLaunch)
         overlayWindowController.updateAnimationDurations(
             show: overlayShowAnimationDuration,
             hide: overlayHideAnimationDuration
