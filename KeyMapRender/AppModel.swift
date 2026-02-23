@@ -50,7 +50,6 @@ final class AppModel: ObservableObject {
     private var activeLayerTrackingGeneration: UInt64 = 0
     private var matrixPollFailureCount = 0
     private var hasStarted = false
-    private var didHandleInitialWindowVisibility = false
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
         category: "AppModel"
@@ -63,6 +62,10 @@ final class AppModel: ObservableObject {
         static let overlayHideAnimationDuration = "overlayHideAnimationDuration"
         static let ignoredDeviceIDs = "ignoredDeviceIDs"
         static let showSettingsOnLaunch = "showSettingsOnLaunch"
+    }
+
+    static func shouldShowSettingsOnLaunchByDefault() -> Bool {
+        UserDefaults.standard.object(forKey: DefaultsKey.showSettingsOnLaunch) as? Bool ?? true
     }
 
     init() {
@@ -710,16 +713,6 @@ final class AppModel: ObservableObject {
     private func persistIgnoredDeviceIDs() {
         UserDefaults.standard.set(Array(ignoredDeviceIDs).sorted(), forKey: DefaultsKey.ignoredDeviceIDs)
         ignoredDeviceCount = ignoredDeviceIDs.count
-    }
-
-    func handleInitialSettingsWindowVisibility() {
-        guard !didHandleInitialWindowVisibility else { return }
-        didHandleInitialWindowVisibility = true
-        guard !showSettingsOnLaunch else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            guard let window = NSApp.windows.first(where: { $0.isVisible }) else { return }
-            window.orderOut(nil)
-        }
     }
 
     private func currentOverlayKeyboardName() -> String {

@@ -31,9 +31,6 @@ struct ContentView: View {
         }
         .tabViewStyle(.grouped)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-            appModel.handleInitialSettingsWindowVisibility()
-        }
     }
 
     @ViewBuilder

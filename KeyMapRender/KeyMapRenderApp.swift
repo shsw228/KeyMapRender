@@ -24,6 +24,9 @@ struct KeyMapRenderApp: App {
                     appModel.shutdown()
                 }
         }
+        .defaultLaunchBehavior(
+            AppModel.shouldShowSettingsOnLaunchByDefault() ? .presented : .suppressed
+        )
         MenuBarExtra("KeyMapRender", systemImage: "keyboard") {
             MenuBarContentView()
                 .environmentObject(appModel)
