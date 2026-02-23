@@ -149,6 +149,24 @@ def dump_keymap(vid: int, pid: int, rows: int, cols: int) -> None:
         fail(f"open_path failed: {exc}", logs)
 
     try:
+        layout_keymap = None
+        try:
+            size_data = hid_send(dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_SIZE))
+            sz = struct.unpack("<I", size_data[0:4])[0]
+            if 0 < sz <= 2_000_000:
+                payload = b""
+                block = 0
+                while len(payload) < sz:
+                    data = hid_send(dev, struct.pack("<BBI", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_DEFINITION, block))
+                    payload += data
+                    block += 1
+                payload = payload[:sz]
+                definition = json.loads(lzma.decompress(payload))
+                layout_keymap = definition.get("layouts", {}).get("keymap")
+        except Exception:
+            # keep dump usable even if definition fetch fails
+            layout_keymap = None
+
         proto_data = hid_send(dev, struct.pack("B", CMD_VIA_GET_PROTOCOL_VERSION))
         layer_data = hid_send(dev, struct.pack("B", CMD_VIA_GET_LAYER_COUNT))
         proto = struct.unpack(">H", proto_data[1:3])[0]
@@ -180,6 +198,7 @@ def dump_keymap(vid: int, pid: int, rows: int, cols: int) -> None:
                     "matrix_rows": rows,
                     "matrix_cols": cols,
                     "keycodes": keycodes,
+                    "layout_keymap": layout_keymap,
                     "path": str(desc.get("path")),
                     "logs": logs,
                 },

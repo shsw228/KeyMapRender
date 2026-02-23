@@ -149,4 +149,73 @@ enum KeyboardLayoutLoader {
 
         return KeyboardLayout(name: "\(name) L\(layer)", rows: matrixRows)
     }
+
+    nonisolated static func makePhysicalLayoutFromVialKeymap(
+        keymapRows: [[Any]],
+        keycodes: [[[UInt16]]],
+        layer: Int,
+        fallbackRows: Int,
+        fallbackCols: Int,
+        name: String
+    ) -> KeyboardLayout {
+        guard !keymapRows.isEmpty else {
+            return makeMatrixLayout(rows: fallbackRows, cols: fallbackCols, keycodes: keycodes, layer: layer, name: name)
+        }
+        guard layer >= 0, layer < keycodes.count else {
+            return makeMatrixLayout(rows: fallbackRows, cols: fallbackCols, keycodes: keycodes, layer: 0, name: name)
+        }
+
+        let rows: [[KeyboardKey]] = keymapRows.map { rowItems in
+            var keys: [KeyboardKey] = []
+            var width = 1.0
+            var height = 1.0
+            var spacerX = 0.0
+
+            for item in rowItems {
+                if let dict = item as? [String: Any] {
+                    if let x = dict["x"] as? Double { spacerX += x }
+                    if let w = dict["w"] as? Double { width = w }
+                    if let h = dict["h"] as? Double { height = h }
+                    continue
+                }
+
+                let raw = String(describing: item)
+                if spacerX > 0 {
+                    keys.append(KeyboardKey(label: "", width: spacerX, height: 1, isSpacer: true))
+                    spacerX = 0
+                }
+
+                let mappedLabel = mapKeyLabel(rawLabel: raw, layer: layer, keycodes: keycodes)
+                keys.append(
+                    KeyboardKey(
+                        label: mappedLabel,
+                        width: width,
+                        height: height,
+                        isSpacer: false
+                    )
+                )
+                width = 1.0
+                height = 1.0
+            }
+            return keys
+        }
+
+        return KeyboardLayout(name: "\(name) L\(layer)", rows: rows)
+    }
+
+    nonisolated private static func mapKeyLabel(
+        rawLabel: String,
+        layer: Int,
+        keycodes: [[[UInt16]]]
+    ) -> String {
+        let firstLine = rawLabel.split(separator: "\n").first.map(String.init) ?? rawLabel
+        let pair = firstLine.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
+        if pair.count == 2, let row = Int(pair[0]), let col = Int(pair[1]) {
+            if row >= 0, col >= 0, row < keycodes[layer].count, col < keycodes[layer][row].count {
+                return String(format: "%04X", keycodes[layer][row][col])
+            }
+            return "----"
+        }
+        return firstLine.isEmpty ? "----" : firstLine
+    }
 }

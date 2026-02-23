@@ -190,13 +190,24 @@ final class AppModel: ObservableObject {
             maxRows: min(4, dump.matrixRows),
             maxCols: min(10, dump.matrixCols)
         )
-        layout = KeyboardLayoutLoader.makeMatrixLayout(
-            rows: dump.matrixRows,
-            cols: dump.matrixCols,
-            keycodes: dump.keycodes,
-            layer: layer,
-            name: "Live \(dump.backend)"
-        )
+        if let keymapRows = dump.layoutKeymapRows {
+            layout = KeyboardLayoutLoader.makePhysicalLayoutFromVialKeymap(
+                keymapRows: keymapRows,
+                keycodes: dump.keycodes,
+                layer: layer,
+                fallbackRows: dump.matrixRows,
+                fallbackCols: dump.matrixCols,
+                name: "Live \(dump.backend)"
+            )
+        } else {
+            layout = KeyboardLayoutLoader.makeMatrixLayout(
+                rows: dump.matrixRows,
+                cols: dump.matrixCols,
+                keycodes: dump.keycodes,
+                layer: layer,
+                name: "Live \(dump.backend)"
+            )
+        }
     }
 
     func autoDetectMatrixOnSelectedKeyboard() {
