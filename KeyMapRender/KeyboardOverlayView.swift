@@ -83,14 +83,15 @@ struct KeyboardOverlayView: View {
     }
 
     private func keyView(label: String) -> some View {
-        RoundedRectangle(cornerRadius: 10)
+        let resolvedLabel = resolveDisplayLabel(label)
+        return RoundedRectangle(cornerRadius: 10)
             .fill(Color.white.opacity(0.12))
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(Color.white.opacity(0.28), lineWidth: 1)
             )
             .overlay(
-                Text(label)
+                Text(resolvedLabel)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.92))
                     .multilineTextAlignment(.center)
@@ -98,5 +99,26 @@ struct KeyboardOverlayView: View {
                     .minimumScaleFactor(0.6)
                     .padding(4)
             )
+    }
+
+    private func resolveDisplayLabel(_ raw: String) -> String {
+        guard let code = parseNumericKeycode(raw) else { return raw }
+        return KeycodeLabelFormatter.label(for: code)
+    }
+
+    private func parseNumericKeycode(_ raw: String) -> UInt16? {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+
+        if text.hasPrefix("0x") || text.hasPrefix("0X") {
+            return UInt16(text.dropFirst(2), radix: 16)
+        }
+
+        let separators = CharacterSet.decimalDigits.inverted
+        let token = text.components(separatedBy: separators).first(where: { !$0.isEmpty }) ?? ""
+        guard let decimal = Int(token), decimal >= 0, decimal <= Int(UInt16.max) else {
+            return nil
+        }
+        return UInt16(decimal)
     }
 }

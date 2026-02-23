@@ -397,7 +397,7 @@ private struct PhysicalKeyCandidate {
     let isDecal: Bool
 }
 
-private enum KeycodeLabelFormatter {
+enum KeycodeLabelFormatter {
     static func label(for keycode: UInt16) -> String {
         if keycode >= 0x0100, keycode <= 0x1FFF {
             return modsTapLabel(for: keycode)
