@@ -117,6 +117,10 @@ struct ContentView: View {
                             appModel.readFullVialKeymapOnSelectedKeyboard()
                         }
                         .disabled(appModel.isDiagnosticsRunning)
+                        Button("vial.json保存") {
+                            appModel.exportVialDefinitionOnSelectedKeyboard()
+                        }
+                        .disabled(appModel.isDiagnosticsRunning)
                     }
                     if appModel.isDiagnosticsRunning {
                         ProgressView("通信中...")

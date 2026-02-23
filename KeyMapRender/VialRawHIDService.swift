@@ -49,6 +49,7 @@ enum VialRawHIDService {
         case probe
         case dump
         case matrix
+        case definition
     }
 
     private final class InputReportCapture {
@@ -134,6 +135,32 @@ enum VialRawHIDService {
             return .failure(.message("python bridge: missing matrix fields"))
         }
         return .success(VialMatrixInfo(rows: rows, cols: cols, backend: "python"))
+    }
+
+    static func readDefinition(device: HIDKeyboardDevice) -> Result<String, VialProbeError> {
+        guard let json = runPythonBridge(mode: .definition, device: device, rows: nil, cols: nil) else {
+            return .failure(.message("python bridge が見つかりません。"))
+        }
+        guard let ok = json["ok"] as? Bool else { return .failure(.message("python bridge: invalid response")) }
+        if !ok {
+            let message = json["error"] as? String ?? "unknown error"
+            return .failure(.message("python bridge: \(message)"))
+        }
+        guard let definition = json["definition"] else {
+            return .failure(.message("python bridge: missing definition"))
+        }
+        guard JSONSerialization.isValidJSONObject(definition) else {
+            return .failure(.message("python bridge: definition is not valid json object"))
+        }
+        do {
+            let data = try JSONSerialization.data(withJSONObject: definition, options: [.prettyPrinted, .sortedKeys])
+            guard let text = String(data: data, encoding: .utf8) else {
+                return .failure(.message("definition の UTF-8 変換に失敗しました。"))
+            }
+            return .success(text + "\n")
+        } catch {
+            return .failure(.message("definition の整形に失敗: \(error.localizedDescription)"))
+        }
     }
 
     private static func probeViaPythonBridge(device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError>? {

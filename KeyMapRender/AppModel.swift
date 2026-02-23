@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct VialLayoutChoice: Identifiable {
     let id: Int
@@ -258,6 +259,52 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func exportVialDefinitionOnSelectedKeyboard() {
+        guard let selected = selectedKeyboard else {
+            keymapStatusText = "キーボードを選択してください。"
+            return
+        }
+        isDiagnosticsRunning = true
+        keymapStatusText = "vial.json取得中..."
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = VialRawHIDService.readDefinition(device: selected)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.isDiagnosticsRunning = false
+                switch result {
+                case let .success(prettyJSON):
+                    let panel = NSSavePanel()
+                    panel.nameFieldStringValue = String(
+                        format: "vial-%04X-%04X.json",
+                        selected.vendorID,
+                        selected.productID
+                    )
+                    panel.allowedContentTypes = [.json]
+                    panel.canCreateDirectories = true
+                    panel.title = "vial.json を保存"
+                    let response = panel.runModal()
+                    guard response == .OK, let url = panel.url else {
+                        self.keymapStatusText = "vial.json保存をキャンセルしました。"
+                        self.appendDiagnostics("vial.json保存キャンセル")
+                        return
+                    }
+                    do {
+                        try prettyJSON.write(to: url, atomically: true, encoding: .utf8)
+                        self.keymapStatusText = "vial.json保存完了: \(url.path)"
+                        self.appendDiagnostics("vial.json保存完了: \(url.path)")
+                    } catch {
+                        self.keymapStatusText = "vial.json保存失敗: \(error.localizedDescription)"
+                        self.appendDiagnostics("vial.json保存失敗: \(error.localizedDescription)")
+                    }
+                case let .failure(.message(message)):
+                    self.keymapStatusText = "vial.json取得失敗: \(message)"
+                    self.appendDiagnostics("vial.json取得失敗: \(message)")
+                }
+            }
+        }
+    }
+
     func copyDiagnosticsLog() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
@@ -330,11 +377,11 @@ final class AppModel: ObservableObject {
         var choices: [VialLayoutChoice] = []
         var widths: [Int] = []
 
-        for item in labels {
+        for (labelIndex, item) in labels.enumerated() {
             if let title = item as? String {
                 choices.append(
                     VialLayoutChoice(
-                        id: choices.count,
+                        id: labelIndex,
                         title: title,
                         options: ["Off", "On"],
                         selected: 0
@@ -351,7 +398,7 @@ final class AppModel: ObservableObject {
             guard !values.isEmpty else { continue }
             choices.append(
                 VialLayoutChoice(
-                    id: choices.count,
+                    id: labelIndex,
                     title: title,
                     options: values,
                     selected: 0

@@ -223,6 +223,52 @@ def dump_keymap(vid: int, pid: int, rows: int, cols: int) -> None:
     finally:
         dev.close()
 
+
+def read_definition(vid: int, pid: int) -> None:
+    try:
+        desc, logs = find_rawhid_device(vid, pid)
+    except Exception as exc:
+        fail(str(exc))
+
+    dev = hid.device()
+    try:
+        dev.open_path(desc["path"])
+    except OSError as exc:
+        fail(f"open_path failed: {exc}", logs)
+
+    try:
+        size_data = hid_send(dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_SIZE))
+        sz = struct.unpack("<I", size_data[0:4])[0]
+        if sz <= 0 or sz > 2_000_000:
+            fail(f"invalid definition size: {sz}", logs, {"path": str(desc.get("path"))})
+
+        payload = b""
+        block = 0
+        while len(payload) < sz:
+            data = hid_send(dev, struct.pack("<BBI", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_DEFINITION, block))
+            payload += data
+            block += 1
+        payload = payload[:sz]
+        definition = json.loads(lzma.decompress(payload))
+
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    "mode": "definition",
+                    "definition": definition,
+                    "path": str(desc.get("path")),
+                    "logs": logs,
+                },
+                ensure_ascii=False,
+            )
+        )
+    except Exception as exc:
+        fail(str(exc), logs, {"path": str(desc.get("path"))})
+    finally:
+        dev.close()
+
+
 def infer_matrix(vid: int, pid: int) -> None:
     try:
         desc, logs = find_rawhid_device(vid, pid)
@@ -292,6 +338,10 @@ def parse_args() -> argparse.Namespace:
     matrix_cmd = sub.add_parser("matrix")
     matrix_cmd.add_argument("--vid", type=lambda s: int(s, 0), required=True)
     matrix_cmd.add_argument("--pid", type=lambda s: int(s, 0), required=True)
+
+    definition_cmd = sub.add_parser("definition")
+    definition_cmd.add_argument("--vid", type=lambda s: int(s, 0), required=True)
+    definition_cmd.add_argument("--pid", type=lambda s: int(s, 0), required=True)
     return parser.parse_args()
 
 
@@ -313,3 +363,5 @@ if __name__ == "__main__":
         dump_keymap(args.vid, args.pid, args.rows, args.cols)
     elif args.mode == "matrix":
         infer_matrix(args.vid, args.pid)
+    elif args.mode == "definition":
+        read_definition(args.vid, args.pid)
