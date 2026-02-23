@@ -15,6 +15,8 @@ struct VialKeymapDump {
     let matrixCols: Int
     let keycodes: [[[UInt16]]]
     let layoutKeymapRows: [[Any]]?
+    let layoutLabels: [Any]?
+    let layoutOptions: UInt32?
     let backend: String
 }
 
@@ -109,6 +111,8 @@ enum VialRawHIDService {
                 matrixCols: matrixCols,
                 keycodes: keycodes,
                 layoutKeymapRows: nil,
+                layoutLabels: nil,
+                layoutOptions: nil,
                 backend: "native"
             )
         }
@@ -180,6 +184,8 @@ enum VialRawHIDService {
             return .failure(.message("python bridge: missing fields"))
         }
         let layoutKeymapRows = json["layout_keymap"] as? [[Any]]
+        let layoutLabels = json["layout_labels"] as? [Any]
+        let layoutOptions = (json["layout_options"] as? NSNumber).map { UInt32(truncating: $0) }
 
         var keycodes: [[[UInt16]]] = []
         keycodes.reserveCapacity(anyKeycodes.count)
@@ -208,6 +214,8 @@ enum VialRawHIDService {
                 matrixCols: matrixCols,
                 keycodes: keycodes,
                 layoutKeymapRows: layoutKeymapRows,
+                layoutLabels: layoutLabels,
+                layoutOptions: layoutOptions,
                 backend: "python"
             )
         )

@@ -23,12 +23,14 @@ READ_TIMEOUT_MS = 500
 BUFFER_FETCH_CHUNK = 28
 
 CMD_VIA_GET_PROTOCOL_VERSION = 0x01
+CMD_VIA_GET_KEYBOARD_VALUE = 0x02
 CMD_VIA_GET_LAYER_COUNT = 0x11
 CMD_VIA_KEYMAP_GET_BUFFER = 0x12
 CMD_VIA_GET_KEYCODE = 0x04
 CMD_VIA_VIAL_PREFIX = 0xFE
 CMD_VIAL_GET_SIZE = 0x01
 CMD_VIAL_GET_DEFINITION = 0x02
+VIA_LAYOUT_OPTIONS = 0x02
 
 
 def fail(message: str, logs: List[str] | None = None, extra: Dict[str, Any] | None = None) -> None:
@@ -150,6 +152,8 @@ def dump_keymap(vid: int, pid: int, rows: int, cols: int) -> None:
 
     try:
         layout_keymap = None
+        layout_labels = None
+        layout_options = None
         try:
             size_data = hid_send(dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_SIZE))
             sz = struct.unpack("<I", size_data[0:4])[0]
@@ -163,9 +167,16 @@ def dump_keymap(vid: int, pid: int, rows: int, cols: int) -> None:
                 payload = payload[:sz]
                 definition = json.loads(lzma.decompress(payload))
                 layout_keymap = definition.get("layouts", {}).get("keymap")
+                layout_labels = definition.get("layouts", {}).get("labels")
+                if layout_labels:
+                    data = hid_send(dev, struct.pack("BB", CMD_VIA_GET_KEYBOARD_VALUE, VIA_LAYOUT_OPTIONS))
+                    if len(data) >= 6:
+                        layout_options = struct.unpack(">I", bytes(data[2:6]))[0]
         except Exception:
             # keep dump usable even if definition fetch fails
             layout_keymap = None
+            layout_labels = None
+            layout_options = None
 
         proto_data = hid_send(dev, struct.pack("B", CMD_VIA_GET_PROTOCOL_VERSION))
         layer_data = hid_send(dev, struct.pack("B", CMD_VIA_GET_LAYER_COUNT))
@@ -199,6 +210,8 @@ def dump_keymap(vid: int, pid: int, rows: int, cols: int) -> None:
                     "matrix_cols": cols,
                     "keycodes": keycodes,
                     "layout_keymap": layout_keymap,
+                    "layout_labels": layout_labels,
+                    "layout_options": layout_options,
                     "path": str(desc.get("path")),
                     "logs": logs,
                 },

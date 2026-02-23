@@ -22,6 +22,7 @@
 - 接続キーボードを列挙し、対象デバイスを選択できる
 - Vial Raw HID 通信テストにより protocol version / layer count / L0R0C0 keycode を取得できる
 - matrix rows/cols 指定で dynamic keymap buffer（0x12）を全量読出しできる
+- Vial `layouts.labels` / `layout_options` を読取り、物理レイアウト分岐（例: split space）を選択反映できる
 
 ## 4. 非機能要件
 - macOS ネイティブアプリ（SwiftUI + AppKit）
@@ -78,3 +79,4 @@
 - 2026-02-23: 修飾キー対応、表示位置仕様、Vial直接読出し方針を追記
 - 2026-02-23: 接続キーボード列挙とVial Raw HID最小通信テスト要件を追記
 - 2026-02-23: dynamic keymap buffer読出し（rows/cols指定）を追記
+- 2026-02-23: レイアウト分岐（split space 等）の選択反映要件を追記

@@ -167,6 +167,7 @@ enum KeyboardLayoutLoader {
         keymapRows: [[Any]],
         keycodes: [[[UInt16]]],
         layer: Int,
+        selectedLayoutOptions: [Int: Int] = [:],
         fallbackRows: Int,
         fallbackCols: Int,
         name: String
@@ -207,31 +208,34 @@ enum KeyboardLayoutLoader {
                 }
 
                 let raw = String(describing: item)
+                let parsed = parseRawLabel(raw)
                 if spacerX > 0 {
                     keys.append(KeyboardKey(label: "", width: spacerX, height: 1, isSpacer: true))
                     spacerX = 0
                 }
-
-                let mappedLabel = mapKeyLabel(rawLabel: raw, layer: layer, keycodes: keycodes)
-                positioned.append(
-                    PositionedKey(
-                        id: "k\(keyIndex)",
-                        label: mappedLabel,
-                        x: cursorX,
-                        y: cursorY,
-                        width: width,
-                        height: height
+                let shouldInclude = isVisibleForLayoutOption(parsed, selectedLayoutOptions: selectedLayoutOptions)
+                let mappedLabel = mapKeyLabel(parsed: parsed, layer: layer, keycodes: keycodes)
+                if shouldInclude {
+                    positioned.append(
+                        PositionedKey(
+                            id: "k\(keyIndex)",
+                            label: mappedLabel,
+                            x: cursorX,
+                            y: cursorY,
+                            width: width,
+                            height: height
+                        )
                     )
-                )
-                keyIndex += 1
-                keys.append(
-                    KeyboardKey(
-                        label: mappedLabel,
-                        width: width,
-                        height: height,
-                        isSpacer: false
+                    keyIndex += 1
+                    keys.append(
+                        KeyboardKey(
+                            label: mappedLabel,
+                            width: width,
+                            height: height,
+                            isSpacer: false
+                        )
                     )
-                )
+                }
                 cursorX += width
                 width = 1.0
                 height = 1.0
@@ -243,19 +247,53 @@ enum KeyboardLayoutLoader {
     }
 
     nonisolated private static func mapKeyLabel(
-        rawLabel: String,
+        parsed: RawLabel,
         layer: Int,
         keycodes: [[[UInt16]]]
     ) -> String {
-        let firstLine = rawLabel.split(separator: "\n").first.map(String.init) ?? rawLabel
-        let pair = firstLine.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
-        if pair.count == 2, let row = Int(pair[0]), let col = Int(pair[1]) {
+        if let row = parsed.row, let col = parsed.col {
             if row >= 0, col >= 0, row < keycodes[layer].count, col < keycodes[layer][row].count {
                 return String(format: "%04X", keycodes[layer][row][col])
             }
             return "----"
         }
-        return firstLine.isEmpty ? "----" : firstLine
+        return parsed.displayLabel.isEmpty ? "----" : parsed.displayLabel
+    }
+
+    nonisolated private static func isVisibleForLayoutOption(
+        _ parsed: RawLabel,
+        selectedLayoutOptions: [Int: Int]
+    ) -> Bool {
+        guard let idx = parsed.layoutIndex, let opt = parsed.layoutOption else { return true }
+        let selected = selectedLayoutOptions[idx] ?? 0
+        return selected == opt
+    }
+
+    nonisolated private static func parseRawLabel(_ raw: String) -> RawLabel {
+        let lines = raw.components(separatedBy: "\n")
+        let first = lines.first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let pair = first.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
+        let row = pair.count == 2 ? Int(pair[0]) : nil
+        let col = pair.count == 2 ? Int(pair[1]) : nil
+
+        var layoutIndex: Int?
+        var layoutOption: Int?
+        if lines.count > 8 {
+            let layoutMeta = lines[8].trimmingCharacters(in: .whitespacesAndNewlines)
+            let parts = layoutMeta.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
+            if parts.count == 2 {
+                layoutIndex = Int(parts[0])
+                layoutOption = Int(parts[1])
+            }
+        }
+
+        return RawLabel(
+            displayLabel: first,
+            row: row,
+            col: col,
+            layoutIndex: layoutIndex,
+            layoutOption: layoutOption
+        )
     }
 
     nonisolated private static func makeLayout(
@@ -289,4 +327,12 @@ enum KeyboardLayoutLoader {
             return nil
         }
     }
+}
+
+private struct RawLabel {
+    let displayLabel: String
+    let row: Int?
+    let col: Int?
+    let layoutIndex: Int?
+    let layoutOption: Int?
 }

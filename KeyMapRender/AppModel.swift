@@ -2,6 +2,13 @@ import AppKit
 import Combine
 import SwiftUI
 
+struct VialLayoutChoice: Identifiable {
+    let id: Int
+    let title: String
+    let options: [String]
+    var selected: Int
+}
+
 @MainActor
 final class AppModel: ObservableObject {
     @Published var targetKeyCodeText: String
@@ -22,6 +29,7 @@ final class AppModel: ObservableObject {
     @Published var ignoredDeviceCount = 0
     @Published var availableLayerCount = 1
     @Published var selectedLayerIndex = 0
+    @Published var layoutChoices: [VialLayoutChoice] = []
 
     private let monitor = GlobalKeyLongPressMonitor()
     private let overlayWindowController = OverlayWindowController()
@@ -168,6 +176,7 @@ final class AppModel: ObservableObject {
                 switch result {
                 case let .success(dump):
                     self.latestKeymapDump = dump
+                    self.layoutChoices = self.makeLayoutChoices(from: dump)
                     self.availableLayerCount = max(1, dump.layerCount)
                     self.selectedLayerIndex = min(self.selectedLayerIndex, self.availableLayerCount - 1)
                     self.keymapStatusText = "取得成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
@@ -195,6 +204,7 @@ final class AppModel: ObservableObject {
                 keymapRows: keymapRows,
                 keycodes: dump.keycodes,
                 layer: layer,
+                selectedLayoutOptions: selectedLayoutOptions(),
                 fallbackRows: dump.matrixRows,
                 fallbackCols: dump.matrixCols,
                 name: "Live \(dump.backend)"
@@ -208,6 +218,14 @@ final class AppModel: ObservableObject {
                 name: "Live \(dump.backend)"
             )
         }
+    }
+
+    func updateLayoutChoice(index: Int, selected: Int) {
+        guard let pos = layoutChoices.firstIndex(where: { $0.id == index }) else { return }
+        let range = 0..<layoutChoices[pos].options.count
+        guard range.contains(selected) else { return }
+        layoutChoices[pos].selected = selected
+        applySelectedLayerToLatestDump()
     }
 
     func autoDetectMatrixOnSelectedKeyboard() {
@@ -290,6 +308,70 @@ final class AppModel: ObservableObject {
     private func persistIgnoredDeviceIDs() {
         UserDefaults.standard.set(Array(ignoredDeviceIDs).sorted(), forKey: DefaultsKey.ignoredDeviceIDs)
         ignoredDeviceCount = ignoredDeviceIDs.count
+    }
+
+    private func selectedLayoutOptions() -> [Int: Int] {
+        layoutChoices.reduce(into: [Int: Int]()) { result, item in
+            result[item.id] = item.selected
+        }
+    }
+
+    private func makeLayoutChoices(from dump: VialKeymapDump) -> [VialLayoutChoice] {
+        guard
+            let labels = dump.layoutLabels,
+            !labels.isEmpty
+        else {
+            return []
+        }
+        let optionBits = dump.layoutOptions.map(UInt.init) ?? 0
+        var choices: [VialLayoutChoice] = []
+        var cursor = 0
+
+        for (index, item) in labels.enumerated() {
+            if let title = item as? String {
+                let selected = Int((optionBits >> cursor) & 1)
+                cursor += 1
+                choices.append(
+                    VialLayoutChoice(
+                        id: index,
+                        title: title,
+                        options: ["Off", "On"],
+                        selected: selected
+                    )
+                )
+                continue
+            }
+            guard let array = item as? [Any], let rawTitle = array.first else {
+                continue
+            }
+            let title = String(describing: rawTitle)
+            let values = array.dropFirst().map { String(describing: $0) }
+            guard !values.isEmpty else { continue }
+            let width = bitsNeeded(forChoiceCount: values.count)
+            let mask = (1 << width) - 1
+            let selected = min(Int((optionBits >> cursor) & UInt(mask)), max(0, values.count - 1))
+            cursor += width
+            choices.append(
+                VialLayoutChoice(
+                    id: index,
+                    title: title,
+                    options: values,
+                    selected: selected
+                )
+            )
+        }
+        return choices
+    }
+
+    private func bitsNeeded(forChoiceCount count: Int) -> Int {
+        let maxValue = max(1, count - 1)
+        var bits = 0
+        var current = maxValue
+        while current > 0 {
+            bits += 1
+            current >>= 1
+        }
+        return max(bits, 1)
     }
 
     private var selectedKeyboard: HIDKeyboardDevice? {

@@ -121,6 +121,21 @@ struct ContentView: View {
                     if appModel.isDiagnosticsRunning {
                         ProgressView("通信中...")
                     }
+
+                    if !appModel.layoutChoices.isEmpty {
+                        ForEach(appModel.layoutChoices) { choice in
+                            Picker(choice.title, selection: Binding(
+                                get: { choice.selected },
+                                set: { appModel.updateLayoutChoice(index: choice.id, selected: $0) }
+                            )) {
+                                ForEach(Array(choice.options.enumerated()), id: \.offset) { idx, title in
+                                    Text(title).tag(idx)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
+                    }
+
                     Text(appModel.keymapStatusText)
                     Text(appModel.keymapPreviewText)
                         .font(.system(.caption, design: .monospaced))
