@@ -1,6 +1,6 @@
 import Foundation
 
-public struct VialProbeResult {
+public struct VialProbeResult: Sendable {
     public let protocolVersion: String
     public let layerCount: Int
     public let keycodeL0R0C0: UInt16
@@ -14,7 +14,7 @@ public struct VialProbeResult {
     }
 }
 
-public struct VialKeymapDump {
+public struct VialKeymapDump: @unchecked Sendable {
     public let protocolVersion: String
     public let layerCount: Int
     public let matrixRows: Int
@@ -48,7 +48,7 @@ public struct VialKeymapDump {
     }
 }
 
-public struct VialMatrixInfo {
+public struct VialMatrixInfo: Sendable {
     public let rows: Int
     public let cols: Int
     public let backend: String
@@ -60,7 +60,7 @@ public struct VialMatrixInfo {
     }
 }
 
-public struct VialSwitchMatrixState {
+public struct VialSwitchMatrixState: Sendable {
     public let rows: Int
     public let cols: Int
     public let pressed: [[Bool]]
@@ -74,6 +74,6 @@ public struct VialSwitchMatrixState {
     }
 }
 
-public enum VialProbeError: Error {
+public enum VialProbeError: Error, Sendable {
     case message(String)
 }
