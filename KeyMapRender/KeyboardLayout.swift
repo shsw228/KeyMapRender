@@ -152,7 +152,7 @@ enum KeyboardLayoutLoader {
                     value = 0
                 }
                 return KeyboardKey(
-                    label: String(format: "%04X", value),
+                    label: KeycodeLabelFormatter.label(for: value),
                     width: 1,
                     height: 1,
                     isSpacer: false
@@ -277,7 +277,7 @@ enum KeyboardLayoutLoader {
     ) -> String {
         if let row = parsed.row, let col = parsed.col {
             if row >= 0, col >= 0, row < keycodes[layer].count, col < keycodes[layer][row].count {
-                return String(format: "%04X", keycodes[layer][row][col])
+                return KeycodeLabelFormatter.label(for: keycodes[layer][row][col])
             }
             return "----"
         }
@@ -378,4 +378,95 @@ private struct PhysicalKeyCandidate {
     let layoutIndex: Int?
     let layoutOption: Int?
     let isDecal: Bool
+}
+
+private enum KeycodeLabelFormatter {
+    static func label(for keycode: UInt16) -> String {
+        if let named = specialNames[keycode] { return named }
+
+        if keycode >= 0x0004, keycode <= 0x001D {
+            let offset = Int(keycode - 0x0004)
+            let scalar = UnicodeScalar(UInt8(ascii: "A") + UInt8(offset))
+            return String(Character(scalar))
+        }
+        if let number = numberNames[keycode] { return number }
+        if let symbol = symbolNames[keycode] { return symbol }
+        if let function = functionNames[keycode] { return function }
+
+        return String(format: "%04X", keycode)
+    }
+
+    private static let specialNames: [UInt16: String] = [
+        0x0000: "NO",
+        0x0001: "TRNS",
+        0x0028: "Enter",
+        0x0029: "Esc",
+        0x002A: "Backspace",
+        0x002B: "Tab",
+        0x002C: "Space",
+        0x0039: "Caps",
+        0x0040: "F7",
+        0x0041: "F8",
+        0x0042: "F9",
+        0x0043: "F10",
+        0x0044: "F11",
+        0x0045: "F12",
+        0x0046: "PrtSc",
+        0x0047: "Scroll",
+        0x0048: "Pause",
+        0x0049: "Insert",
+        0x004A: "Home",
+        0x004B: "PgUp",
+        0x004C: "Delete",
+        0x004D: "End",
+        0x004E: "PgDn",
+        0x004F: "Right",
+        0x0050: "Left",
+        0x0051: "Down",
+        0x0052: "Up",
+        0x00E0: "LCtrl",
+        0x00E1: "LShift",
+        0x00E2: "LAlt",
+        0x00E3: "LCmd",
+        0x00E4: "RCtrl",
+        0x00E5: "RShift",
+        0x00E6: "RAlt",
+        0x00E7: "RCmd"
+    ]
+
+    private static let numberNames: [UInt16: String] = [
+        0x001E: "1",
+        0x001F: "2",
+        0x0020: "3",
+        0x0021: "4",
+        0x0022: "5",
+        0x0023: "6",
+        0x0024: "7",
+        0x0025: "8",
+        0x0026: "9",
+        0x0027: "0"
+    ]
+
+    private static let symbolNames: [UInt16: String] = [
+        0x002D: "-",
+        0x002E: "=",
+        0x002F: "[",
+        0x0030: "]",
+        0x0031: "\\",
+        0x0033: ";",
+        0x0034: "'",
+        0x0035: "`",
+        0x0036: ",",
+        0x0037: ".",
+        0x0038: "/"
+    ]
+
+    private static let functionNames: [UInt16: String] = [
+        0x003A: "F1",
+        0x003B: "F2",
+        0x003C: "F3",
+        0x003D: "F4",
+        0x003E: "F5",
+        0x003F: "F6"
+    ]
 }
