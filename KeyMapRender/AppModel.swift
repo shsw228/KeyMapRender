@@ -18,6 +18,7 @@ final class AppModel: ObservableObject {
     @Published var keymapStatusText = "未実行"
     @Published var keymapPreviewText = "-"
     @Published var diagnosticsLogText = "-"
+    @Published var isDiagnosticsRunning = false
 
     private let monitor = GlobalKeyLongPressMonitor()
     private let overlayWindowController = OverlayWindowController()
@@ -111,14 +112,23 @@ final class AppModel: ObservableObject {
             vialStatusText = "キーボードを選択してください。"
             return
         }
+        isDiagnosticsRunning = true
+        vialStatusText = "Vial通信テスト中..."
 
-        switch VialRawHIDService.probe(device: selected) {
-        case let .success(result):
-            vialStatusText = "Vial応答: protocol=\(result.protocolVersion), layers=\(result.layerCount), L0R0C0=0x\(String(result.keycodeL0R0C0, radix: 16, uppercase: true))"
-            appendDiagnostics("Vial通信テスト成功: \(vialStatusText)")
-        case let .failure(.message(message)):
-            vialStatusText = "Vial応答なし: \(message)"
-            appendDiagnostics("Vial通信テスト失敗: \(message)")
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = VialRawHIDService.probe(device: selected)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.isDiagnosticsRunning = false
+                switch result {
+                case let .success(probe):
+                    self.vialStatusText = "Vial応答: protocol=\(probe.protocolVersion), layers=\(probe.layerCount), L0R0C0=0x\(String(probe.keycodeL0R0C0, radix: 16, uppercase: true))"
+                    self.appendDiagnostics("Vial通信テスト成功: \(self.vialStatusText)")
+                case let .failure(.message(message)):
+                    self.vialStatusText = "Vial応答なし: \(message)"
+                    self.appendDiagnostics("Vial通信テスト失敗: \(message)")
+                }
+            }
         }
     }
 
@@ -131,15 +141,24 @@ final class AppModel: ObservableObject {
             keymapStatusText = "Rows/Cols は 1 以上の整数で入力してください。"
             return
         }
+        isDiagnosticsRunning = true
+        keymapStatusText = "全マップ読出し中..."
 
-        switch VialRawHIDService.readKeymap(device: selected, matrixRows: rows, matrixCols: cols) {
-        case let .success(dump):
-            keymapStatusText = "取得成功: protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
-            keymapPreviewText = makePreview(from: dump, maxRows: min(4, dump.matrixRows), maxCols: min(10, dump.matrixCols))
-            appendDiagnostics("全マップ読出し成功: \(keymapStatusText)")
-        case let .failure(.message(message)):
-            keymapStatusText = "取得失敗: \(message)"
-            appendDiagnostics("全マップ読出し失敗: \(message)")
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = VialRawHIDService.readKeymap(device: selected, matrixRows: rows, matrixCols: cols)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.isDiagnosticsRunning = false
+                switch result {
+                case let .success(dump):
+                    self.keymapStatusText = "取得成功: protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
+                    self.keymapPreviewText = self.makePreview(from: dump, maxRows: min(4, dump.matrixRows), maxCols: min(10, dump.matrixCols))
+                    self.appendDiagnostics("全マップ読出し成功: \(self.keymapStatusText)")
+                case let .failure(.message(message)):
+                    self.keymapStatusText = "取得失敗: \(message)"
+                    self.appendDiagnostics("全マップ読出し失敗: \(message)")
+                }
+            }
         }
     }
 

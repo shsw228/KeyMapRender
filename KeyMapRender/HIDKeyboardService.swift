@@ -81,6 +81,20 @@ enum HIDKeyboardService {
             )
         }
 
+        let canonical = candidates.filter { $0.usagePage == 0xFF60 && $0.usage == 0x61 }
+        if !canonical.isEmpty {
+            return canonical.sorted {
+                score(candidate: $0) > score(candidate: $1)
+            }
+        }
+
+        let vendorDefined = candidates.filter { $0.usagePage >= 0xFF00 }
+        if !vendorDefined.isEmpty {
+            return vendorDefined.sorted {
+                score(candidate: $0) > score(candidate: $1)
+            }
+        }
+
         return candidates.sorted {
             score(candidate: $0) > score(candidate: $1)
         }

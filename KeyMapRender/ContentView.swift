@@ -44,9 +44,11 @@ struct ContentView: View {
                     Button("接続キーボードを再読込") {
                         appModel.refreshKeyboards()
                     }
+                    .disabled(appModel.isDiagnosticsRunning)
                     Button("Vial通信テスト") {
                         appModel.probeVialOnSelectedKeyboard()
                     }
+                    .disabled(appModel.isDiagnosticsRunning)
                 }
 
                 Text(appModel.keyboardStatusText)
@@ -60,6 +62,10 @@ struct ContentView: View {
                     Button("全マップ読出し") {
                         appModel.readFullVialKeymapOnSelectedKeyboard()
                     }
+                    .disabled(appModel.isDiagnosticsRunning)
+                }
+                if appModel.isDiagnosticsRunning {
+                    ProgressView("通信中...")
                 }
                 Text(appModel.keymapStatusText)
                 Text(appModel.keymapPreviewText)

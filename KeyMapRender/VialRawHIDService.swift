@@ -22,6 +22,8 @@ enum VialProbeError: Error {
 enum VialRawHIDService {
     private static let reportLength = 32
     private static let reportIDs: [CFIndex] = [0, 1]
+    // Do not seize the device to avoid interfering with keyboard input in other apps.
+    private static let openOptions: [IOOptionBits] = [IOOptionBits(kIOHIDOptionsTypeNone)]
     private static let reportTypePairs: [(set: IOHIDReportType, get: IOHIDReportType)] = [
         (kIOHIDReportTypeOutput, kIOHIDReportTypeInput),
         (kIOHIDReportTypeFeature, kIOHIDReportTypeFeature)
@@ -96,23 +98,31 @@ enum VialRawHIDService {
 
         var errors: [String] = []
         for candidate in candidates {
-            let openResult = IOHIDDeviceOpen(candidate.device, IOOptionBits(kIOHIDOptionsTypeNone))
-            if openResult != kIOReturnSuccess {
-                errors.append("open失敗 usagePage=0x\(String(candidate.usagePage, radix: 16, uppercase: true)) usage=0x\(String(candidate.usage, radix: 16, uppercase: true)) code=\(openResult)")
-                continue
-            }
-            defer { IOHIDDeviceClose(candidate.device, IOOptionBits(kIOHIDOptionsTypeNone)) }
-
-            do {
-                return .success(try operation(candidate.device))
-            } catch {
-                let msg: String
-                if let typed = error as? VialProbeError, case let .message(text) = typed {
-                    msg = text
-                } else {
-                    msg = error.localizedDescription
+            var opened = false
+            var openErrorCodes: [String] = []
+            for openOption in openOptions {
+                let openResult = IOHIDDeviceOpen(candidate.device, openOption)
+                if openResult != kIOReturnSuccess {
+                    openErrorCodes.append("opt=\(openOption):\(openResult)")
+                    continue
                 }
-                errors.append("probe失敗 usagePage=0x\(String(candidate.usagePage, radix: 16, uppercase: true)) usage=0x\(String(candidate.usage, radix: 16, uppercase: true)) detail=\(msg)")
+                opened = true
+                defer { IOHIDDeviceClose(candidate.device, openOption) }
+
+                do {
+                    return .success(try operation(candidate.device))
+                } catch {
+                    let msg: String
+                    if let typed = error as? VialProbeError, case let .message(text) = typed {
+                        msg = text
+                    } else {
+                        msg = error.localizedDescription
+                    }
+                    errors.append("probe失敗 usagePage=0x\(String(candidate.usagePage, radix: 16, uppercase: true)) usage=0x\(String(candidate.usage, radix: 16, uppercase: true)) openOpt=\(openOption) detail=\(msg)")
+                }
+            }
+            if !opened {
+                errors.append("open失敗 usagePage=0x\(String(candidate.usagePage, radix: 16, uppercase: true)) usage=0x\(String(candidate.usage, radix: 16, uppercase: true)) code=\(openErrorCodes.joined(separator: ","))")
             }
         }
 
@@ -171,7 +181,7 @@ enum VialRawHIDService {
     }
 
     private static func send(command: ViaCommand, payload: [UInt8], to device: IOHIDDevice) throws -> [UInt8] {
-        var lastError = "未実行"
+        var errors: [String] = []
 
         for pair in reportTypePairs {
             for reportID in reportIDs {
@@ -191,7 +201,7 @@ enum VialRawHIDService {
                     )
                 }
                 if setResult != kIOReturnSuccess {
-                    lastError = "HID送信失敗(type=\(pair.set.rawValue), reportID=\(reportID)): \(setResult)"
+                    errors.append("HID送信失敗(type=\(pair.set.rawValue), reportID=\(reportID)): \(setResult)")
                     continue
                 }
 
@@ -207,21 +217,19 @@ enum VialRawHIDService {
                     )
                 }
                 if getResult != kIOReturnSuccess {
-                    lastError = "HID受信失敗(type=\(pair.get.rawValue), reportID=\(reportID)): \(getResult)"
+                    errors.append("HID受信失敗(type=\(pair.get.rawValue), reportID=\(reportID)): \(getResult)")
                     continue
                 }
                 if length <= 0 {
-                    lastError = "HID受信長が0(type=\(pair.get.rawValue), reportID=\(reportID))"
+                    errors.append("HID受信長が0(type=\(pair.get.rawValue), reportID=\(reportID))")
                     continue
                 }
 
                 let response = Array(inbound.prefix(length))
-                let commandMatched =
-                    (response.first == command.rawValue) ||
-                    (response.count > 1 && response[1] == command.rawValue)
+                let commandMatched = response.prefix(4).contains(command.rawValue)
                 if !commandMatched {
-                    let actual = response.first.map { "0x" + String($0, radix: 16, uppercase: true) } ?? "nil"
-                    lastError = "応答コマンド不一致(type=\(pair.get.rawValue), reportID=\(reportID)): expected=0x\(String(command.rawValue, radix: 16, uppercase: true)) actual=\(actual)"
+                    let head = response.prefix(6).map { "0x" + String($0, radix: 16, uppercase: true) }.joined(separator: ",")
+                    errors.append("応答コマンド不一致(type=\(pair.get.rawValue), reportID=\(reportID)): expected=0x\(String(command.rawValue, radix: 16, uppercase: true)) head=[\(head)]")
                     continue
                 }
 
@@ -229,15 +237,12 @@ enum VialRawHIDService {
             }
         }
 
-        throw VialProbeError.message(lastError)
+        throw VialProbeError.message(errors.joined(separator: " | "))
     }
 
     private static func normalizeResponse(_ response: [UInt8], command: ViaCommand) -> [UInt8] {
-        if response.first == command.rawValue {
-            return response
-        }
-        if response.count > 1, response[1] == command.rawValue {
-            return Array(response.dropFirst())
+        if let idx = response.prefix(4).firstIndex(of: command.rawValue), idx > 0 {
+            return Array(response.dropFirst(idx))
         }
         return response
     }
