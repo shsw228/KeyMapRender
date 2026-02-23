@@ -148,4 +148,11 @@ struct RootStoreTests {
             Issue.record("Expected success from setLaunchAtLoginEnabled.")
         }
     }
+
+    @MainActor @Test
+    func shouldOpenSettingsWindowOnLaunch_returnsTrueOnlyFirstTime() async {
+        let sut = RootStore(.testDependencies(), showSettingsOnLaunch: true)
+        #expect(sut.shouldOpenSettingsWindowOnLaunch())
+        #expect(sut.shouldOpenSettingsWindowOnLaunch() == false)
+    }
 }
