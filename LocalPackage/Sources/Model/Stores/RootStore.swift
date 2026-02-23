@@ -28,6 +28,22 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct StartupKeymapLoadResult: Sendable {
+        public let matrixMessage: String
+        public let matrixInfo: VialMatrixInfo?
+        public let dumpResult: Result<VialKeymapDump, VialProbeError>
+
+        public init(
+            matrixMessage: String,
+            matrixInfo: VialMatrixInfo?,
+            dumpResult: Result<VialKeymapDump, VialProbeError>
+        ) {
+            self.matrixMessage = matrixMessage
+            self.matrixInfo = matrixInfo
+            self.dumpResult = dumpResult
+        }
+    }
+
     private nonisolated let appDependencies: AppDependencies
     private var userDefaultsRepository: UserDefaultsRepository
     private var didConsumeInitialSettingsOpenRequest: Bool
@@ -179,6 +195,35 @@ public final class RootStore: Composable {
         return await Task.detached(priority: .userInitiated) {
             client.readSwitchMatrixState(device, rows, cols)
         }.value
+    }
+
+    public nonisolated func loadStartupKeymapAsync(
+        on device: HIDKeyboardDevice,
+        initialRows: Int,
+        initialCols: Int
+    ) async -> StartupKeymapLoadResult {
+        let matrixResult = await inferVialMatrixAsync(on: device)
+        var rows = initialRows
+        var cols = initialCols
+        var matrixMessage = "matrix自動取得未実行"
+        var matrixInfo: VialMatrixInfo?
+
+        switch matrixResult {
+        case let .success(info):
+            rows = info.rows
+            cols = info.cols
+            matrixInfo = info
+            matrixMessage = "matrix自動取得成功(\(info.backend)): \(rows)x\(cols)"
+        case let .failure(.message(message)):
+            matrixMessage = "matrix自動取得失敗: \(message)"
+        }
+
+        let dumpResult = await readVialKeymapAsync(on: device, rows: rows, cols: cols)
+        return StartupKeymapLoadResult(
+            matrixMessage: matrixMessage,
+            matrixInfo: matrixInfo,
+            dumpResult: dumpResult
+        )
     }
 
     public enum Action: Sendable {

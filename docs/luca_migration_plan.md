@@ -81,6 +81,7 @@
 - 状態: 診断ログ判定/キー診断文生成を `Model/Services/VialDiagnosticsService` へ分離
 - 状態: `vial.json` 構造検証を `Model/Services/VialDefinitionValidationService` へ分離
 - 状態: 上記 Service の回帰防止として `ModelTests` に単体テストを追加
+- 状態: 起動時の matrix推定→keymap読込ユースケースを `RootStore.loadStartupKeymapAsync` へ移設
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

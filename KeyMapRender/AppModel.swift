@@ -633,32 +633,20 @@ final class AppModel: ObservableObject {
         let initialCols = Int(matrixColsText) ?? 17
         Task { [weak self] in
             guard let self else { return }
-            let matrixResult = await self.rootStore.inferVialMatrixAsync(on: selected)
-            var rows = initialRows
-            var cols = initialCols
-            var matrixLog = "matrix自動取得未実行"
-
-            if case let .success(info) = matrixResult {
-                rows = info.rows
-                cols = info.cols
-                matrixLog = "matrix自動取得成功(\(info.backend)): \(rows)x\(cols)"
-            } else if case let .failure(.message(message)) = matrixResult {
-                matrixLog = "matrix自動取得失敗: \(message)"
-            }
-
-            let dumpResult = await self.rootStore.readVialKeymapAsync(on: selected, rows: rows, cols: cols)
+            let startupLoad = await self.rootStore.loadStartupKeymapAsync(
+                on: selected,
+                initialRows: initialRows,
+                initialCols: initialCols
+            )
             guard !self.isShuttingDown else { return }
             self.isDiagnosticsRunning = false
-            self.appendDiagnostics("起動時自動読込: \(matrixLog)")
-            switch matrixResult {
-            case let .success(info):
+            self.appendDiagnostics("起動時自動読込: \(startupLoad.matrixMessage)")
+            if let info = startupLoad.matrixInfo {
                 self.matrixRowsText = "\(info.rows)"
                 self.matrixColsText = "\(info.cols)"
-            case .failure:
-                break
             }
 
-            switch dumpResult {
+            switch startupLoad.dumpResult {
             case let .success(dump):
                 self.latestKeymapDump = dump
                 self.layoutChoices = self.makeLayoutChoicesFromService(from: dump)
