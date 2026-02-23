@@ -26,6 +26,9 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationSplitViewStyle(.balanced)
+        .onChange(of: appModel.selectedLayerIndex) { _, _ in
+            appModel.applySelectedLayerToLatestDump()
+        }
     }
 
     @ViewBuilder
@@ -91,6 +94,16 @@ struct ContentView: View {
                 }
 
                 Section("キーマップ読出し") {
+                    HStack {
+                        Text("表示レイヤー")
+                        Stepper(
+                            value: $appModel.selectedLayerIndex,
+                            in: 0...max(0, appModel.availableLayerCount - 1)
+                        ) {
+                            Text("L\(appModel.selectedLayerIndex) / \(max(0, appModel.availableLayerCount - 1))")
+                        }
+                    }
+
                     HStack {
                         TextField("Rows", text: $appModel.matrixRowsText)
                             .textFieldStyle(.roundedBorder)

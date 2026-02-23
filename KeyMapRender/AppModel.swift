@@ -20,11 +20,14 @@ final class AppModel: ObservableObject {
     @Published var diagnosticsLogText = "-"
     @Published var isDiagnosticsRunning = false
     @Published var ignoredDeviceCount = 0
+    @Published var availableLayerCount = 1
+    @Published var selectedLayerIndex = 0
 
     private let monitor = GlobalKeyLongPressMonitor()
     private let overlayWindowController = OverlayWindowController()
     private var allDetectedKeyboards: [HIDKeyboardDevice] = []
     private var ignoredDeviceIDs: Set<String> = []
+    private var latestKeymapDump: VialKeymapDump?
 
     private enum DefaultsKey {
         static let targetKeyCode = "targetKeyCode"
@@ -134,6 +137,8 @@ final class AppModel: ObservableObject {
                 switch result {
                 case let .success(probe):
                     self.vialStatusText = "Vial応答(\(probe.backend)): protocol=\(probe.protocolVersion), layers=\(probe.layerCount), L0R0C0=0x\(String(probe.keycodeL0R0C0, radix: 16, uppercase: true))"
+                    self.availableLayerCount = max(1, probe.layerCount)
+                    self.selectedLayerIndex = min(self.selectedLayerIndex, self.availableLayerCount - 1)
                     self.appendDiagnostics("Vial通信テスト成功: \(self.vialStatusText)")
                 case let .failure(.message(message)):
                     self.vialStatusText = "Vial応答なし: \(message)"
@@ -162,15 +167,11 @@ final class AppModel: ObservableObject {
                 self.isDiagnosticsRunning = false
                 switch result {
                 case let .success(dump):
+                    self.latestKeymapDump = dump
+                    self.availableLayerCount = max(1, dump.layerCount)
+                    self.selectedLayerIndex = min(self.selectedLayerIndex, self.availableLayerCount - 1)
                     self.keymapStatusText = "取得成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
-                    self.keymapPreviewText = self.makePreview(from: dump, maxRows: min(4, dump.matrixRows), maxCols: min(10, dump.matrixCols))
-                    self.layout = KeyboardLayoutLoader.makeMatrixLayout(
-                        rows: dump.matrixRows,
-                        cols: dump.matrixCols,
-                        keycodes: dump.keycodes,
-                        layer: 0,
-                        name: "Live \(dump.backend)"
-                    )
+                    self.applySelectedLayerToLatestDump()
                     self.appendDiagnostics("全マップ読出し成功: \(self.keymapStatusText)")
                 case let .failure(.message(message)):
                     self.keymapStatusText = "取得失敗: \(message)"
@@ -178,6 +179,24 @@ final class AppModel: ObservableObject {
                 }
             }
         }
+    }
+
+    func applySelectedLayerToLatestDump() {
+        guard let dump = latestKeymapDump else { return }
+        let layer = max(0, min(selectedLayerIndex, dump.layerCount - 1))
+        keymapPreviewText = makePreview(
+            from: dump,
+            layer: layer,
+            maxRows: min(4, dump.matrixRows),
+            maxCols: min(10, dump.matrixCols)
+        )
+        layout = KeyboardLayoutLoader.makeMatrixLayout(
+            rows: dump.matrixRows,
+            cols: dump.matrixCols,
+            keycodes: dump.keycodes,
+            layer: layer,
+            name: "Live \(dump.backend)"
+        )
     }
 
     func autoDetectMatrixOnSelectedKeyboard() {
@@ -231,16 +250,17 @@ final class AppModel: ObservableObject {
         refreshKeyboards()
     }
 
-    private func makePreview(from dump: VialKeymapDump, maxRows: Int, maxCols: Int) -> String {
+    private func makePreview(from dump: VialKeymapDump, layer: Int, maxRows: Int, maxCols: Int) -> String {
         guard !dump.keycodes.isEmpty else { return "(empty)" }
+        let safeLayer = max(0, min(layer, dump.keycodes.count - 1))
         var lines: [String] = []
-        let layer0 = dump.keycodes[0]
+        let keyLayer = dump.keycodes[safeLayer]
         for row in 0..<maxRows {
             let cols = (0..<maxCols).map { col -> String in
-                let value = layer0[row][col]
+                let value = keyLayer[row][col]
                 return String(format: "%04X", value)
             }
-            lines.append("L0 R\(row): " + cols.joined(separator: " "))
+            lines.append("L\(safeLayer) R\(row): " + cols.joined(separator: " "))
         }
         return lines.joined(separator: "\n")
     }
