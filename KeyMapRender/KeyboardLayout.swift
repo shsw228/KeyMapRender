@@ -190,6 +190,7 @@ enum KeyboardLayoutLoader {
             var height = 1.0
             var cursorX = 0.0
             var pendingDecal = false
+            var align = 4
 
             for item in rowItems {
                 if let dict = item as? [String: Any] {
@@ -202,11 +203,12 @@ enum KeyboardLayoutLoader {
                     if let w = toDouble(dict["w"]) { width = w }
                     if let h = toDouble(dict["h"]) { height = h }
                     if let d = dict["d"] as? Bool { pendingDecal = d }
+                    if let a = dict["a"] as? Int { align = a }
                     continue
                 }
 
                 let raw = String(describing: item)
-                let parsed = parseRawLabel(raw)
+                let parsed = parseRawLabel(raw, align: align)
                 let mappedLabel = mapKeyLabel(parsed: parsed, layer: layer, keycodes: keycodes)
                 candidates.append(
                     PhysicalKeyCandidate(
@@ -299,14 +301,16 @@ enum KeyboardLayoutLoader {
         return UInt16(decimal)
     }
 
-    nonisolated private static func parseRawLabel(_ raw: String) -> RawLabel {
+    nonisolated private static func parseRawLabel(_ raw: String, align: Int) -> RawLabel {
         let lines = raw.components(separatedBy: "\n")
-        let first = lines.first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let ordered = reorderLabels(lines, align: align)
+        let primary = ordered.indices.contains(0) ? ordered[0] : ""
+        let first = primary?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let pair = first.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
         let row = pair.count == 2 ? Int(pair[0]) : nil
         let col = pair.count == 2 ? Int(pair[1]) : nil
 
-        let tagged = extractLayoutTag(from: lines)
+        let tagged = extractLayoutTag(fromOrdered: ordered)
         let layoutIndex = tagged?.0
         let layoutOption = tagged?.1
 
@@ -319,18 +323,41 @@ enum KeyboardLayoutLoader {
         )
     }
 
-    nonisolated private static func extractLayoutTag(from lines: [String]) -> (Int, Int)? {
-        if lines.count > 8, let parsed = parseIntPair(lines[8]) {
+    nonisolated private static func extractLayoutTag(fromOrdered labels: [String?]) -> (Int, Int)? {
+        if labels.count > 8, let text = labels[8], let parsed = parseIntPair(text) {
             return parsed
         }
-        // Some Vial JSON serializers store layout tag at line 4 instead of line 9.
-        for line in lines.dropFirst().reversed() {
+        // Fallback: scan any remaining labels for "x,y" layout tag.
+        for line in labels.compactMap({ $0 }).reversed() {
             if let parsed = parseIntPair(line) {
                 return parsed
             }
         }
         return nil
     }
+
+    nonisolated private static func reorderLabels(_ labels: [String], align: Int) -> [String?] {
+        let map = labelMap.indices.contains(align) ? labelMap[align] : labelMap[4]
+        var out: [String?] = Array(repeating: nil, count: 12)
+        for (index, value) in labels.enumerated() where index < map.count {
+            let target = map[index]
+            if target >= 0, target < out.count {
+                out[target] = value
+            }
+        }
+        return out
+    }
+
+    private static let labelMap: [[Int]] = [
+        [0, 6, 2, 8, 9, 11, 3, 5, 1, 4, 7, 10],
+        [1, 7, -1, -1, 9, 11, 4, -1, -1, -1, -1, 10],
+        [3, -1, 5, -1, 9, 11, -1, -1, 4, -1, -1, 10],
+        [4, -1, -1, -1, 9, 11, -1, -1, -1, -1, -1, 10],
+        [0, 6, 2, 8, 10, -1, 3, 5, 1, 4, 7, -1],
+        [1, 7, -1, -1, 10, -1, 4, -1, -1, -1, -1, -1],
+        [3, -1, 5, -1, 10, -1, -1, -1, 4, -1, -1, -1],
+        [4, -1, -1, -1, 10, -1, -1, -1, -1, -1, -1, -1]
+    ]
 
     nonisolated private static func parseIntPair(_ value: String) -> (Int, Int)? {
         let parts = value
