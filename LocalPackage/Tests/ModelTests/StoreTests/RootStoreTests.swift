@@ -122,4 +122,30 @@ struct RootStoreTests {
         #expect(message.contains("無視: 1 台"))
         #expect(message.contains("VID:0x1234"))
     }
+
+    @MainActor @Test
+    func launchAtLogin_wrappersDelegateToDependencyClient() async {
+        let sut = RootStore(.testDependencies(
+            launchAtLoginClient: testDependency(of: LaunchAtLoginClient.self) {
+                $0.status = { .success(true) }
+                $0.setEnabled = { enabled in .success(enabled) }
+            }
+        ))
+
+        let status = sut.launchAtLoginStatus()
+        switch status {
+        case let .success(enabled):
+            #expect(enabled)
+        case .failure:
+            Issue.record("Expected success from launchAtLoginStatus.")
+        }
+
+        let update = sut.setLaunchAtLoginEnabled(false)
+        switch update {
+        case let .success(enabled):
+            #expect(enabled == false)
+        case .failure:
+            Issue.record("Expected success from setLaunchAtLoginEnabled.")
+        }
+    }
 }

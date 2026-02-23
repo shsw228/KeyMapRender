@@ -1,11 +1,13 @@
 import DataSource
 import Foundation
 import Model
+import ServiceManagement
 
 extension AppDependencies {
     static let keyMapRenderLive = AppDependencies(
         hidKeyboardClient: .keyMapRenderLiveValue,
-        vialRawHIDClient: .keyMapRenderLiveValue
+        vialRawHIDClient: .keyMapRenderLiveValue,
+        launchAtLoginClient: .keyMapRenderLiveValue
     )
 }
 
@@ -33,6 +35,32 @@ extension VialRawHIDClient {
         },
         readSwitchMatrixState: { device, rows, cols in
             VialRawHIDService.readSwitchMatrixState(device: device, matrixRows: rows, matrixCols: cols)
+        }
+    )
+}
+
+extension LaunchAtLoginClient {
+    static let keyMapRenderLiveValue = Self(
+        status: {
+            guard #available(macOS 13.0, *) else {
+                return .failure(.message("自動起動設定は macOS 13 以降で利用できます。"))
+            }
+            return .success(SMAppService.mainApp.status == .enabled)
+        },
+        setEnabled: { enabled in
+            guard #available(macOS 13.0, *) else {
+                return .failure(.message("自動起動設定は macOS 13 以降で利用できます。"))
+            }
+            do {
+                if enabled {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+                return .success(SMAppService.mainApp.status == .enabled)
+            } catch {
+                return .failure(.message(error.localizedDescription))
+            }
         }
     )
 }

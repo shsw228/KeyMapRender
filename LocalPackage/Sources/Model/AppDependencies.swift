@@ -7,19 +7,22 @@ public final class AppDependencies: Sendable {
     public let userDefaultsClient: UserDefaultsClient
     public let hidKeyboardClient: HIDKeyboardClient
     public let vialRawHIDClient: VialRawHIDClient
+    public let launchAtLoginClient: LaunchAtLoginClient
 
     public nonisolated init(
         appStateClient: AppStateClient = .liveValue,
         loggingSystemClient: LoggingSystemClient = .liveValue,
         userDefaultsClient: UserDefaultsClient = .liveValue,
         hidKeyboardClient: HIDKeyboardClient = .liveValue,
-        vialRawHIDClient: VialRawHIDClient = .liveValue
+        vialRawHIDClient: VialRawHIDClient = .liveValue,
+        launchAtLoginClient: LaunchAtLoginClient = .liveValue
     ) {
         self.appStateClient = appStateClient
         self.loggingSystemClient = loggingSystemClient
         self.userDefaultsClient = userDefaultsClient
         self.hidKeyboardClient = hidKeyboardClient
         self.vialRawHIDClient = vialRawHIDClient
+        self.launchAtLoginClient = launchAtLoginClient
     }
 
     public static let shared = AppDependencies()
@@ -35,14 +38,16 @@ extension AppDependencies {
         loggingSystemClient: LoggingSystemClient = .testValue,
         userDefaultsClient: UserDefaultsClient = .testValue,
         hidKeyboardClient: HIDKeyboardClient = .testValue,
-        vialRawHIDClient: VialRawHIDClient = .testValue
+        vialRawHIDClient: VialRawHIDClient = .testValue,
+        launchAtLoginClient: LaunchAtLoginClient = .testValue
     ) -> AppDependencies {
         AppDependencies(
             appStateClient: appStateClient,
             loggingSystemClient: loggingSystemClient,
             userDefaultsClient: userDefaultsClient,
             hidKeyboardClient: hidKeyboardClient,
-            vialRawHIDClient: vialRawHIDClient
+            vialRawHIDClient: vialRawHIDClient,
+            launchAtLoginClient: launchAtLoginClient
         )
     }
 }

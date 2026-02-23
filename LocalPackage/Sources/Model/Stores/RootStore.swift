@@ -226,6 +226,14 @@ public final class RootStore: Composable {
         )
     }
 
+    public nonisolated func launchAtLoginStatus() -> Result<Bool, LaunchAtLoginError> {
+        appDependencies.launchAtLoginClient.status()
+    }
+
+    public nonisolated func setLaunchAtLoginEnabled(_ enabled: Bool) -> Result<Bool, LaunchAtLoginError> {
+        appDependencies.launchAtLoginClient.setEnabled(enabled)
+    }
+
     public enum Action: Sendable {
         case showSettingsOnLaunchToggleSwitched(Bool)
         case settingsWindowLaunchRequestConsumed

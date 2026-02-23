@@ -3,7 +3,6 @@ import Combine
 import DataSource
 import Model
 import OSLog
-import ServiceManagement
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -112,30 +111,22 @@ final class AppModel: ObservableObject {
     }
 
     func refreshLaunchAtLoginStatus() {
-        guard #available(macOS 13.0, *) else {
+        switch rootStore.launchAtLoginStatus() {
+        case let .success(enabled):
+            launchAtLoginEnabled = enabled
+        case .failure:
             launchAtLoginEnabled = false
-            return
         }
-        launchAtLoginEnabled = (SMAppService.mainApp.status == .enabled)
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
-        guard #available(macOS 13.0, *) else {
-            launchAtLoginEnabled = false
-            appendDiagnostics("自動起動設定は macOS 13 以降で利用できます。")
-            return
-        }
-        do {
-            if enabled {
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
-            }
+        switch rootStore.setLaunchAtLoginEnabled(enabled) {
+        case let .success(updated):
+            launchAtLoginEnabled = updated
+            appendDiagnostics("自動起動設定を更新: \(updated ? "ON" : "OFF")")
+        case let .failure(.message(message)):
             refreshLaunchAtLoginStatus()
-            appendDiagnostics("自動起動設定を更新: \(launchAtLoginEnabled ? "ON" : "OFF")")
-        } catch {
-            refreshLaunchAtLoginStatus()
-            appendDiagnostics("自動起動設定の更新失敗: \(error.localizedDescription)")
+            appendDiagnostics("自動起動設定の更新失敗: \(message)")
         }
     }
 
