@@ -493,6 +493,12 @@ private struct PhysicalKeyCandidate {
 
 enum KeycodeLabelFormatter {
     static func label(for keycode: UInt16) -> String {
+        if keycode >= 0x0100, keycode <= 0x1FFF {
+            return modsKeyLabelV6(for: keycode)
+        }
+        if keycode >= 0x6000, keycode <= 0x7FFF {
+            return modTapLabelV5(for: keycode)
+        }
         if keycode >= 0x2000, keycode <= 0x3FFF {
             return modTapLabel(for: keycode)
         }
@@ -531,6 +537,46 @@ enum KeycodeLabelFormatter {
         let tap = UInt16(keycode & 0x00FF)
         let tapLabel = tapKeyLabel(for: tap) ?? String(format: "0x%02X", tap)
         return "LT\(layer)(\(tapLabel))"
+    }
+
+    // QMK/Vial v5 style mod-tap range (0x60xx-0x7Fxx).
+    // Example: 0x6129 -> LCTL_T(Esc)
+    private static func modTapLabelV5(for keycode: UInt16) -> String {
+        let outer = keycode & 0xFF00
+        let tap = UInt16(keycode & 0x00FF)
+        let tapLabel = tapKeyLabel(for: tap) ?? String(format: "0x%02X", tap)
+        if let hold = v5ModTapHoldNames[outer] {
+            return "\(hold)(\(tapLabel))"
+        }
+        return String(format: "0x%04X", keycode)
+    }
+
+    // QMK/Vial v6 generic QK_MODS range (0x01xx-0x1Fxx): MODS(kc)
+    private static func modsKeyLabelV6(for keycode: UInt16) -> String {
+        let mods = Int((keycode >> 8) & 0x1F)
+        let tap = UInt16(keycode & 0x00FF)
+        let tapLabel = tapKeyLabel(for: tap) ?? String(format: "0x%02X", tap)
+        if let name = singleOrCompositeModName(mods) {
+            return "\(name)(\(tapLabel))"
+        }
+        return String(format: "0x%04X", keycode)
+    }
+
+    private static func singleOrCompositeModName(_ mods: Int) -> String? {
+        if let single = singleModName(mods) {
+            return single.replacingOccurrences(of: "_T", with: "")
+        }
+        let isRight = (mods & 0x10) != 0
+        let base = mods & 0x0F
+        if base == 0x07 { return isRight ? "RCSA" : "MEH" }
+        if base == 0x0F { return isRight ? "RCAGS" : "HYPR" }
+
+        var parts: [String] = []
+        if (base & 0x01) != 0 { parts.append(isRight ? "RCtrl" : "LCtrl") }
+        if (base & 0x02) != 0 { parts.append(isRight ? "RShift" : "LShift") }
+        if (base & 0x04) != 0 { parts.append(isRight ? "RAlt" : "LAlt") }
+        if (base & 0x08) != 0 { parts.append(isRight ? "RGui" : "LGui") }
+        return parts.isEmpty ? nil : parts.joined(separator: "+")
     }
 
     // For LT/MT style composed keycodes, use unshifted key names.
@@ -696,5 +742,35 @@ enum KeycodeLabelFormatter {
         0x003D: "F4",
         0x003E: "F5",
         0x003F: "F6"
+    ]
+
+    // Derived from vial-gui keycodes_v5.py masked entries.
+    private static let v5ModTapHoldNames: [UInt16: String] = [
+        0x6100: "LCTL_T",
+        0x6200: "LSFT_T",
+        0x6400: "LALT_T",
+        0x6800: "LGUI_T",
+        0x6300: "LCS_T",
+        0x6500: "LCA_T",
+        0x6900: "LCG_T",
+        0x6600: "LSA_T",
+        0x6A00: "LSG_T",
+        0x6C00: "LAG_T",
+        0x6D00: "LCAG_T",
+        0x6700: "MEH_T",
+        0x6F00: "ALL_T",
+        0x7100: "RCTL_T",
+        0x7200: "RSFT_T",
+        0x7400: "RALT_T",
+        0x7800: "RGUI_T",
+        0x7300: "RCS_T",
+        0x7500: "RCA_T",
+        0x7900: "RCG_T",
+        0x7600: "RSA_T",
+        0x7A00: "RSG_T",
+        0x7C00: "RAG_T",
+        0x7D00: "RCAG_T",
+        0x7700: "RCSA_T",
+        0x7F00: "RCAGS_T"
     ]
 }
