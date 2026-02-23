@@ -14,18 +14,49 @@ final class OverlayWindowController {
                 totalLayers: totalLayers
             )
         )
-        window.setFrame(targetScreenFrame(), display: true)
+        let targetFrame = targetPanelFrame()
+        if window.frame.size != targetFrame.size {
+            window.setFrame(targetFrame, display: true)
+        }
+        let startFrame = NSRect(
+            x: targetFrame.origin.x,
+            y: targetFrame.origin.y + 24,
+            width: targetFrame.width,
+            height: targetFrame.height
+        )
+        window.alphaValue = 0
+        window.setFrame(startFrame, display: true)
         window.orderFrontRegardless()
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.14
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            window.animator().alphaValue = 1
+            window.animator().setFrame(targetFrame, display: true)
+        }
         self.window = window
     }
 
     func hide() {
-        window?.orderOut(nil)
+        guard let window else { return }
+        let endFrame = NSRect(
+            x: window.frame.origin.x,
+            y: window.frame.origin.y + 24,
+            width: window.frame.width,
+            height: window.frame.height
+        )
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.12
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            window.animator().alphaValue = 0
+            window.animator().setFrame(endFrame, display: true)
+        }, completionHandler: {
+            window.orderOut(nil)
+        })
     }
 
     private func makeWindow() -> NSWindow {
         let window = NSWindow(
-            contentRect: targetScreenFrame(),
+            contentRect: targetPanelFrame(),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -38,14 +69,20 @@ final class OverlayWindowController {
         return window
     }
 
-    private func targetScreenFrame() -> NSRect {
+    private func targetScreen() -> NSScreen? {
         let mouseLocation = NSEvent.mouseLocation
         if let screen = NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) }) {
-            return screen.frame
+            return screen
         }
-        if let main = NSScreen.main {
-            return main.frame
-        }
-        return NSScreen.screens.first?.frame ?? NSRect(x: 0, y: 0, width: 1280, height: 720)
+        return NSScreen.main ?? NSScreen.screens.first
+    }
+
+    private func targetPanelFrame() -> NSRect {
+        let screenFrame = targetScreen()?.frame ?? NSRect(x: 0, y: 0, width: 1280, height: 720)
+        let width = min(max(860, screenFrame.width * 0.72), 1320)
+        let height = min(max(220, screenFrame.height * 0.34), 380)
+        let x = screenFrame.origin.x + (screenFrame.width - width) / 2
+        let y = screenFrame.maxY - height - 18
+        return NSRect(x: x, y: y, width: width, height: height)
     }
 }

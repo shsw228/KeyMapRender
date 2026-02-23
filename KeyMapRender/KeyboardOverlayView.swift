@@ -10,48 +10,43 @@ struct KeyboardOverlayView: View {
     private let spacing: CGFloat = 8
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.45)
-                .ignoresSafeArea()
-
-            VStack(alignment: .leading, spacing: spacing) {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(layout.name)
-                        .font(.headline)
-                        .foregroundStyle(.white.opacity(0.9))
-                    Text("Layer L\(currentLayer) / \(max(0, totalLayers - 1))")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.82))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 3)
-                        .background(
-                            Capsule()
-                                .fill(Color.white.opacity(0.12))
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                        )
-                }
-                .padding(.bottom, 4)
-
-                if layout.positionedKeys.isEmpty {
-                    legacyRowView
-                } else {
-                    positionedView
-                }
+        VStack(alignment: .leading, spacing: spacing) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(layout.name)
+                    .font(.headline)
+                    .foregroundStyle(.white.opacity(0.9))
+                Text("Layer L\(currentLayer) / \(max(0, totalLayers - 1))")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.82))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill(Color.white.opacity(0.12))
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                    )
             }
-            .padding(26)
-            .background(
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.black.opacity(0.42))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 18)
-                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
-            )
-            .padding(24)
+            .padding(.bottom, 4)
+
+            if layout.positionedKeys.isEmpty {
+                legacyRowView
+            } else {
+                positionedView
+            }
         }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.black.opacity(0.68))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.22), lineWidth: 1)
+        )
+        .padding(8)
     }
 
     private var positionedView: some View {
