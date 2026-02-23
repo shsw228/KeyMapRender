@@ -5,9 +5,15 @@ import SwiftUI
 final class OverlayWindowController {
     private var window: NSWindow?
 
-    func show(layout: KeyboardLayout) {
+    func show(layout: KeyboardLayout, currentLayer: Int, totalLayers: Int) {
         let window = window ?? makeWindow()
-        window.contentView = NSHostingView(rootView: KeyboardOverlayView(layout: layout))
+        window.contentView = NSHostingView(
+            rootView: KeyboardOverlayView(
+                layout: layout,
+                currentLayer: currentLayer,
+                totalLayers: totalLayers
+            )
+        )
         window.setFrame(targetScreenFrame(), display: true)
         window.orderFrontRegardless()
         self.window = window

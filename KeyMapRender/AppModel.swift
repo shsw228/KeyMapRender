@@ -103,7 +103,11 @@ final class AppModel: ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
                 self.isOverlayVisible = true
-                self.overlayWindowController.show(layout: self.layout)
+                self.overlayWindowController.show(
+                    layout: self.layout,
+                    currentLayer: self.selectedLayerIndex,
+                    totalLayers: self.availableLayerCount
+                )
             }
         }
         monitor.onLongPressEnd = { [weak self] in
@@ -164,7 +168,7 @@ final class AppModel: ObservableObject {
                 case let .success(probe):
                     self.vialStatusText = "Vial応答(\(probe.backend)): protocol=\(probe.protocolVersion), layers=\(probe.layerCount), L0R0C0=0x\(String(probe.keycodeL0R0C0, radix: 16, uppercase: true))"
                     self.availableLayerCount = max(1, probe.layerCount)
-                    self.selectedLayerIndex = min(self.selectedLayerIndex, self.availableLayerCount - 1)
+                    self.setSelectedLayerIndex(self.selectedLayerIndex)
                     self.appendDiagnostics("Vial通信テスト成功: \(self.vialStatusText)")
                 case let .failure(.message(message)):
                     self.vialStatusText = "Vial応答なし: \(message)"
@@ -197,9 +201,8 @@ final class AppModel: ObservableObject {
                     self.latestKeymapDump = dump
                     self.layoutChoices = self.makeLayoutChoices(from: dump)
                     self.availableLayerCount = max(1, dump.layerCount)
-                    self.selectedLayerIndex = min(self.selectedLayerIndex, self.availableLayerCount - 1)
+                    self.setSelectedLayerIndex(self.selectedLayerIndex)
                     self.keymapStatusText = "取得成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
-                    self.applySelectedLayerToLatestDump()
                     self.appendDiagnostics("全マップ読出し成功: \(self.keymapStatusText)")
                 case let .failure(.message(message)):
                     self.keymapStatusText = "取得失敗: \(message)"
@@ -238,10 +241,20 @@ final class AppModel: ObservableObject {
             )
         }
         if isOverlayVisible {
-            overlayWindowController.show(layout: layout)
+            overlayWindowController.show(
+                layout: layout,
+                currentLayer: selectedLayerIndex,
+                totalLayers: availableLayerCount
+            )
         }
         logBottomLeftThirdKey(layer: layer)
         logNumericLabelDiagnostics(layer: layer)
+    }
+
+    func setSelectedLayerIndex(_ newValue: Int) {
+        let clamped = max(0, min(newValue, max(0, availableLayerCount - 1)))
+        selectedLayerIndex = clamped
+        applySelectedLayerToLatestDump()
     }
 
     func updateLayoutChoice(index: Int, selected: Int) {
@@ -607,9 +620,8 @@ final class AppModel: ObservableObject {
                     self.latestKeymapDump = dump
                     self.layoutChoices = self.makeLayoutChoices(from: dump)
                     self.availableLayerCount = max(1, dump.layerCount)
-                    self.selectedLayerIndex = min(self.selectedLayerIndex, self.availableLayerCount - 1)
+                    self.setSelectedLayerIndex(self.selectedLayerIndex)
                     self.keymapStatusText = "起動時読込成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
-                    self.applySelectedLayerToLatestDump()
                     self.appendDiagnostics("起動時全マップ読出し成功: \(self.keymapStatusText)")
                 case let .failure(.message(message)):
                     self.keymapStatusText = "起動時読込失敗: \(message)"

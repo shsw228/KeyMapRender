@@ -2,6 +2,8 @@ import SwiftUI
 
 struct KeyboardOverlayView: View {
     let layout: KeyboardLayout
+    let currentLayer: Int
+    let totalLayers: Int
 
     private let unitSize: CGFloat = 54
     private let keyGap: CGFloat = 6
@@ -13,10 +15,25 @@ struct KeyboardOverlayView: View {
                 .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: spacing) {
-                Text(layout.name)
-                    .font(.headline)
-                    .foregroundStyle(.white.opacity(0.9))
-                    .padding(.bottom, 4)
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(layout.name)
+                        .font(.headline)
+                        .foregroundStyle(.white.opacity(0.9))
+                    Text("Layer L\(currentLayer) / \(max(0, totalLayers - 1))")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.82))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .fill(Color.white.opacity(0.12))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                        )
+                }
+                .padding(.bottom, 4)
 
                 if layout.positionedKeys.isEmpty {
                     legacyRowView

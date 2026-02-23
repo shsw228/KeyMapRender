@@ -25,9 +25,6 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationSplitViewStyle(.balanced)
-        .onChange(of: appModel.selectedLayerIndex) { _, _ in
-            appModel.applySelectedLayerToLatestDump()
-        }
     }
 
     @ViewBuilder
@@ -96,7 +93,10 @@ struct ContentView: View {
                     HStack {
                         Text("表示レイヤー")
                         Stepper(
-                            value: $appModel.selectedLayerIndex,
+                            value: Binding(
+                                get: { appModel.selectedLayerIndex },
+                                set: { appModel.setSelectedLayerIndex($0) }
+                            ),
                             in: 0...max(0, appModel.availableLayerCount - 1)
                         ) {
                             Text("L\(appModel.selectedLayerIndex) / \(max(0, appModel.availableLayerCount - 1))")
