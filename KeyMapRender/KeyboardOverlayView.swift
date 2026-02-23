@@ -90,13 +90,65 @@ struct KeyboardOverlayView: View {
                     .stroke(Color.white.opacity(0.28), lineWidth: 1)
             )
             .overlay(
-                Text(label)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.92))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.6)
+                keyLabelContent(label: label)
                     .padding(4)
             )
+    }
+
+    @ViewBuilder
+    private func keyLabelContent(label: String) -> some View {
+        if let split = splitTapHoldLabel(label) {
+            VStack(spacing: 2) {
+                Text(split.tap)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.95))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .frame(maxWidth: .infinity)
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.35))
+                    .frame(height: 1)
+
+                Text(split.hold)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.78))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .frame(maxWidth: .infinity)
+            }
+        } else {
+            Text(label)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.92))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.6)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func splitTapHoldLabel(_ label: String) -> (tap: String, hold: String)? {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasSuffix(")") else { return nil }
+
+        if let range = trimmed.range(of: "_T(") {
+            let hold = String(trimmed[..<range.lowerBound])
+            let tapStart = range.upperBound
+            let tapEnd = trimmed.index(before: trimmed.endIndex)
+            let tap = String(trimmed[tapStart..<tapEnd])
+            return (tap: tap, hold: hold)
+        }
+
+        if trimmed.hasPrefix("LT"), let open = trimmed.firstIndex(of: "(") {
+            let hold = String(trimmed[..<open])
+            let tapStart = trimmed.index(after: open)
+            let tapEnd = trimmed.index(before: trimmed.endIndex)
+            let tap = String(trimmed[tapStart..<tapEnd])
+            return (tap: tap, hold: hold)
+        }
+        return nil
     }
 }
