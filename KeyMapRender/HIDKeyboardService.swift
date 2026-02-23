@@ -29,7 +29,8 @@ enum HIDKeyboardService {
             return []
         }
 
-        return set.compactMap(makeDeviceInfo).sorted {
+        let deduped = deduplicate(set.compactMap(makeDeviceInfo))
+        return deduped.sorted {
             if $0.vendorID != $1.vendorID { return $0.vendorID < $1.vendorID }
             if $0.productID != $1.productID { return $0.productID < $1.productID }
             return $0.productName < $1.productName
@@ -95,5 +96,22 @@ enum HIDKeyboardService {
 
     nonisolated private static func stringProperty(_ device: IOHIDDevice, key: CFString) -> String? {
         IOHIDDeviceGetProperty(device, key) as? String
+    }
+
+    nonisolated private static func deduplicate(_ devices: [HIDKeyboardDevice]) -> [HIDKeyboardDevice] {
+        // Same physical keyboard can appear as multiple HID interfaces.
+        var byPhysicalKey: [String: HIDKeyboardDevice] = [:]
+        for device in devices {
+            let key: String
+            if device.locationID != 0 {
+                key = "\(device.vendorID)-\(device.productID)-\(device.locationID)"
+            } else {
+                key = "\(device.vendorID)-\(device.productID)-\(device.manufacturerName)-\(device.productName)"
+            }
+            if byPhysicalKey[key] == nil {
+                byPhysicalKey[key] = device
+            }
+        }
+        return Array(byPhysicalKey.values)
     }
 }
