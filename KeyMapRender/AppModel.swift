@@ -108,6 +108,7 @@ final class AppModel: ObservableObject {
                     currentLayer: self.selectedLayerIndex,
                     totalLayers: self.availableLayerCount
                 )
+                self.appendDiagnostics("オーバーレイ表示: L\(self.selectedLayerIndex)/\(max(0, self.availableLayerCount - 1))")
             }
         }
         monitor.onLongPressEnd = { [weak self] in
@@ -246,6 +247,7 @@ final class AppModel: ObservableObject {
                 currentLayer: selectedLayerIndex,
                 totalLayers: availableLayerCount
             )
+            appendDiagnostics("オーバーレイ更新: L\(selectedLayerIndex)/\(max(0, availableLayerCount - 1))")
         }
         logBottomLeftThirdKey(layer: layer)
         logNumericLabelDiagnostics(layer: layer)
@@ -253,8 +255,19 @@ final class AppModel: ObservableObject {
 
     func setSelectedLayerIndex(_ newValue: Int) {
         let clamped = max(0, min(newValue, max(0, availableLayerCount - 1)))
+        let changed = (selectedLayerIndex != clamped)
         selectedLayerIndex = clamped
         applySelectedLayerToLatestDump()
+        if isOverlayVisible {
+            overlayWindowController.show(
+                layout: layout,
+                currentLayer: selectedLayerIndex,
+                totalLayers: availableLayerCount
+            )
+        }
+        if changed {
+            appendDiagnostics("表示レイヤー変更: L\(selectedLayerIndex)/\(max(0, availableLayerCount - 1))")
+        }
     }
 
     func updateLayoutChoice(index: Int, selected: Int) {
