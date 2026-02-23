@@ -29,7 +29,7 @@ struct ContentView: View {
                 paneView(.help)
             }
         }
-        .tabViewStyle(.automatic)
+        .tabViewStyle(.grouped)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             appModel.handleInitialSettingsWindowVisibility()
