@@ -51,6 +51,7 @@ final class AppModel: ObservableObject {
     private var matrixPollFailureCount = 0
     private var hasStarted = false
     private var didConsumeInitialSettingsOpenRequest = false
+    private var keyboardAutoRefreshTask: Task<Void, Never>?
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
         category: "AppModel"
@@ -113,6 +114,7 @@ final class AppModel: ObservableObject {
             permissionStatusText = "権限不足: Accessibility と Input Monitoring を許可してください。"
         }
         refreshKeyboards()
+        startKeyboardAutoRefresh()
         refreshLaunchAtLoginStatus()
         applySettings()
         autoLoadKeymapIfPossibleOnStartup()
@@ -122,6 +124,8 @@ final class AppModel: ObservableObject {
         guard !isShuttingDown else { return }
         isShuttingDown = true
         stopActiveLayerTracking()
+        keyboardAutoRefreshTask?.cancel()
+        keyboardAutoRefreshTask = nil
         monitor.stop()
         monitor.onLongPressStart = nil
         monitor.onLongPressEnd = nil
@@ -901,6 +905,22 @@ final class AppModel: ObservableObject {
 
     private var selectedKeyboard: HIDKeyboardDevice? {
         connectedKeyboards.first(where: { $0.id == selectedKeyboardID })
+    }
+
+    private func startKeyboardAutoRefresh() {
+        guard keyboardAutoRefreshTask == nil else { return }
+        keyboardAutoRefreshTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard !Task.isCancelled else { return }
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    guard !self.isShuttingDown else { return }
+                    self.refreshKeyboards()
+                }
+            }
+        }
     }
 
     private func autoLoadKeymapIfPossibleOnStartup() {
