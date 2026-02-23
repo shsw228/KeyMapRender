@@ -36,6 +36,7 @@ final class AppModel: ObservableObject {
     @Published var selectedLayerIndex = 0
     @Published var layoutChoices: [VialLayoutChoice] = []
     @Published var launchAtLoginEnabled = false
+    @Published var showSettingsOnLaunch: Bool
 
     private let monitor = GlobalKeyLongPressMonitor()
     private let overlayWindowController = OverlayWindowController()
@@ -49,6 +50,7 @@ final class AppModel: ObservableObject {
     private var activeLayerTrackingGeneration: UInt64 = 0
     private var matrixPollFailureCount = 0
     private var hasStarted = false
+    private var didHandleInitialWindowVisibility = false
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
         category: "AppModel"
@@ -60,6 +62,7 @@ final class AppModel: ObservableObject {
         static let overlayShowAnimationDuration = "overlayShowAnimationDuration"
         static let overlayHideAnimationDuration = "overlayHideAnimationDuration"
         static let ignoredDeviceIDs = "ignoredDeviceIDs"
+        static let showSettingsOnLaunch = "showSettingsOnLaunch"
     }
 
     init() {
@@ -68,10 +71,12 @@ final class AppModel: ObservableObject {
         let savedDuration = defaults.object(forKey: DefaultsKey.longPressDuration) as? Double ?? 0.45
         let savedShowDuration = defaults.object(forKey: DefaultsKey.overlayShowAnimationDuration) as? Double ?? 0.24
         let savedHideDuration = defaults.object(forKey: DefaultsKey.overlayHideAnimationDuration) as? Double ?? 0.18
+        let savedShowSettingsOnLaunch = defaults.object(forKey: DefaultsKey.showSettingsOnLaunch) as? Bool ?? true
         self.targetKeyCodeText = "\(savedKey)"
         self.longPressDuration = savedDuration
         self.overlayShowAnimationDuration = savedShowDuration
         self.overlayHideAnimationDuration = savedHideDuration
+        self.showSettingsOnLaunch = savedShowSettingsOnLaunch
         self.layout = KeyboardLayoutLoader.loadDefaultLayout()
         self.matrixRowsText = "6"
         self.matrixColsText = "17"
@@ -142,6 +147,11 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func setShowSettingsOnLaunch(_ enabled: Bool) {
+        showSettingsOnLaunch = enabled
+        UserDefaults.standard.set(enabled, forKey: DefaultsKey.showSettingsOnLaunch)
+    }
+
     func applySettings() {
         guard !isShuttingDown else { return }
         guard let keyCodeValue = UInt16(targetKeyCodeText), keyCodeValue <= 127 else {
@@ -153,6 +163,7 @@ final class AppModel: ObservableObject {
         UserDefaults.standard.set(longPressDuration, forKey: DefaultsKey.longPressDuration)
         UserDefaults.standard.set(overlayShowAnimationDuration, forKey: DefaultsKey.overlayShowAnimationDuration)
         UserDefaults.standard.set(overlayHideAnimationDuration, forKey: DefaultsKey.overlayHideAnimationDuration)
+        UserDefaults.standard.set(showSettingsOnLaunch, forKey: DefaultsKey.showSettingsOnLaunch)
         overlayWindowController.updateAnimationDurations(
             show: overlayShowAnimationDuration,
             hide: overlayHideAnimationDuration
@@ -699,6 +710,16 @@ final class AppModel: ObservableObject {
     private func persistIgnoredDeviceIDs() {
         UserDefaults.standard.set(Array(ignoredDeviceIDs).sorted(), forKey: DefaultsKey.ignoredDeviceIDs)
         ignoredDeviceCount = ignoredDeviceIDs.count
+    }
+
+    func handleInitialSettingsWindowVisibility() {
+        guard !didHandleInitialWindowVisibility else { return }
+        didHandleInitialWindowVisibility = true
+        guard !showSettingsOnLaunch else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            guard let window = NSApp.windows.first(where: { $0.isVisible }) else { return }
+            window.orderOut(nil)
+        }
     }
 
     private func currentOverlayKeyboardName() -> String {

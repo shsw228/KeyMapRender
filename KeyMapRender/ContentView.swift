@@ -13,33 +13,27 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selection) {
-            paneView(.general)
-                .tabItem {
-                    Label(Pane.general.title, systemImage: Pane.general.icon)
-                }
-                .tag(Pane.general)
-            paneView(.vial)
-                .tabItem {
-                    Label(Pane.vial.title, systemImage: Pane.vial.icon)
-                }
-                .tag(Pane.vial)
-            paneView(.status)
-                .tabItem {
-                    Label(Pane.status.title, systemImage: Pane.status.icon)
-                }
-                .tag(Pane.status)
-            paneView(.diagnostics)
-                .tabItem {
-                    Label(Pane.diagnostics.title, systemImage: Pane.diagnostics.icon)
-                }
-                .tag(Pane.diagnostics)
-            paneView(.help)
-                .tabItem {
-                    Label(Pane.help.title, systemImage: Pane.help.icon)
-                }
-                .tag(Pane.help)
+            Tab(Pane.general.title, systemImage: Pane.general.icon, value: .general) {
+                paneView(.general)
+            }
+            Tab(Pane.vial.title, systemImage: Pane.vial.icon, value: .vial) {
+                paneView(.vial)
+            }
+            Tab(Pane.status.title, systemImage: Pane.status.icon, value: .status) {
+                paneView(.status)
+            }
+            Tab(Pane.diagnostics.title, systemImage: Pane.diagnostics.icon, value: .diagnostics) {
+                paneView(.diagnostics)
+            }
+            Tab(Pane.help.title, systemImage: Pane.help.icon, value: .help) {
+                paneView(.help)
+            }
         }
+        .tabViewStyle(.automatic)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            appModel.handleInitialSettingsWindowVisibility()
+        }
     }
 
     @ViewBuilder
@@ -67,6 +61,14 @@ struct ContentView: View {
                         isOn: Binding(
                             get: { appModel.launchAtLoginEnabled },
                             set: { appModel.setLaunchAtLogin($0) }
+                        )
+                    )
+
+                    Toggle(
+                        "起動時に設定画面を表示",
+                        isOn: Binding(
+                            get: { appModel.showSettingsOnLaunch },
+                            set: { appModel.setShowSettingsOnLaunch($0) }
                         )
                     )
                 }
