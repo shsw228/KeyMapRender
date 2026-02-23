@@ -71,12 +71,21 @@ struct ContentView: View {
                             appModel.refreshKeyboards()
                         }
                         .disabled(appModel.isDiagnosticsRunning)
+                        Button("選択を無視") {
+                            appModel.ignoreSelectedKeyboard()
+                        }
+                        .disabled(appModel.isDiagnosticsRunning || appModel.selectedKeyboardID.isEmpty)
+                        Button("無視解除") {
+                            appModel.clearIgnoredKeyboards()
+                        }
+                        .disabled(appModel.isDiagnosticsRunning || appModel.ignoredDeviceCount == 0)
                         Button("Vial通信テスト") {
                             appModel.probeVialOnSelectedKeyboard()
                         }
                         .disabled(appModel.isDiagnosticsRunning)
                     }
 
+                    Text("無視中デバイス: \(appModel.ignoredDeviceCount) 台")
                     Text(appModel.keyboardStatusText)
                     Text(appModel.vialStatusText)
                 }
@@ -87,6 +96,10 @@ struct ContentView: View {
                             .textFieldStyle(.roundedBorder)
                         TextField("Cols", text: $appModel.matrixColsText)
                             .textFieldStyle(.roundedBorder)
+                        Button("自動取得") {
+                            appModel.autoDetectMatrixOnSelectedKeyboard()
+                        }
+                        .disabled(appModel.isDiagnosticsRunning)
                         Button("全マップ読出し") {
                             appModel.readFullVialKeymapOnSelectedKeyboard()
                         }

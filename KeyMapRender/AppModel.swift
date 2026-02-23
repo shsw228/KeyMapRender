@@ -19,13 +19,17 @@ final class AppModel: ObservableObject {
     @Published var keymapPreviewText = "-"
     @Published var diagnosticsLogText = "-"
     @Published var isDiagnosticsRunning = false
+    @Published var ignoredDeviceCount = 0
 
     private let monitor = GlobalKeyLongPressMonitor()
     private let overlayWindowController = OverlayWindowController()
+    private var allDetectedKeyboards: [HIDKeyboardDevice] = []
+    private var ignoredDeviceIDs: Set<String> = []
 
     private enum DefaultsKey {
         static let targetKeyCode = "targetKeyCode"
         static let longPressDuration = "longPressDuration"
+        static let ignoredDeviceIDs = "ignoredDeviceIDs"
     }
 
     init() {
@@ -37,6 +41,8 @@ final class AppModel: ObservableObject {
         self.layout = KeyboardLayoutLoader.loadDefaultLayout()
         self.matrixRowsText = "6"
         self.matrixColsText = "17"
+        self.ignoredDeviceIDs = Set(defaults.stringArray(forKey: DefaultsKey.ignoredDeviceIDs) ?? [])
+        self.ignoredDeviceCount = self.ignoredDeviceIDs.count
     }
 
     func start() {
@@ -89,10 +95,15 @@ final class AppModel: ObservableObject {
     }
 
     func refreshKeyboards() {
-        connectedKeyboards = HIDKeyboardService.listKeyboards()
+        allDetectedKeyboards = HIDKeyboardService.listKeyboards()
+        connectedKeyboards = allDetectedKeyboards.filter { !ignoredDeviceIDs.contains($0.id) }
         if connectedKeyboards.isEmpty {
             selectedKeyboardID = ""
-            keyboardStatusText = "キーボード未検出"
+            if allDetectedKeyboards.isEmpty {
+                keyboardStatusText = "キーボード未検出"
+            } else {
+                keyboardStatusText = "表示対象なし（\(ignoredDeviceIDs.count) 台を無視中）"
+            }
             return
         }
 
@@ -101,9 +112,9 @@ final class AppModel: ObservableObject {
         }
 
         if let selected = selectedKeyboard {
-            keyboardStatusText = "検出: \(selected.manufacturerName) \(selected.productName) (VID:0x\(String(selected.vendorID, radix: 16, uppercase: true)) PID:0x\(String(selected.productID, radix: 16, uppercase: true)))"
+            keyboardStatusText = "検出: \(selected.manufacturerName) \(selected.productName) (VID:0x\(String(selected.vendorID, radix: 16, uppercase: true)) PID:0x\(String(selected.productID, radix: 16, uppercase: true))) / 無視: \(ignoredDeviceIDs.count) 台"
         } else {
-            keyboardStatusText = "検出: \(connectedKeyboards.count) 台"
+            keyboardStatusText = "検出: \(connectedKeyboards.count) 台 / 無視: \(ignoredDeviceIDs.count) 台"
         }
     }
 
@@ -162,10 +173,55 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func autoDetectMatrixOnSelectedKeyboard() {
+        guard let selected = selectedKeyboard else {
+            keymapStatusText = "キーボードを選択してください。"
+            return
+        }
+        isDiagnosticsRunning = true
+        keymapStatusText = "matrix自動取得中..."
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = VialRawHIDService.inferMatrix(device: selected)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.isDiagnosticsRunning = false
+                switch result {
+                case let .success(info):
+                    self.matrixRowsText = "\(info.rows)"
+                    self.matrixColsText = "\(info.cols)"
+                    self.keymapStatusText = "matrix自動取得成功(\(info.backend)): \(info.rows)x\(info.cols)"
+                    self.appendDiagnostics("matrix自動取得成功: \(info.rows)x\(info.cols)")
+                case let .failure(.message(message)):
+                    self.keymapStatusText = "matrix自動取得失敗: \(message)"
+                    self.appendDiagnostics("matrix自動取得失敗: \(message)")
+                }
+            }
+        }
+    }
+
     func copyDiagnosticsLog() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(diagnosticsLogText, forType: .string)
+    }
+
+    func ignoreSelectedKeyboard() {
+        guard let selected = selectedKeyboard else {
+            keyboardStatusText = "無視対象のキーボードを選択してください。"
+            return
+        }
+        ignoredDeviceIDs.insert(selected.id)
+        persistIgnoredDeviceIDs()
+        appendDiagnostics("デバイス無視追加: \(selected.manufacturerName) \(selected.productName) id=\(selected.id)")
+        refreshKeyboards()
+    }
+
+    func clearIgnoredKeyboards() {
+        ignoredDeviceIDs.removeAll()
+        persistIgnoredDeviceIDs()
+        appendDiagnostics("デバイス無視リストを全解除")
+        refreshKeyboards()
     }
 
     private func makePreview(from dump: VialKeymapDump, maxRows: Int, maxCols: Int) -> String {
@@ -191,6 +247,11 @@ final class AppModel: ObservableObject {
             diagnosticsLogText = diagnosticsLogText + "\n" + line
         }
         NSLog("[KeyMapRender] %@", line)
+    }
+
+    private func persistIgnoredDeviceIDs() {
+        UserDefaults.standard.set(Array(ignoredDeviceIDs).sorted(), forKey: DefaultsKey.ignoredDeviceIDs)
+        ignoredDeviceCount = ignoredDeviceIDs.count
     }
 
     private var selectedKeyboard: HIDKeyboardDevice? {
