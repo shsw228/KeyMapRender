@@ -259,6 +259,7 @@ final class AppModel: ObservableObject {
     func applySelectedLayerToLatestDump() {
         guard let dump = latestKeymapDump else { return }
         let layer = max(0, min(selectedLayerIndex, dump.layerCount - 1))
+        let overlayName = currentOverlayKeyboardName()
         keymapPreviewText = makePreview(
             from: dump,
             layer: layer,
@@ -273,7 +274,7 @@ final class AppModel: ObservableObject {
                 selectedLayoutOptions: selectedLayoutOptions(),
                 fallbackRows: dump.matrixRows,
                 fallbackCols: dump.matrixCols,
-                name: "Keyboard"
+                name: overlayName
             )
         } else {
             layout = KeyboardLayoutLoader.makeMatrixLayout(
@@ -281,7 +282,7 @@ final class AppModel: ObservableObject {
                 cols: dump.matrixCols,
                 keycodes: dump.keycodes,
                 layer: layer,
-                name: "Keyboard"
+                name: overlayName
             )
         }
         if isOverlayVisible {
@@ -633,6 +634,14 @@ final class AppModel: ObservableObject {
     private func persistIgnoredDeviceIDs() {
         UserDefaults.standard.set(Array(ignoredDeviceIDs).sorted(), forKey: DefaultsKey.ignoredDeviceIDs)
         ignoredDeviceCount = ignoredDeviceIDs.count
+    }
+
+    private func currentOverlayKeyboardName() -> String {
+        guard let keyboard = selectedKeyboard else { return "Keyboard" }
+        let manufacturer = keyboard.manufacturerName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let product = keyboard.productName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let joined = "\(manufacturer) \(product)".trimmingCharacters(in: .whitespacesAndNewlines)
+        return joined.isEmpty ? "Keyboard" : joined
     }
 
     private func selectedLayoutOptions() -> [Int: Int] {
