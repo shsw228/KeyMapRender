@@ -53,7 +53,8 @@ def hid_send(dev, msg: bytes, retries: int = RETRIES) -> bytes:
     while retries > 0:
         retries -= 1
         if not first:
-            time.sleep(0.05)
+            # Keep retry interval close to vial-gui behavior.
+            time.sleep(0.5)
         first = False
         try:
             # hidapi expects report-id-prefixed payload
@@ -72,7 +73,7 @@ def hid_send(dev, msg: bytes, retries: int = RETRIES) -> bytes:
     return data
 
 
-def find_rawhid_device(vid: int, pid: int) -> Tuple[Dict[str, Any], List[str]]:
+def find_rawhid_devices(vid: int, pid: int) -> Tuple[List[Dict[str, Any]], List[str]]:
     logs: List[str] = []
     candidates: List[Dict[str, Any]] = []
 
@@ -91,48 +92,64 @@ def find_rawhid_device(vid: int, pid: int) -> Tuple[Dict[str, Any], List[str]]:
 
     # stable-ish pick
     candidates.sort(key=lambda d: str(d.get("path", "")))
-    return candidates[0], logs
+    return candidates, logs
+
+
+def decode_definition_payload(payload: bytes) -> Dict[str, Any]:
+    # Primary format is LZMA-compressed JSON (vial-gui behavior).
+    try:
+        return json.loads(lzma.decompress(payload))
+    except Exception:
+        # Some firmware/build combinations return plain JSON directly.
+        try:
+            return json.loads(payload.decode("utf-8"))
+        except Exception as exc:
+            raise RuntimeError(f"definition decode failed: {exc}") from exc
 
 
 def probe(vid: int, pid: int) -> None:
     try:
-        desc, logs = find_rawhid_device(vid, pid)
+        candidates, logs = find_rawhid_devices(vid, pid)
     except Exception as exc:
         fail(str(exc))
 
-    dev = hid.device()
-    try:
-        dev.open_path(desc["path"])
-    except OSError as exc:
-        fail(f"open_path failed: {exc}", logs)
+    candidate_errors: List[str] = []
+    for desc in candidates:
+        dev = hid.device()
+        try:
+            dev.open_path(desc["path"])
+            proto_data = hid_send(dev, struct.pack("B", CMD_VIA_GET_PROTOCOL_VERSION))
+            layer_data = hid_send(dev, struct.pack("B", CMD_VIA_GET_LAYER_COUNT))
+            key_data = hid_send(dev, struct.pack("BBBB", CMD_VIA_GET_KEYCODE, 0, 0, 0))
 
-    try:
-        proto_data = hid_send(dev, struct.pack("B", CMD_VIA_GET_PROTOCOL_VERSION))
-        layer_data = hid_send(dev, struct.pack("B", CMD_VIA_GET_LAYER_COUNT))
-        key_data = hid_send(dev, struct.pack("BBBB", CMD_VIA_GET_KEYCODE, 0, 0, 0))
+            proto = struct.unpack(">H", proto_data[1:3])[0]
+            layers = int(layer_data[1])
+            keycode = struct.unpack(">H", key_data[4:6])[0]
 
-        proto = struct.unpack(">H", proto_data[1:3])[0]
-        layers = layer_data[1]
-        keycode = struct.unpack(">H", key_data[4:6])[0]
+            # Treat clearly invalid responses as wrong interface.
+            if layers <= 0:
+                raise RuntimeError(f"invalid layer count: {layers}")
 
-        print(
-            json.dumps(
-                {
-                    "ok": True,
-                    "mode": "probe",
-                    "protocol_version": f"0x{proto:04X}",
-                    "layer_count": int(layers),
-                    "keycode_l0_r0_c0": int(keycode),
-                    "path": str(desc.get("path")),
-                    "logs": logs,
-                },
-                ensure_ascii=False,
+            print(
+                json.dumps(
+                    {
+                        "ok": True,
+                        "mode": "probe",
+                        "protocol_version": f"0x{proto:04X}",
+                        "layer_count": layers,
+                        "keycode_l0_r0_c0": int(keycode),
+                        "path": str(desc.get("path")),
+                        "logs": logs,
+                    },
+                    ensure_ascii=False,
+                )
             )
-        )
-    except Exception as exc:
-        fail(str(exc), logs, {"path": str(desc.get("path"))})
-    finally:
-        dev.close()
+            return
+        except Exception as exc:
+            candidate_errors.append(f"path={desc.get('path')} error={exc}")
+        finally:
+            dev.close()
+    fail(" | ".join(candidate_errors) or "failed to probe any rawhid candidate", logs)
 
 
 def dump_keymap(vid: int, pid: int, rows: int, cols: int) -> None:
@@ -140,185 +157,187 @@ def dump_keymap(vid: int, pid: int, rows: int, cols: int) -> None:
         fail("rows/cols must be positive integers")
 
     try:
-        desc, logs = find_rawhid_device(vid, pid)
+        candidates, logs = find_rawhid_devices(vid, pid)
     except Exception as exc:
         fail(str(exc))
 
-    dev = hid.device()
-    try:
-        dev.open_path(desc["path"])
-    except OSError as exc:
-        fail(f"open_path failed: {exc}", logs)
-
-    try:
-        layout_keymap = None
-        layout_labels = None
-        layout_options = None
+    candidate_errors: List[str] = []
+    for desc in candidates:
+        dev = hid.device()
         try:
-            size_data = hid_send(dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_SIZE))
-            sz = struct.unpack("<I", size_data[0:4])[0]
-            if 0 < sz <= 2_000_000:
-                payload = b""
-                block = 0
-                while len(payload) < sz:
-                    data = hid_send(dev, struct.pack("<BBI", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_DEFINITION, block))
-                    payload += data
-                    block += 1
-                payload = payload[:sz]
-                definition = json.loads(lzma.decompress(payload))
-                layout_keymap = definition.get("layouts", {}).get("keymap")
-                layout_labels = definition.get("layouts", {}).get("labels")
-                if layout_labels:
-                    data = hid_send(dev, struct.pack("BB", CMD_VIA_GET_KEYBOARD_VALUE, VIA_LAYOUT_OPTIONS))
-                    if len(data) >= 6:
-                        layout_options = struct.unpack(">I", bytes(data[2:6]))[0]
-        except Exception:
-            # keep dump usable even if definition fetch fails
+            dev.open_path(desc["path"])
             layout_keymap = None
             layout_labels = None
             layout_options = None
+            try:
+                size_data = hid_send(dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_SIZE))
+                sz = struct.unpack("<I", size_data[0:4])[0]
+                if 0 < sz <= 2_000_000:
+                    payload = b""
+                    block = 0
+                    while len(payload) < sz:
+                        data = hid_send(dev, struct.pack("<BBI", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_DEFINITION, block))
+                        payload += data
+                        block += 1
+                    payload = payload[:sz]
+                    definition = decode_definition_payload(payload)
+                    layout_keymap = definition.get("layouts", {}).get("keymap")
+                    layout_labels = definition.get("layouts", {}).get("labels")
+                    if layout_labels:
+                        data = hid_send(dev, struct.pack("BB", CMD_VIA_GET_KEYBOARD_VALUE, VIA_LAYOUT_OPTIONS))
+                        if len(data) >= 6:
+                            layout_options = struct.unpack(">I", bytes(data[2:6]))[0]
+            except Exception:
+                # keep dump usable even if definition fetch fails
+                layout_keymap = None
+                layout_labels = None
+                layout_options = None
 
-        proto_data = hid_send(dev, struct.pack("B", CMD_VIA_GET_PROTOCOL_VERSION))
-        layer_data = hid_send(dev, struct.pack("B", CMD_VIA_GET_LAYER_COUNT))
-        proto = struct.unpack(">H", proto_data[1:3])[0]
-        layers = int(layer_data[1])
+            proto_data = hid_send(dev, struct.pack("B", CMD_VIA_GET_PROTOCOL_VERSION))
+            layer_data = hid_send(dev, struct.pack("B", CMD_VIA_GET_LAYER_COUNT))
+            proto = struct.unpack(">H", proto_data[1:3])[0]
+            layers = int(layer_data[1])
+            if layers <= 0:
+                raise RuntimeError(f"invalid layer count: {layers}")
 
-        total_size = layers * rows * cols * 2
-        keymap_raw = b""
-        for offset in range(0, total_size, BUFFER_FETCH_CHUNK):
-            size = min(total_size - offset, BUFFER_FETCH_CHUNK)
-            data = hid_send(dev, struct.pack(">BHB", CMD_VIA_KEYMAP_GET_BUFFER, offset, size))
-            keymap_raw += data[4 : 4 + size]
+            total_size = layers * rows * cols * 2
+            keymap_raw = b""
+            for offset in range(0, total_size, BUFFER_FETCH_CHUNK):
+                size = min(total_size - offset, BUFFER_FETCH_CHUNK)
+                data = hid_send(dev, struct.pack(">BHB", CMD_VIA_KEYMAP_GET_BUFFER, offset, size))
+                keymap_raw += data[4 : 4 + size]
 
-        keycodes: List[List[List[int]]] = [
-            [[0 for _ in range(cols)] for _ in range(rows)] for _ in range(layers)
-        ]
-        for layer in range(layers):
-            for row in range(rows):
-                for col in range(cols):
-                    base = ((layer * rows * cols) + (row * cols) + col) * 2
-                    keycodes[layer][row][col] = struct.unpack(">H", keymap_raw[base : base + 2])[0]
+            keycodes: List[List[List[int]]] = [
+                [[0 for _ in range(cols)] for _ in range(rows)] for _ in range(layers)
+            ]
+            for layer in range(layers):
+                for row in range(rows):
+                    for col in range(cols):
+                        base = ((layer * rows * cols) + (row * cols) + col) * 2
+                        keycodes[layer][row][col] = struct.unpack(">H", keymap_raw[base : base + 2])[0]
 
-        print(
-            json.dumps(
-                {
-                    "ok": True,
-                    "mode": "dump",
-                    "protocol_version": f"0x{proto:04X}",
-                    "layer_count": layers,
-                    "matrix_rows": rows,
-                    "matrix_cols": cols,
-                    "keycodes": keycodes,
-                    "layout_keymap": layout_keymap,
-                    "layout_labels": layout_labels,
-                    "layout_options": layout_options,
-                    "path": str(desc.get("path")),
-                    "logs": logs,
-                },
-                ensure_ascii=False,
+            print(
+                json.dumps(
+                    {
+                        "ok": True,
+                        "mode": "dump",
+                        "protocol_version": f"0x{proto:04X}",
+                        "layer_count": layers,
+                        "matrix_rows": rows,
+                        "matrix_cols": cols,
+                        "keycodes": keycodes,
+                        "layout_keymap": layout_keymap,
+                        "layout_labels": layout_labels,
+                        "layout_options": layout_options,
+                        "path": str(desc.get("path")),
+                        "logs": logs,
+                    },
+                    ensure_ascii=False,
+                )
             )
-        )
-    except Exception as exc:
-        fail(str(exc), logs, {"path": str(desc.get("path"))})
-    finally:
-        dev.close()
+            return
+        except Exception as exc:
+            candidate_errors.append(f"path={desc.get('path')} error={exc}")
+        finally:
+            dev.close()
+    fail(" | ".join(candidate_errors) or "failed to read keymap from any rawhid candidate", logs)
 
 
 def read_definition(vid: int, pid: int) -> None:
     try:
-        desc, logs = find_rawhid_device(vid, pid)
+        candidates, logs = find_rawhid_devices(vid, pid)
     except Exception as exc:
         fail(str(exc))
 
-    dev = hid.device()
-    try:
-        dev.open_path(desc["path"])
-    except OSError as exc:
-        fail(f"open_path failed: {exc}", logs)
+    candidate_errors: List[str] = []
+    for desc in candidates:
+        dev = hid.device()
+        try:
+            dev.open_path(desc["path"])
+            size_data = hid_send(dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_SIZE))
+            sz = struct.unpack("<I", size_data[0:4])[0]
+            if sz <= 0 or sz > 2_000_000:
+                raise RuntimeError(f"invalid definition size: {sz}")
 
-    try:
-        size_data = hid_send(dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_SIZE))
-        sz = struct.unpack("<I", size_data[0:4])[0]
-        if sz <= 0 or sz > 2_000_000:
-            fail(f"invalid definition size: {sz}", logs, {"path": str(desc.get("path"))})
+            payload = b""
+            block = 0
+            while len(payload) < sz:
+                data = hid_send(dev, struct.pack("<BBI", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_DEFINITION, block))
+                payload += data
+                block += 1
+            payload = payload[:sz]
+            definition = decode_definition_payload(payload)
 
-        payload = b""
-        block = 0
-        while len(payload) < sz:
-            data = hid_send(dev, struct.pack("<BBI", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_DEFINITION, block))
-            payload += data
-            block += 1
-        payload = payload[:sz]
-        definition = json.loads(lzma.decompress(payload))
-
-        print(
-            json.dumps(
-                {
-                    "ok": True,
-                    "mode": "definition",
-                    "definition": definition,
-                    "path": str(desc.get("path")),
-                    "logs": logs,
-                },
-                ensure_ascii=False,
+            print(
+                json.dumps(
+                    {
+                        "ok": True,
+                        "mode": "definition",
+                        "definition": definition,
+                        "path": str(desc.get("path")),
+                        "logs": logs,
+                    },
+                    ensure_ascii=False,
+                )
             )
-        )
-    except Exception as exc:
-        fail(str(exc), logs, {"path": str(desc.get("path"))})
-    finally:
-        dev.close()
+            return
+        except Exception as exc:
+            candidate_errors.append(f"path={desc.get('path')} error={exc}")
+        finally:
+            dev.close()
+    fail(" | ".join(candidate_errors) or "failed to read definition from any rawhid candidate", logs)
 
 
 def infer_matrix(vid: int, pid: int) -> None:
     try:
-        desc, logs = find_rawhid_device(vid, pid)
+        candidates, logs = find_rawhid_devices(vid, pid)
     except Exception as exc:
         fail(str(exc))
 
-    dev = hid.device()
-    try:
-        dev.open_path(desc["path"])
-    except OSError as exc:
-        fail(f"open_path failed: {exc}", logs)
+    candidate_errors: List[str] = []
+    for desc in candidates:
+        dev = hid.device()
+        try:
+            dev.open_path(desc["path"])
+            size_data = hid_send(dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_SIZE))
+            sz = struct.unpack("<I", size_data[0:4])[0]
+            if sz <= 0 or sz > 2_000_000:
+                raise RuntimeError(f"invalid definition size: {sz}")
 
-    try:
-        size_data = hid_send(dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_SIZE))
-        sz = struct.unpack("<I", size_data[0:4])[0]
-        if sz <= 0 or sz > 2_000_000:
-            fail(f"invalid definition size: {sz}", logs, {"path": str(desc.get("path"))})
+            payload = b""
+            block = 0
+            while len(payload) < sz:
+                data = hid_send(dev, struct.pack("<BBI", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_DEFINITION, block))
+                payload += data
+                block += 1
 
-        payload = b""
-        block = 0
-        while len(payload) < sz:
-            data = hid_send(dev, struct.pack("<BBI", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_DEFINITION, block))
-            payload += data
-            block += 1
+            payload = payload[:sz]
+            definition = decode_definition_payload(payload)
+            matrix = definition.get("matrix", {})
+            rows = int(matrix.get("rows", 0))
+            cols = int(matrix.get("cols", 0))
+            if rows <= 0 or cols <= 0:
+                raise RuntimeError("matrix rows/cols not found in vial definition")
 
-        payload = payload[:sz]
-        definition = json.loads(lzma.decompress(payload))
-        matrix = definition.get("matrix", {})
-        rows = int(matrix.get("rows", 0))
-        cols = int(matrix.get("cols", 0))
-        if rows <= 0 or cols <= 0:
-            fail("matrix rows/cols not found in vial definition", logs, {"path": str(desc.get("path"))})
-
-        print(
-            json.dumps(
-                {
-                    "ok": True,
-                    "mode": "matrix",
-                    "matrix_rows": rows,
-                    "matrix_cols": cols,
-                    "path": str(desc.get("path")),
-                    "logs": logs,
-                },
-                ensure_ascii=False,
+            print(
+                json.dumps(
+                    {
+                        "ok": True,
+                        "mode": "matrix",
+                        "matrix_rows": rows,
+                        "matrix_cols": cols,
+                        "path": str(desc.get("path")),
+                        "logs": logs,
+                    },
+                    ensure_ascii=False,
+                )
             )
-        )
-    except Exception as exc:
-        fail(str(exc), logs, {"path": str(desc.get("path"))})
-    finally:
-        dev.close()
+            return
+        except Exception as exc:
+            candidate_errors.append(f"path={desc.get('path')} error={exc}")
+        finally:
+            dev.close()
+    fail(" | ".join(candidate_errors) or "failed to infer matrix from any rawhid candidate", logs)
 
 
 def parse_args() -> argparse.Namespace:
