@@ -678,6 +678,8 @@ enum KeycodeLabelFormatter {
         0x008B: "無変換",
         0x0090: "한영\nかな",
         0x0091: "漢字\n英数",
+        0x5F10: "Fn1\n(Fn3)",
+        0x5F11: "Fn2\n(Fn3)",
         0x00E0: "LCtrl",
         0x00E1: "LShift",
         0x00E2: "LAlt",
