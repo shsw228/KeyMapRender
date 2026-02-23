@@ -1,0 +1,158 @@
+import AppKit
+import Combine
+import SwiftUI
+
+@MainActor
+final class AppModel: ObservableObject {
+    @Published var targetKeyCodeText: String
+    @Published var longPressDuration: Double
+    @Published var permissionStatusText = "権限確認中..."
+    @Published var isOverlayVisible = false
+    @Published var layout: KeyboardLayout
+    @Published var connectedKeyboards: [HIDKeyboardDevice] = []
+    @Published var selectedKeyboardID: String = ""
+    @Published var keyboardStatusText = "未取得"
+    @Published var vialStatusText = "未実行"
+    @Published var matrixRowsText: String
+    @Published var matrixColsText: String
+    @Published var keymapStatusText = "未実行"
+    @Published var keymapPreviewText = "-"
+
+    private let monitor = GlobalKeyLongPressMonitor()
+    private let overlayWindowController = OverlayWindowController()
+
+    private enum DefaultsKey {
+        static let targetKeyCode = "targetKeyCode"
+        static let longPressDuration = "longPressDuration"
+    }
+
+    init() {
+        let defaults = UserDefaults.standard
+        let savedKey = defaults.object(forKey: DefaultsKey.targetKeyCode) as? Int ?? 49
+        let savedDuration = defaults.object(forKey: DefaultsKey.longPressDuration) as? Double ?? 0.45
+        self.targetKeyCodeText = "\(savedKey)"
+        self.longPressDuration = savedDuration
+        self.layout = KeyboardLayoutLoader.loadDefaultLayout()
+        self.matrixRowsText = "6"
+        self.matrixColsText = "17"
+    }
+
+    func start() {
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        let axTrusted = AXIsProcessTrustedWithOptions(options)
+        let listenTrusted = CGPreflightListenEventAccess()
+        _ = CGRequestListenEventAccess()
+
+        if axTrusted && listenTrusted {
+            permissionStatusText = "権限: Accessibility/Input Monitoring 許可済み"
+        } else {
+            permissionStatusText = "権限不足: Accessibility と Input Monitoring を許可してください。"
+        }
+        refreshKeyboards()
+        applySettings()
+    }
+
+    func applySettings() {
+        guard let keyCodeValue = UInt16(targetKeyCodeText), keyCodeValue <= 127 else {
+            permissionStatusText = "キーコードは 0-127 の整数で入力してください。"
+            return
+        }
+
+        UserDefaults.standard.set(Int(keyCodeValue), forKey: DefaultsKey.targetKeyCode)
+        UserDefaults.standard.set(longPressDuration, forKey: DefaultsKey.longPressDuration)
+
+        monitor.stop()
+        monitor.targetKeyCode = CGKeyCode(keyCodeValue)
+        monitor.longPressThreshold = longPressDuration
+        monitor.onLongPressStart = { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.isOverlayVisible = true
+                self.overlayWindowController.show(layout: self.layout)
+            }
+        }
+        monitor.onLongPressEnd = { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.isOverlayVisible = false
+                self.overlayWindowController.hide()
+            }
+        }
+
+        if monitor.start() {
+            permissionStatusText = "監視中: keyCode \(keyCodeValue), 長押し \(longPressDuration.formatted(.number.precision(.fractionLength(2)))) 秒"
+        } else {
+            permissionStatusText = "キー監視を開始できませんでした。Accessibility / Input Monitoring を確認してください。"
+        }
+    }
+
+    func refreshKeyboards() {
+        connectedKeyboards = HIDKeyboardService.listKeyboards()
+        if connectedKeyboards.isEmpty {
+            selectedKeyboardID = ""
+            keyboardStatusText = "キーボード未検出"
+            return
+        }
+
+        if !connectedKeyboards.contains(where: { $0.id == selectedKeyboardID }) {
+            selectedKeyboardID = connectedKeyboards[0].id
+        }
+
+        if let selected = selectedKeyboard {
+            keyboardStatusText = "検出: \(selected.manufacturerName) \(selected.productName) (VID:0x\(String(selected.vendorID, radix: 16, uppercase: true)) PID:0x\(String(selected.productID, radix: 16, uppercase: true)))"
+        } else {
+            keyboardStatusText = "検出: \(connectedKeyboards.count) 台"
+        }
+    }
+
+    func probeVialOnSelectedKeyboard() {
+        guard let selected = selectedKeyboard else {
+            vialStatusText = "キーボードを選択してください。"
+            return
+        }
+
+        switch VialRawHIDService.probe(device: selected) {
+        case let .success(result):
+            vialStatusText = "Vial応答: protocol=\(result.protocolVersion), layers=\(result.layerCount), L0R0C0=0x\(String(result.keycodeL0R0C0, radix: 16, uppercase: true))"
+        case let .failure(.message(message)):
+            vialStatusText = "Vial応答なし: \(message)"
+        }
+    }
+
+    func readFullVialKeymapOnSelectedKeyboard() {
+        guard let selected = selectedKeyboard else {
+            keymapStatusText = "キーボードを選択してください。"
+            return
+        }
+        guard let rows = Int(matrixRowsText), let cols = Int(matrixColsText), rows > 0, cols > 0 else {
+            keymapStatusText = "Rows/Cols は 1 以上の整数で入力してください。"
+            return
+        }
+
+        switch VialRawHIDService.readKeymap(device: selected, matrixRows: rows, matrixCols: cols) {
+        case let .success(dump):
+            keymapStatusText = "取得成功: protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
+            keymapPreviewText = makePreview(from: dump, maxRows: min(4, dump.matrixRows), maxCols: min(10, dump.matrixCols))
+        case let .failure(.message(message)):
+            keymapStatusText = "取得失敗: \(message)"
+        }
+    }
+
+    private func makePreview(from dump: VialKeymapDump, maxRows: Int, maxCols: Int) -> String {
+        guard !dump.keycodes.isEmpty else { return "(empty)" }
+        var lines: [String] = []
+        let layer0 = dump.keycodes[0]
+        for row in 0..<maxRows {
+            let cols = (0..<maxCols).map { col -> String in
+                let value = layer0[row][col]
+                return String(format: "%04X", value)
+            }
+            lines.append("L0 R\(row): " + cols.joined(separator: " "))
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private var selectedKeyboard: HIDKeyboardDevice? {
+        connectedKeyboards.first(where: { $0.id == selectedKeyboardID })
+    }
+}
