@@ -12,7 +12,7 @@ struct KeyboardOverlayView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: spacing) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(layout.name)
+                Text(normalizedLayoutName(layout.name))
                     .font(.headline)
                     .foregroundStyle(.white.opacity(0.9))
                 Text("Layer L\(currentLayer) / \(max(0, totalLayers - 1))")
@@ -172,5 +172,13 @@ struct KeyboardOverlayView: View {
             return (tap: tap, hold: hold)
         }
         return nil
+    }
+
+    private func normalizedLayoutName(_ name: String) -> String {
+        guard let regex = try? NSRegularExpression(pattern: #"\sL\d+$"#) else {
+            return name
+        }
+        let range = NSRange(name.startIndex..<name.endIndex, in: name)
+        return regex.stringByReplacingMatches(in: name, options: [], range: range, withTemplate: "")
     }
 }
