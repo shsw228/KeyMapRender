@@ -3,8 +3,8 @@ import SwiftUI
 struct KeyboardOverlayView: View {
     let layout: KeyboardLayout
 
-    private let unitWidth: CGFloat = 56
-    private let keyHeight: CGFloat = 52
+    private let unitSize: CGFloat = 54
+    private let keyGap: CGFloat = 6
     private let spacing: CGFloat = 8
 
     var body: some View {
@@ -18,28 +18,10 @@ struct KeyboardOverlayView: View {
                     .foregroundStyle(.white.opacity(0.9))
                     .padding(.bottom, 4)
 
-                ForEach(Array(layout.rows.enumerated()), id: \.offset) { _, row in
-                    HStack(spacing: spacing) {
-                        ForEach(Array(row.enumerated()), id: \.offset) { _, key in
-                            if key.isSpacer {
-                                Color.clear
-                                    .frame(width: unitWidth * key.width, height: keyHeight * key.height)
-                            } else {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.white.opacity(0.12))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .stroke(Color.white.opacity(0.28), lineWidth: 1)
-                                    )
-                                    .overlay(
-                                        Text(key.label)
-                                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                                            .foregroundStyle(.white.opacity(0.92))
-                                    )
-                                    .frame(width: unitWidth * key.width, height: keyHeight * key.height)
-                            }
-                        }
-                    }
+                if layout.positionedKeys.isEmpty {
+                    legacyRowView
+                } else {
+                    positionedView
                 }
             }
             .padding(26)
@@ -54,5 +36,63 @@ struct KeyboardOverlayView: View {
             .padding(24)
         }
     }
-}
 
+    private var positionedView: some View {
+        let boardWidth = max(1, CGFloat(layout.positionedWidth) * unitSize)
+        let boardHeight = max(1, CGFloat(layout.positionedHeight) * unitSize)
+        return GeometryReader { geo in
+            let maxWidth = max(1, geo.size.width - 32)
+            let maxHeight = max(1, geo.size.height - 32)
+            let scale = min(maxWidth / boardWidth, maxHeight / boardHeight, 1.0)
+            ZStack(alignment: .topLeading) {
+                ForEach(layout.positionedKeys) { key in
+                    keyView(label: key.label)
+                        .frame(
+                            width: max(8, CGFloat(key.width) * unitSize - keyGap),
+                            height: max(8, CGFloat(key.height) * unitSize - keyGap)
+                        )
+                        .position(
+                            x: (CGFloat(key.x) * unitSize + (CGFloat(key.width) * unitSize) / 2),
+                            y: (CGFloat(key.y) * unitSize + (CGFloat(key.height) * unitSize) / 2)
+                        )
+                }
+            }
+            .frame(width: boardWidth, height: boardHeight, alignment: .topLeading)
+            .scaleEffect(scale, anchor: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+        .frame(minHeight: 240)
+    }
+
+    private var legacyRowView: some View {
+        VStack(alignment: .leading, spacing: spacing) {
+            ForEach(Array(layout.rows.enumerated()), id: \.offset) { _, row in
+                HStack(spacing: spacing) {
+                    ForEach(Array(row.enumerated()), id: \.offset) { _, key in
+                        if key.isSpacer {
+                            Color.clear
+                                .frame(width: unitSize * key.width, height: unitSize * key.height)
+                        } else {
+                            keyView(label: key.label)
+                                .frame(width: unitSize * key.width, height: unitSize * key.height)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func keyView(label: String) -> some View {
+        RoundedRectangle(cornerRadius: 10)
+            .fill(Color.white.opacity(0.12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.white.opacity(0.28), lineWidth: 1)
+            )
+            .overlay(
+                Text(label)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.92))
+            )
+    }
+}

@@ -3,6 +3,9 @@ import Foundation
 struct KeyboardLayout {
     let name: String
     let rows: [[KeyboardKey]]
+    let positionedKeys: [PositionedKey]
+    let positionedWidth: Double
+    let positionedHeight: Double
 }
 
 struct KeyboardKey {
@@ -10,6 +13,15 @@ struct KeyboardKey {
     let width: Double
     let height: Double
     let isSpacer: Bool
+}
+
+struct PositionedKey: Identifiable {
+    let id: String
+    let label: String
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
 }
 
 enum KeyboardLayoutLoader {
@@ -28,14 +40,14 @@ enum KeyboardLayoutLoader {
         if let dict = json as? [String: Any],
            let name = dict["name"] as? String,
            let rows = dict["rows"] as? [[Any]] {
-            return KeyboardLayout(name: name, rows: rows.map(parseRow))
+            return makeLayout(name: name, rows: rows.map(parseRow), positionedKeys: [])
         }
 
         if let dict = json as? [String: Any],
            let name = dict["name"] as? String,
            let layouts = dict["layouts"] as? [String: Any],
            let keymap = layouts["keymap"] as? [[Any]] {
-            return KeyboardLayout(name: name, rows: keymap.map(parseRow))
+            return makeLayout(name: name, rows: keymap.map(parseRow), positionedKeys: [])
         }
 
         return fallbackLayout()
@@ -92,7 +104,7 @@ enum KeyboardLayoutLoader {
     }
 
     nonisolated private static func fallbackLayout() -> KeyboardLayout {
-        KeyboardLayout(
+        makeLayout(
             name: "Fallback ANSI",
             rows: [
                 ["Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "Backspace"].map {
@@ -115,7 +127,8 @@ enum KeyboardLayoutLoader {
                     KeyboardKey(label: "Cmd", width: 1.25, height: 1, isSpacer: false),
                     KeyboardKey(label: "Opt", width: 1.25, height: 1, isSpacer: false),
                 ]
-            ]
+            ],
+            positionedKeys: []
         )
     }
 
@@ -127,7 +140,7 @@ enum KeyboardLayoutLoader {
         name: String = "Vial Keymap"
     ) -> KeyboardLayout {
         guard rows > 0, cols > 0, layer >= 0, layer < keycodes.count else {
-            return KeyboardLayout(name: name + " (invalid)", rows: [])
+            return makeLayout(name: name + " (invalid)", rows: [], positionedKeys: [])
         }
 
         let matrixRows: [[KeyboardKey]] = (0..<rows).map { row in
@@ -147,7 +160,7 @@ enum KeyboardLayoutLoader {
             }
         }
 
-        return KeyboardLayout(name: "\(name) L\(layer)", rows: matrixRows)
+        return makeLayout(name: "\(name) L\(layer)", rows: matrixRows, positionedKeys: [])
     }
 
     nonisolated static func makePhysicalLayoutFromVialKeymap(
@@ -165,17 +178,31 @@ enum KeyboardLayoutLoader {
             return makeMatrixLayout(rows: fallbackRows, cols: fallbackCols, keycodes: keycodes, layer: 0, name: name)
         }
 
-        let rows: [[KeyboardKey]] = keymapRows.map { rowItems in
+        var positioned: [PositionedKey] = []
+        var keyIndex = 0
+        var cursorY = 0.0
+
+        let rows: [[KeyboardKey]] = keymapRows.enumerated().map { rowIndex, rowItems in
+            if rowIndex > 0 {
+                cursorY += 1.0
+            }
             var keys: [KeyboardKey] = []
             var width = 1.0
             var height = 1.0
             var spacerX = 0.0
+            var cursorX = 0.0
 
             for item in rowItems {
                 if let dict = item as? [String: Any] {
-                    if let x = dict["x"] as? Double { spacerX += x }
-                    if let w = dict["w"] as? Double { width = w }
-                    if let h = dict["h"] as? Double { height = h }
+                    if let x = toDouble(dict["x"]) {
+                        spacerX += x
+                        cursorX += x
+                    }
+                    if let y = toDouble(dict["y"]) {
+                        cursorY += y
+                    }
+                    if let w = toDouble(dict["w"]) { width = w }
+                    if let h = toDouble(dict["h"]) { height = h }
                     continue
                 }
 
@@ -186,6 +213,17 @@ enum KeyboardLayoutLoader {
                 }
 
                 let mappedLabel = mapKeyLabel(rawLabel: raw, layer: layer, keycodes: keycodes)
+                positioned.append(
+                    PositionedKey(
+                        id: "k\(keyIndex)",
+                        label: mappedLabel,
+                        x: cursorX,
+                        y: cursorY,
+                        width: width,
+                        height: height
+                    )
+                )
+                keyIndex += 1
                 keys.append(
                     KeyboardKey(
                         label: mappedLabel,
@@ -194,13 +232,14 @@ enum KeyboardLayoutLoader {
                         isSpacer: false
                     )
                 )
+                cursorX += width
                 width = 1.0
                 height = 1.0
             }
             return keys
         }
 
-        return KeyboardLayout(name: "\(name) L\(layer)", rows: rows)
+        return makeLayout(name: "\(name) L\(layer)", rows: rows, positionedKeys: positioned)
     }
 
     nonisolated private static func mapKeyLabel(
@@ -217,5 +256,37 @@ enum KeyboardLayoutLoader {
             return "----"
         }
         return firstLine.isEmpty ? "----" : firstLine
+    }
+
+    nonisolated private static func makeLayout(
+        name: String,
+        rows: [[KeyboardKey]],
+        positionedKeys: [PositionedKey]
+    ) -> KeyboardLayout {
+        let bounds = positionedKeys.reduce((0.0, 0.0)) { partial, key in
+            let maxX = max(partial.0, key.x + key.width)
+            let maxY = max(partial.1, key.y + key.height)
+            return (maxX, maxY)
+        }
+        return KeyboardLayout(
+            name: name,
+            rows: rows,
+            positionedKeys: positionedKeys,
+            positionedWidth: bounds.0,
+            positionedHeight: bounds.1
+        )
+    }
+
+    nonisolated private static func toDouble(_ value: Any?) -> Double? {
+        switch value {
+        case let d as Double:
+            return d
+        case let n as NSNumber:
+            return n.doubleValue
+        case let s as String:
+            return Double(s)
+        default:
+            return nil
+        }
     }
 }
