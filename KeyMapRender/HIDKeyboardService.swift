@@ -1,7 +1,7 @@
 import Foundation
 import IOKit.hid
 
-struct HIDKeyboardDevice: Identifiable, Hashable {
+nonisolated struct HIDKeyboardDevice: Identifiable, Hashable {
     let id: String
     let vendorID: Int
     let productID: Int
@@ -10,7 +10,7 @@ struct HIDKeyboardDevice: Identifiable, Hashable {
     let manufacturerName: String
 }
 
-struct HIDInterfaceCandidate {
+nonisolated struct HIDInterfaceCandidate {
     let device: IOHIDDevice
     let usagePage: Int
     let usage: Int
@@ -32,12 +32,15 @@ enum HIDKeyboardService {
         ]
         IOHIDManagerSetDeviceMatchingMultiple(manager, [keyboardMatch, keypadMatch] as CFArray)
         let didOpen = IOHIDManagerOpen(manager, options) == kIOReturnSuccess
-        if didOpen {
-            defer { IOHIDManagerClose(manager, options) }
-        }
 
         guard let set = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else {
+            if didOpen {
+                IOHIDManagerClose(manager, options)
+            }
             return []
+        }
+        if didOpen {
+            IOHIDManagerClose(manager, options)
         }
 
         let deduped = deduplicate(set.compactMap(makeDeviceInfo))
@@ -58,12 +61,15 @@ enum HIDKeyboardService {
         ]
         IOHIDManagerSetDeviceMatching(manager, match as CFDictionary)
         let didOpen = IOHIDManagerOpen(manager, options) == kIOReturnSuccess
-        if didOpen {
-            defer { IOHIDManagerClose(manager, options) }
-        }
 
         guard let set = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else {
+            if didOpen {
+                IOHIDManagerClose(manager, options)
+            }
             return []
+        }
+        if didOpen {
+            IOHIDManagerClose(manager, options)
         }
 
         let filtered = set.filter { device in

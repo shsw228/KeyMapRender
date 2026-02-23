@@ -414,7 +414,7 @@ enum KeyboardLayoutLoader {
         return out
     }
 
-    private static let labelMap: [[Int]] = [
+    nonisolated private static let labelMap: [[Int]] = [
         [0, 6, 2, 8, 9, 11, 3, 5, 1, 4, 7, 10],
         [1, 7, -1, -1, 9, 11, 4, -1, -1, -1, -1, 10],
         [3, -1, 5, -1, 9, 11, -1, -1, 4, -1, -1, 10],
@@ -492,7 +492,7 @@ private struct PhysicalKeyCandidate {
 }
 
 enum KeycodeLabelFormatter {
-    static func label(for keycode: UInt16) -> String {
+    nonisolated static func label(for keycode: UInt16) -> String {
         if keycode >= 0x0100, keycode <= 0x1FFF {
             return modsKeyLabelV6(for: keycode)
         }
@@ -512,7 +512,7 @@ enum KeycodeLabelFormatter {
         return String(format: "%04X", keycode)
     }
 
-    private static func basicLabel(for keycode: UInt16) -> String? {
+    nonisolated private static func basicLabel(for keycode: UInt16) -> String? {
         if let named = specialNames[keycode] { return named }
         if keycode >= 0x0004, keycode <= 0x001D {
             let offset = Int(keycode - 0x0004)
@@ -525,14 +525,14 @@ enum KeycodeLabelFormatter {
         return nil
     }
 
-    private static func modTapLabel(for keycode: UInt16) -> String {
+    nonisolated private static func modTapLabel(for keycode: UInt16) -> String {
         let mods = Int((keycode >> 8) & 0x1F)
         let tap = UInt16(keycode & 0x00FF)
         let tapLabel = tapKeyLabel(for: tap) ?? String(format: "0x%02X", tap)
         return modTapMacroLabel(mods: mods, tapLabel: tapLabel)
     }
 
-    private static func layerTapLabel(for keycode: UInt16) -> String {
+    nonisolated private static func layerTapLabel(for keycode: UInt16) -> String {
         let layer = Int((keycode >> 8) & 0x0F)
         let tap = UInt16(keycode & 0x00FF)
         let tapLabel = tapKeyLabel(for: tap) ?? String(format: "0x%02X", tap)
@@ -541,7 +541,7 @@ enum KeycodeLabelFormatter {
 
     // QMK/Vial v5 style mod-tap range (0x60xx-0x7Fxx).
     // Example: 0x6129 -> LCTL_T(Esc)
-    private static func modTapLabelV5(for keycode: UInt16) -> String {
+    nonisolated private static func modTapLabelV5(for keycode: UInt16) -> String {
         let outer = keycode & 0xFF00
         let tap = UInt16(keycode & 0x00FF)
         let tapLabel = tapKeyLabel(for: tap) ?? String(format: "0x%02X", tap)
@@ -552,7 +552,7 @@ enum KeycodeLabelFormatter {
     }
 
     // QMK/Vial v6 generic QK_MODS range (0x01xx-0x1Fxx): MODS(kc)
-    private static func modsKeyLabelV6(for keycode: UInt16) -> String {
+    nonisolated private static func modsKeyLabelV6(for keycode: UInt16) -> String {
         let mods = Int((keycode >> 8) & 0x1F)
         let tap = UInt16(keycode & 0x00FF)
         let tapLabel = tapKeyLabel(for: tap) ?? String(format: "0x%02X", tap)
@@ -562,7 +562,7 @@ enum KeycodeLabelFormatter {
         return String(format: "0x%04X", keycode)
     }
 
-    private static func singleOrCompositeModName(_ mods: Int) -> String? {
+    nonisolated private static func singleOrCompositeModName(_ mods: Int) -> String? {
         if let single = singleModName(mods) {
             return single.replacingOccurrences(of: "_T", with: "")
         }
@@ -580,7 +580,7 @@ enum KeycodeLabelFormatter {
     }
 
     // For LT/MT style composed keycodes, use unshifted key names.
-    private static func tapKeyLabel(for keycode: UInt16) -> String? {
+    nonisolated private static func tapKeyLabel(for keycode: UInt16) -> String? {
         if let named = specialNames[keycode] { return named }
         if keycode >= 0x0004, keycode <= 0x001D {
             let offset = Int(keycode - 0x0004)
@@ -593,7 +593,7 @@ enum KeycodeLabelFormatter {
         return nil
     }
 
-    private static func modsLabel(_ mods: Int) -> String {
+    nonisolated private static func modsLabel(_ mods: Int) -> String {
         let isRight = (mods & 0x10) != 0
         let base = mods & 0x0F
         var names: [String] = []
@@ -604,7 +604,7 @@ enum KeycodeLabelFormatter {
         return names.isEmpty ? String(format: "MOD(0x%02X)", mods) : names.joined(separator: "+")
     }
 
-    private static func modTapMacroLabel(mods: Int, tapLabel: String) -> String {
+    nonisolated private static func modTapMacroLabel(mods: Int, tapLabel: String) -> String {
         if let single = singleModName(mods) {
             return "\(single)_T(\(tapLabel))"
         }
@@ -613,7 +613,7 @@ enum KeycodeLabelFormatter {
         return String(format: "MT(0x%02X,%@)", mods, tapLabel)
     }
 
-    private static func singleModName(_ mods: Int) -> String? {
+    nonisolated private static func singleModName(_ mods: Int) -> String? {
         let isRight = (mods & 0x10) != 0
         let base = mods & 0x0F
         switch base {
@@ -625,7 +625,7 @@ enum KeycodeLabelFormatter {
         }
     }
 
-    private static let specialNames: [UInt16: String] = [
+    nonisolated private static let specialNames: [UInt16: String] = [
         0x0000: "NO",
         0x0001: "TRNS",
         0x0028: "Enter",
@@ -690,7 +690,7 @@ enum KeycodeLabelFormatter {
         0x00E7: "RGui"
     ]
 
-    private static let numberNames: [UInt16: String] = [
+    nonisolated private static let numberNames: [UInt16: String] = [
         0x001E: "!\n1",
         0x001F: "@\n2",
         0x0020: "#\n3",
@@ -703,7 +703,7 @@ enum KeycodeLabelFormatter {
         0x0027: ")\n0"
     ]
 
-    private static let tapNumberNames: [UInt16: String] = [
+    nonisolated private static let tapNumberNames: [UInt16: String] = [
         0x001E: "1",
         0x001F: "2",
         0x0020: "3",
@@ -716,7 +716,7 @@ enum KeycodeLabelFormatter {
         0x0027: "0"
     ]
 
-    private static let symbolNames: [UInt16: String] = [
+    nonisolated private static let symbolNames: [UInt16: String] = [
         0x002D: "_\n-",
         0x002E: "+\n=",
         0x002F: "{\n[",
@@ -730,7 +730,7 @@ enum KeycodeLabelFormatter {
         0x0038: "?\n/"
     ]
 
-    private static let tapSymbolNames: [UInt16: String] = [
+    nonisolated private static let tapSymbolNames: [UInt16: String] = [
         0x002D: "-",
         0x002E: "=",
         0x002F: "[",
@@ -744,7 +744,7 @@ enum KeycodeLabelFormatter {
         0x0038: "/"
     ]
 
-    private static let functionNames: [UInt16: String] = [
+    nonisolated private static let functionNames: [UInt16: String] = [
         0x003A: "F1",
         0x003B: "F2",
         0x003C: "F3",
@@ -754,7 +754,7 @@ enum KeycodeLabelFormatter {
     ]
 
     // Derived from vial-gui keycodes_v5.py masked entries.
-    private static let v5ModTapHoldNames: [UInt16: String] = [
+    nonisolated private static let v5ModTapHoldNames: [UInt16: String] = [
         0x6100: "LCTL_T",
         0x6200: "LSFT_T",
         0x6400: "LALT_T",

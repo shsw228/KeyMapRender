@@ -1,14 +1,14 @@
 import Foundation
 import IOKit.hid
 
-struct VialProbeResult {
+nonisolated struct VialProbeResult {
     let protocolVersion: String
     let layerCount: Int
     let keycodeL0R0C0: UInt16
     let backend: String
 }
 
-struct VialKeymapDump {
+nonisolated struct VialKeymapDump {
     let protocolVersion: String
     let layerCount: Int
     let matrixRows: Int
@@ -20,13 +20,13 @@ struct VialKeymapDump {
     let backend: String
 }
 
-struct VialMatrixInfo {
+nonisolated struct VialMatrixInfo {
     let rows: Int
     let cols: Int
     let backend: String
 }
 
-struct VialSwitchMatrixState {
+nonisolated struct VialSwitchMatrixState {
     let rows: Int
     let cols: Int
     let pressed: [[Bool]]
@@ -38,15 +38,15 @@ enum VialProbeError: Error {
 }
 
 enum VialRawHIDService {
-    private static let reportLength = 32
-    private static let reportIDs: [CFIndex] = [0, 1]
-    private static let hidSendRetries = 20
-    private static let hidReadTimeoutSeconds: CFTimeInterval = 0.5
-    private static let matrixPollRetries = 2
-    private static let matrixPollReadTimeoutSeconds: CFTimeInterval = 0.02
-    private static let matrixPollRetrySleepSeconds: CFTimeInterval = 0.005
+    private nonisolated static let reportLength = 32
+    private nonisolated static let reportIDs: [CFIndex] = [0, 1]
+    private nonisolated static let hidSendRetries = 20
+    private nonisolated static let hidReadTimeoutSeconds: CFTimeInterval = 0.5
+    private nonisolated static let matrixPollRetries = 2
+    private nonisolated static let matrixPollReadTimeoutSeconds: CFTimeInterval = 0.02
+    private nonisolated static let matrixPollRetrySleepSeconds: CFTimeInterval = 0.005
     // Do not seize the device to avoid interfering with keyboard input in other apps.
-    private static let openOptions: [IOOptionBits] = [IOOptionBits(kIOHIDOptionsTypeNone)]
+    private nonisolated static let openOptions: [IOOptionBits] = [IOOptionBits(kIOHIDOptionsTypeNone)]
 
     private enum ViaCommand: UInt8 {
         case getProtocolVersion = 0x01
@@ -63,11 +63,11 @@ enum VialRawHIDService {
         case definition
     }
 
-    private final class InputReportCapture {
+    nonisolated private final class InputReportCapture {
         var response: [UInt8]?
     }
 
-    static func probe(device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError> {
+    nonisolated static func probe(device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError> {
         if let bridge = probeViaPythonBridge(device: device) {
             return bridge
         }
@@ -85,7 +85,7 @@ enum VialRawHIDService {
         }
     }
 
-    static func readKeymap(device: HIDKeyboardDevice, matrixRows: Int, matrixCols: Int) -> Result<VialKeymapDump, VialProbeError> {
+    nonisolated static func readKeymap(device: HIDKeyboardDevice, matrixRows: Int, matrixCols: Int) -> Result<VialKeymapDump, VialProbeError> {
         guard matrixRows > 0, matrixCols > 0 else {
             return .failure(.message("matrixRows と matrixCols は 1 以上で指定してください。"))
         }
@@ -130,7 +130,7 @@ enum VialRawHIDService {
         }
     }
 
-    static func inferMatrix(device: HIDKeyboardDevice) -> Result<VialMatrixInfo, VialProbeError> {
+    nonisolated static func inferMatrix(device: HIDKeyboardDevice) -> Result<VialMatrixInfo, VialProbeError> {
         guard let json = runPythonBridge(mode: .matrix, device: device, rows: nil, cols: nil) else {
             return .failure(.message("python bridge が見つかりません。"))
         }
@@ -148,7 +148,7 @@ enum VialRawHIDService {
         return .success(VialMatrixInfo(rows: rows, cols: cols, backend: "python"))
     }
 
-    static func readDefinition(device: HIDKeyboardDevice) -> Result<String, VialProbeError> {
+    nonisolated static func readDefinition(device: HIDKeyboardDevice) -> Result<String, VialProbeError> {
         guard let json = runPythonBridge(mode: .definition, device: device, rows: nil, cols: nil) else {
             return .failure(.message("python bridge が見つかりません。"))
         }
@@ -174,7 +174,7 @@ enum VialRawHIDService {
         }
     }
 
-    static func readSwitchMatrixState(
+    nonisolated static func readSwitchMatrixState(
         device: HIDKeyboardDevice,
         matrixRows: Int,
         matrixCols: Int
@@ -230,7 +230,7 @@ enum VialRawHIDService {
         }
     }
 
-    private static func probeViaPythonBridge(device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError>? {
+    private nonisolated static func probeViaPythonBridge(device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError>? {
         guard let json = runPythonBridge(mode: .probe, device: device, rows: nil, cols: nil) else { return nil }
         guard let ok = json["ok"] as? Bool else { return .failure(.message("python bridge: invalid response")) }
         if !ok {
@@ -257,7 +257,7 @@ enum VialRawHIDService {
         )
     }
 
-    private static func dumpViaPythonBridge(device: HIDKeyboardDevice, rows: Int, cols: Int) -> Result<VialKeymapDump, VialProbeError>? {
+    private nonisolated static func dumpViaPythonBridge(device: HIDKeyboardDevice, rows: Int, cols: Int) -> Result<VialKeymapDump, VialProbeError>? {
         guard let json = runPythonBridge(mode: .dump, device: device, rows: rows, cols: cols) else { return nil }
         guard let ok = json["ok"] as? Bool else { return .failure(.message("python bridge: invalid response")) }
         if !ok {
@@ -315,7 +315,7 @@ enum VialRawHIDService {
         )
     }
 
-    private static func runPythonBridge(
+    private nonisolated static func runPythonBridge(
         mode: BridgeMode,
         device: HIDKeyboardDevice,
         rows: Int?,
@@ -362,7 +362,7 @@ enum VialRawHIDService {
         return dict
     }
 
-    private static func shouldFallbackToNative(for message: String) -> Bool {
+    private nonisolated static func shouldFallbackToNative(for message: String) -> Bool {
         let lower = message.lowercased()
         // If python bridge path is unstable, prefer native RawHID path.
         return lower.contains("python hid module is not available")
@@ -375,7 +375,7 @@ enum VialRawHIDService {
             || lower.contains("path=")
     }
 
-    private static func withOpenedRawDevice<T>(
+    private nonisolated static func withOpenedRawDevice<T>(
         device: HIDKeyboardDevice,
         operation: (IOHIDDevice) throws -> T
     ) -> Result<T, VialProbeError> {
@@ -417,7 +417,7 @@ enum VialRawHIDService {
         return .failure(.message(errors.joined(separator: " | ")))
     }
 
-    private static func readProtocolVersion(from raw: IOHIDDevice) throws -> String {
+    private nonisolated static func readProtocolVersion(from raw: IOHIDDevice) throws -> String {
         let protocolBytes = normalizeResponse(try send(command: .getProtocolVersion, payload: [], to: raw), command: .getProtocolVersion)
         guard protocolBytes.count >= 3 else {
             throw VialProbeError.message("プロトコル応答が不正です。")
@@ -426,7 +426,7 @@ enum VialRawHIDService {
         return "0x" + String(proto, radix: 16, uppercase: true)
     }
 
-    private static func readLayerCount(from raw: IOHIDDevice) throws -> Int {
+    private nonisolated static func readLayerCount(from raw: IOHIDDevice) throws -> Int {
         let layerBytes = normalizeResponse(try send(command: .dynamicKeymapGetLayerCount, payload: [], to: raw), command: .dynamicKeymapGetLayerCount)
         guard layerBytes.count >= 2 else {
             throw VialProbeError.message("レイヤー応答が不正です。")
@@ -434,7 +434,7 @@ enum VialRawHIDService {
         return Int(layerBytes[1])
     }
 
-    private static func readSingleKeycode(layer: UInt8, row: UInt8, col: UInt8, from raw: IOHIDDevice) throws -> UInt16 {
+    private nonisolated static func readSingleKeycode(layer: UInt8, row: UInt8, col: UInt8, from raw: IOHIDDevice) throws -> UInt16 {
         let keyBytes = normalizeResponse(try send(command: .dynamicKeymapGetKeycode, payload: [layer, row, col], to: raw), command: .dynamicKeymapGetKeycode)
         guard keyBytes.count >= 6 else {
             throw VialProbeError.message("キーコード応答が不正です。")
@@ -442,7 +442,7 @@ enum VialRawHIDService {
         return UInt16(keyBytes[4]) << 8 | UInt16(keyBytes[5])
     }
 
-    private static func readBuffer(offset: Int, totalBytes: Int, from raw: IOHIDDevice) throws -> [UInt8] {
+    private nonisolated static func readBuffer(offset: Int, totalBytes: Int, from raw: IOHIDDevice) throws -> [UInt8] {
         let chunkLimit = 28
         var cursor = offset
         var bytes: [UInt8] = []
@@ -468,7 +468,7 @@ enum VialRawHIDService {
         return bytes
     }
 
-    private static func send(
+    private nonisolated static func send(
         command: ViaCommand,
         payload: [UInt8],
         to device: IOHIDDevice,
@@ -516,18 +516,18 @@ enum VialRawHIDService {
         throw VialProbeError.message(errors.joined(separator: " | "))
     }
 
-    private static func normalizeResponse(_ response: [UInt8], command: ViaCommand) -> [UInt8] {
+    private nonisolated static func normalizeResponse(_ response: [UInt8], command: ViaCommand) -> [UInt8] {
         if let idx = response.prefix(4).firstIndex(of: command.rawValue), idx > 0 {
             return Array(response.dropFirst(idx))
         }
         return response
     }
 
-    private static func isCommandMatched(response: [UInt8], command: ViaCommand) -> Bool {
+    private nonisolated static func isCommandMatched(response: [UInt8], command: ViaCommand) -> Bool {
         response.prefix(4).contains(command.rawValue)
     }
 
-    private static let inputReportCallback: IOHIDReportCallback = { context, _, _, _, _, report, reportLength in
+    private nonisolated(unsafe) static let inputReportCallback: IOHIDReportCallback = { context, _, _, _, _, report, reportLength in
         guard let context else { return }
         let capture = Unmanaged<InputReportCapture>.fromOpaque(context).takeUnretainedValue()
         if capture.response == nil {
@@ -535,7 +535,7 @@ enum VialRawHIDService {
         }
     }
 
-    private static func receiveViaInputCallback(device: IOHIDDevice, timeout: CFTimeInterval) -> [UInt8]? {
+    private nonisolated static func receiveViaInputCallback(device: IOHIDDevice, timeout: CFTimeInterval) -> [UInt8]? {
         let capture = InputReportCapture()
         let retained = Unmanaged.passRetained(capture)
         var reportBuffer = [UInt8](repeating: 0, count: reportLength)

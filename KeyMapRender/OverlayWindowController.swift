@@ -60,9 +60,11 @@ final class OverlayWindowController {
             window.animator().alphaValue = 1
             window.animator().setFrame(targetFrame, display: true)
         }, completionHandler: { [weak self] in
-            guard let self else { return }
-            if self.animationGeneration == generation {
-                self.isAnimatingShow = false
+            Task { @MainActor in
+                guard let self else { return }
+                if self.animationGeneration == generation {
+                    self.isAnimatingShow = false
+                }
             }
         })
         self.window = window
@@ -86,10 +88,13 @@ final class OverlayWindowController {
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
             window.animator().alphaValue = 0
             window.animator().setFrame(endFrame, display: true)
-        }, completionHandler: {
-            guard self.animationGeneration == generation else { return }
-            self.isAnimatingHide = false
-            window.orderOut(nil)
+        }, completionHandler: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                guard self.animationGeneration == generation else { return }
+                self.isAnimatingHide = false
+                window.orderOut(nil)
+            }
         })
     }
 

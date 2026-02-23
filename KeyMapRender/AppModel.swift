@@ -15,6 +15,8 @@ struct VialLayoutChoice: Identifiable {
 final class AppModel: ObservableObject {
     @Published var targetKeyCodeText: String
     @Published var longPressDuration: Double
+    @Published var overlayShowAnimationDuration: Double
+    @Published var overlayHideAnimationDuration: Double
     @Published var permissionStatusText = "権限確認中..."
     @Published var isOverlayVisible = false
     @Published var layout: KeyboardLayout
@@ -50,6 +52,8 @@ final class AppModel: ObservableObject {
     private enum DefaultsKey {
         static let targetKeyCode = "targetKeyCode"
         static let longPressDuration = "longPressDuration"
+        static let overlayShowAnimationDuration = "overlayShowAnimationDuration"
+        static let overlayHideAnimationDuration = "overlayHideAnimationDuration"
         static let ignoredDeviceIDs = "ignoredDeviceIDs"
     }
 
@@ -57,20 +61,28 @@ final class AppModel: ObservableObject {
         let defaults = UserDefaults.standard
         let savedKey = defaults.object(forKey: DefaultsKey.targetKeyCode) as? Int ?? 49
         let savedDuration = defaults.object(forKey: DefaultsKey.longPressDuration) as? Double ?? 0.45
+        let savedShowDuration = defaults.object(forKey: DefaultsKey.overlayShowAnimationDuration) as? Double ?? 0.24
+        let savedHideDuration = defaults.object(forKey: DefaultsKey.overlayHideAnimationDuration) as? Double ?? 0.18
         self.targetKeyCodeText = "\(savedKey)"
         self.longPressDuration = savedDuration
+        self.overlayShowAnimationDuration = savedShowDuration
+        self.overlayHideAnimationDuration = savedHideDuration
         self.layout = KeyboardLayoutLoader.loadDefaultLayout()
         self.matrixRowsText = "6"
         self.matrixColsText = "17"
         self.ignoredDeviceIDs = Set(defaults.stringArray(forKey: DefaultsKey.ignoredDeviceIDs) ?? [])
         self.ignoredDeviceCount = self.ignoredDeviceIDs.count
+        self.overlayWindowController.updateAnimationDurations(
+            show: savedShowDuration,
+            hide: savedHideDuration
+        )
     }
 
     func start() {
         guard !hasStarted else { return }
         guard !isShuttingDown else { return }
         hasStarted = true
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
         let axTrusted = AXIsProcessTrustedWithOptions(options)
         let listenTrusted = CGPreflightListenEventAccess()
         _ = CGRequestListenEventAccess()
@@ -134,6 +146,12 @@ final class AppModel: ObservableObject {
 
         UserDefaults.standard.set(Int(keyCodeValue), forKey: DefaultsKey.targetKeyCode)
         UserDefaults.standard.set(longPressDuration, forKey: DefaultsKey.longPressDuration)
+        UserDefaults.standard.set(overlayShowAnimationDuration, forKey: DefaultsKey.overlayShowAnimationDuration)
+        UserDefaults.standard.set(overlayHideAnimationDuration, forKey: DefaultsKey.overlayHideAnimationDuration)
+        overlayWindowController.updateAnimationDurations(
+            show: overlayShowAnimationDuration,
+            hide: overlayHideAnimationDuration
+        )
 
         monitor.stop()
         monitor.targetKeyCode = CGKeyCode(keyCodeValue)
