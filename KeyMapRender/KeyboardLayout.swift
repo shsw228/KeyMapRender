@@ -279,7 +279,7 @@ enum KeyboardLayoutLoader {
     ) -> String {
         if let row = parsed.row, let col = parsed.col {
             if row >= 0, col >= 0, row < keycodes[layer].count, col < keycodes[layer][row].count {
-                return KeycodeLabelFormatter.label(for: keycodes[layer][row][col])
+                return resolvedLayerAwareLabel(layer: layer, row: row, col: col, keycodes: keycodes)
             }
             return "----"
         }
@@ -290,6 +290,47 @@ enum KeyboardLayoutLoader {
             return normalized
         }
         return parsed.displayLabel.isEmpty ? "----" : parsed.displayLabel
+    }
+
+    nonisolated private static func resolvedLayerAwareLabel(
+        layer: Int,
+        row: Int,
+        col: Int,
+        keycodes: [[[UInt16]]]
+    ) -> String {
+        let keycode = keycodes[layer][row][col]
+        // TRNS should show its effective fallback key on lower layers.
+        if keycode == 0x0001 {
+            if let fallback = fallbackKeycode(from: layer, row: row, col: col, keycodes: keycodes) {
+                return "TRNS\n↓\(KeycodeLabelFormatter.label(for: fallback))"
+            }
+            return "TRNS"
+        }
+        return KeycodeLabelFormatter.label(for: keycode)
+    }
+
+    nonisolated private static func fallbackKeycode(
+        from layer: Int,
+        row: Int,
+        col: Int,
+        keycodes: [[[UInt16]]]
+    ) -> UInt16? {
+        guard layer > 0 else { return nil }
+        var current = layer - 1
+        while current >= 0 {
+            guard row < keycodes[current].count, col < keycodes[current][row].count else {
+                if current == 0 { break }
+                current -= 1
+                continue
+            }
+            let candidate = keycodes[current][row][col]
+            if candidate != 0x0001 {
+                return candidate
+            }
+            if current == 0 { break }
+            current -= 1
+        }
+        return nil
     }
 
     nonisolated private static func normalizeLiteralKeyLabel(_ raw: String) -> String? {
