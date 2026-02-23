@@ -382,12 +382,38 @@ private struct PhysicalKeyCandidate {
 
 private enum KeycodeLabelFormatter {
     static func label(for keycode: UInt16) -> String {
-        if keycode >= 0x2000, keycode <= 0x3FFF {
+        if isInRange(keycode, qkModTap, qkModTapMax) {
             return modTapLabel(for: keycode)
         }
-        if keycode >= 0x4000, keycode <= 0x4FFF {
+        if isInRange(keycode, qkLayerTap, qkLayerTapMax) {
             return layerTapLabel(for: keycode)
         }
+        if isInRange(keycode, qkMods, qkModsMax) {
+            return modsKeyLabel(for: keycode)
+        }
+        if isInRange(keycode, qkOneShotMod, qkOneShotModMax) {
+            return "OSM(\(modsLabel(Int(keycode & 0x1F))))"
+        }
+        if isInRange(keycode, qkLayerMod, qkLayerModMax) {
+            let layer = Int((keycode >> 5) & 0x0F)
+            let mods = Int(keycode & 0x1F)
+            return "LM(\(layer),\(modsLabel(mods)))"
+        }
+        if isInRange(keycode, qkTo, qkToMax) { return "TO(\(keycode & 0x1F))" }
+        if isInRange(keycode, qkMomentary, qkMomentaryMax) { return "MO(\(keycode & 0x1F))" }
+        if isInRange(keycode, qkDefLayer, qkDefLayerMax) { return "DF(\(keycode & 0x1F))" }
+        if isInRange(keycode, qkToggleLayer, qkToggleLayerMax) { return "TG(\(keycode & 0x1F))" }
+        if isInRange(keycode, qkOneShotLayer, qkOneShotLayerMax) { return "OSL(\(keycode & 0x1F))" }
+        if isInRange(keycode, qkLayerTapToggle, qkLayerTapToggleMax) { return "TT(\(keycode & 0x1F))" }
+        if isInRange(keycode, qkPersistentDefLayer, qkPersistentDefLayerMax) { return "PDF(\(keycode & 0x1F))" }
+        if isInRange(keycode, qkTapDance, qkTapDanceMax) { return "TD(\(keycode & 0xFF))" }
+        if isInRange(keycode, qkMagic, qkMagicMax) { return "QK_MAGIC+\(keycode - qkMagic)" }
+        if isInRange(keycode, qkMidi, qkMidiMax) { return "QK_MIDI+\(keycode - qkMidi)" }
+        if isInRange(keycode, qkLighting, qkLightingMax) { return "QK_LIGHT+\(keycode - qkLighting)" }
+        if isInRange(keycode, qkQuantum, qkQuantumMax) { return "QK_QUANT+\(keycode - qkQuantum)" }
+        if isInRange(keycode, qkKb, qkKbMax) { return "QK_KB+\(keycode - qkKb)" }
+        if isInRange(keycode, qkUser, qkUserMax) { return "QK_USER+\(keycode - qkUser)" }
+
         if let named = specialNames[keycode] { return named }
 
         if let basic = basicLabel(for: keycode) { return basic }
@@ -411,15 +437,41 @@ private enum KeycodeLabelFormatter {
     private static func modTapLabel(for keycode: UInt16) -> String {
         let mods = Int((keycode >> 8) & 0x1F)
         let tap = UInt16(keycode & 0x00FF)
-        let tapLabel = basicLabel(for: tap) ?? String(format: "%02X", tap)
-        return "短: \(tapLabel)\n長: \(modsLabel(mods))"
+        let tapLabel = basicLabel(for: tap) ?? String(format: "%04X", tap)
+        let holdLabel: String
+        if let one = oneModTapName(mods) {
+            holdLabel = one + "_T"
+        } else if mods == modMeh {
+            holdLabel = "MEH_T"
+        } else if mods == modHypr {
+            holdLabel = "HYPR_T"
+        } else {
+            holdLabel = String(format: "MT(0x%02X)", mods)
+        }
+        return "短: \(tapLabel)\n長: \(holdLabel)"
     }
 
     private static func layerTapLabel(for keycode: UInt16) -> String {
         let layer = Int((keycode >> 8) & 0x0F)
         let tap = UInt16(keycode & 0x00FF)
-        let tapLabel = basicLabel(for: tap) ?? String(format: "%02X", tap)
-        return "短: \(tapLabel)\n長: L\(layer)"
+        let tapLabel = basicLabel(for: tap) ?? String(format: "%04X", tap)
+        return "短: \(tapLabel)\n長: LT(\(layer))"
+    }
+
+    private static func modsKeyLabel(for keycode: UInt16) -> String {
+        let mods = Int((keycode >> 8) & 0x1F)
+        let base = UInt16(keycode & 0x00FF)
+        let baseLabel = basicLabel(for: base) ?? String(format: "%04X", base)
+        if let one = oneModTapName(mods) {
+            return "\(one)(\(baseLabel))"
+        }
+        if mods == modMeh {
+            return "MEH(\(baseLabel))"
+        }
+        if mods == modHypr {
+            return "HYPR(\(baseLabel))"
+        }
+        return String(format: "MOD(0x%02X,%@)", mods, baseLabel)
     }
 
     private static func modsLabel(_ mods: Int) -> String {
@@ -429,8 +481,24 @@ private enum KeycodeLabelFormatter {
         if (base & 0x01) != 0 { names.append(isRight ? "RCtrl" : "LCtrl") }
         if (base & 0x02) != 0 { names.append(isRight ? "RShift" : "LShift") }
         if (base & 0x04) != 0 { names.append(isRight ? "RAlt" : "LAlt") }
-        if (base & 0x08) != 0 { names.append(isRight ? "RCmd" : "LCmd") }
+        if (base & 0x08) != 0 { names.append(isRight ? "RGui" : "LGui") }
         return names.isEmpty ? String(format: "MOD(0x%02X)", mods) : names.joined(separator: "+")
+    }
+
+    private static func oneModTapName(_ mods: Int) -> String? {
+        let isRight = (mods & 0x10) != 0
+        let base = mods & 0x0F
+        switch base {
+        case 0x01: return isRight ? "RCtrl" : "LCtrl"
+        case 0x02: return isRight ? "RShift" : "LShift"
+        case 0x04: return isRight ? "RAlt" : "LAlt"
+        case 0x08: return isRight ? "RGui" : "LGui"
+        default: return nil
+        }
+    }
+
+    private static func isInRange(_ value: UInt16, _ start: UInt16, _ end: UInt16) -> Bool {
+        value >= start && value <= end
     }
 
     private static let specialNames: [UInt16: String] = [
@@ -464,11 +532,11 @@ private enum KeycodeLabelFormatter {
         0x00E0: "LCtrl",
         0x00E1: "LShift",
         0x00E2: "LAlt",
-        0x00E3: "LCmd",
+        0x00E3: "LGui",
         0x00E4: "RCtrl",
         0x00E5: "RShift",
         0x00E6: "RAlt",
-        0x00E7: "RCmd"
+        0x00E7: "RGui"
     ]
 
     private static let numberNames: [UInt16: String] = [
@@ -506,4 +574,45 @@ private enum KeycodeLabelFormatter {
         0x003E: "F5",
         0x003F: "F6"
     ]
+
+    private static let qkMods: UInt16 = 0x0100
+    private static let qkModsMax: UInt16 = 0x1FFF
+    private static let qkModTap: UInt16 = 0x2000
+    private static let qkModTapMax: UInt16 = 0x3FFF
+    private static let qkLayerTap: UInt16 = 0x4000
+    private static let qkLayerTapMax: UInt16 = 0x4FFF
+    private static let qkLayerMod: UInt16 = 0x5000
+    private static let qkLayerModMax: UInt16 = 0x51FF
+    private static let qkTo: UInt16 = 0x5200
+    private static let qkToMax: UInt16 = 0x521F
+    private static let qkMomentary: UInt16 = 0x5220
+    private static let qkMomentaryMax: UInt16 = 0x523F
+    private static let qkDefLayer: UInt16 = 0x5240
+    private static let qkDefLayerMax: UInt16 = 0x525F
+    private static let qkToggleLayer: UInt16 = 0x5260
+    private static let qkToggleLayerMax: UInt16 = 0x527F
+    private static let qkOneShotLayer: UInt16 = 0x5280
+    private static let qkOneShotLayerMax: UInt16 = 0x529F
+    private static let qkOneShotMod: UInt16 = 0x52A0
+    private static let qkOneShotModMax: UInt16 = 0x52BF
+    private static let qkLayerTapToggle: UInt16 = 0x52C0
+    private static let qkLayerTapToggleMax: UInt16 = 0x52DF
+    private static let qkPersistentDefLayer: UInt16 = 0x52E0
+    private static let qkPersistentDefLayerMax: UInt16 = 0x52FF
+    private static let qkTapDance: UInt16 = 0x5700
+    private static let qkTapDanceMax: UInt16 = 0x57FF
+    private static let qkMagic: UInt16 = 0x7000
+    private static let qkMagicMax: UInt16 = 0x70FF
+    private static let qkMidi: UInt16 = 0x7100
+    private static let qkMidiMax: UInt16 = 0x71FF
+    private static let qkLighting: UInt16 = 0x7800
+    private static let qkLightingMax: UInt16 = 0x78FF
+    private static let qkQuantum: UInt16 = 0x7C00
+    private static let qkQuantumMax: UInt16 = 0x7DFF
+    private static let qkKb: UInt16 = 0x7E00
+    private static let qkKbMax: UInt16 = 0x7E3F
+    private static let qkUser: UInt16 = 0x7E40
+    private static let qkUserMax: UInt16 = 0x7FFF
+    private static let modMeh = 0x07
+    private static let modHypr = 0x0F
 }
