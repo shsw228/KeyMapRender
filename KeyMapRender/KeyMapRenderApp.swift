@@ -13,21 +13,17 @@ struct KeyMapRenderApp: App {
     @StateObject private var appModel = AppModel()
 
     var body: some Scene {
-        WindowGroup(id: "main") {
+        MenuBarExtra("KeyMapRender", systemImage: "keyboard") {
+            MenuBarContentView()
+                .environmentObject(appModel)
+        }
+        Settings {
             ContentView()
                 .environmentObject(appModel)
                 .frame(minWidth: 640, minHeight: 380)
                 .onAppear {
                     appModel.start()
                 }
-                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
-                    appModel.shutdown()
-                }
-        }
-        .defaultLaunchBehavior(.suppressed)
-        MenuBarExtra("KeyMapRender", systemImage: "keyboard") {
-            MenuBarContentView()
-                .environmentObject(appModel)
         }
         .commands {
             CommandGroup(after: .appInfo) {
@@ -41,12 +37,12 @@ struct KeyMapRenderApp: App {
 
 private struct MenuBarContentView: View {
     @EnvironmentObject private var appModel: AppModel
-    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button("設定を開く") {
-                openWindow(id: "main")
+                openSettings()
                 NSApp.activate(ignoringOtherApps: true)
             }
             Divider()
@@ -56,11 +52,14 @@ private struct MenuBarContentView: View {
             }
         }
         .padding(.horizontal, 4)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+            appModel.shutdown()
+        }
         .onAppear {
             appModel.start()
             appModel.refreshLaunchAtLoginStatus()
             if appModel.shouldOpenSettingsWindowOnLaunch() {
-                openWindow(id: "main")
+                openSettings()
                 NSApp.activate(ignoringOtherApps: true)
             }
         }
