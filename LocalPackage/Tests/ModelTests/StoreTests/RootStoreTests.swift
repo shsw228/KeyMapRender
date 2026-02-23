@@ -155,4 +155,23 @@ struct RootStoreTests {
         #expect(sut.shouldOpenSettingsWindowOnLaunch())
         #expect(sut.shouldOpenSettingsWindowOnLaunch() == false)
     }
+
+    @MainActor @Test
+    func inputAccessStatus_delegatesToDependencyClient() async {
+        let sut = RootStore(.testDependencies(
+            inputAccessClient: testDependency(of: InputAccessClient.self) {
+                $0.checkStatus = { promptAccessibility, requestInputMonitoring in
+                    #expect(promptAccessibility)
+                    #expect(requestInputMonitoring)
+                    return .init(accessibilityTrusted: true, inputMonitoringTrusted: false)
+                }
+            }
+        ))
+        let status = sut.inputAccessStatus(
+            promptAccessibility: true,
+            requestInputMonitoring: true
+        )
+        #expect(status.accessibilityTrusted)
+        #expect(status.inputMonitoringTrusted == false)
+    }
 }

@@ -80,12 +80,12 @@ final class AppModel: ObservableObject {
         guard !hasStarted else { return }
         guard !isShuttingDown else { return }
         hasStarted = true
-        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-        let axTrusted = AXIsProcessTrustedWithOptions(options)
-        let listenTrusted = CGPreflightListenEventAccess()
-        _ = CGRequestListenEventAccess()
+        let accessStatus = rootStore.inputAccessStatus(
+            promptAccessibility: true,
+            requestInputMonitoring: true
+        )
 
-        if axTrusted && listenTrusted {
+        if accessStatus.accessibilityTrusted && accessStatus.inputMonitoringTrusted {
             permissionStatusText = "権限: Accessibility/Input Monitoring 許可済み"
         } else {
             permissionStatusText = "権限不足: Accessibility と Input Monitoring を許可してください。"

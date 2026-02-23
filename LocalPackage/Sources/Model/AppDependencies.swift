@@ -8,6 +8,7 @@ public final class AppDependencies: Sendable {
     public let hidKeyboardClient: HIDKeyboardClient
     public let vialRawHIDClient: VialRawHIDClient
     public let launchAtLoginClient: LaunchAtLoginClient
+    public let inputAccessClient: InputAccessClient
 
     public nonisolated init(
         appStateClient: AppStateClient = .liveValue,
@@ -15,7 +16,8 @@ public final class AppDependencies: Sendable {
         userDefaultsClient: UserDefaultsClient = .liveValue,
         hidKeyboardClient: HIDKeyboardClient = .liveValue,
         vialRawHIDClient: VialRawHIDClient = .liveValue,
-        launchAtLoginClient: LaunchAtLoginClient = .liveValue
+        launchAtLoginClient: LaunchAtLoginClient = .liveValue,
+        inputAccessClient: InputAccessClient = .liveValue
     ) {
         self.appStateClient = appStateClient
         self.loggingSystemClient = loggingSystemClient
@@ -23,6 +25,7 @@ public final class AppDependencies: Sendable {
         self.hidKeyboardClient = hidKeyboardClient
         self.vialRawHIDClient = vialRawHIDClient
         self.launchAtLoginClient = launchAtLoginClient
+        self.inputAccessClient = inputAccessClient
     }
 
     public static let shared = AppDependencies()
@@ -39,7 +42,8 @@ extension AppDependencies {
         userDefaultsClient: UserDefaultsClient = .testValue,
         hidKeyboardClient: HIDKeyboardClient = .testValue,
         vialRawHIDClient: VialRawHIDClient = .testValue,
-        launchAtLoginClient: LaunchAtLoginClient = .testValue
+        launchAtLoginClient: LaunchAtLoginClient = .testValue,
+        inputAccessClient: InputAccessClient = .testValue
     ) -> AppDependencies {
         AppDependencies(
             appStateClient: appStateClient,
@@ -47,7 +51,8 @@ extension AppDependencies {
             userDefaultsClient: userDefaultsClient,
             hidKeyboardClient: hidKeyboardClient,
             vialRawHIDClient: vialRawHIDClient,
-            launchAtLoginClient: launchAtLoginClient
+            launchAtLoginClient: launchAtLoginClient,
+            inputAccessClient: inputAccessClient
         )
     }
 }

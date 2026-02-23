@@ -2,12 +2,14 @@ import DataSource
 import Foundation
 import Model
 import ServiceManagement
+import ApplicationServices
 
 extension AppDependencies {
     static let keyMapRenderLive = AppDependencies(
         hidKeyboardClient: .keyMapRenderLiveValue,
         vialRawHIDClient: .keyMapRenderLiveValue,
-        launchAtLoginClient: .keyMapRenderLiveValue
+        launchAtLoginClient: .keyMapRenderLiveValue,
+        inputAccessClient: .keyMapRenderLiveValue
     )
 }
 
@@ -61,6 +63,23 @@ extension LaunchAtLoginClient {
             } catch {
                 return .failure(.message(error.localizedDescription))
             }
+        }
+    )
+}
+
+extension InputAccessClient {
+    static let keyMapRenderLiveValue = Self(
+        checkStatus: { promptAccessibility, requestInputMonitoring in
+            let options = ["AXTrustedCheckOptionPrompt": promptAccessibility] as CFDictionary
+            let axTrusted = AXIsProcessTrustedWithOptions(options)
+            let listenTrusted = CGPreflightListenEventAccess()
+            if requestInputMonitoring {
+                _ = CGRequestListenEventAccess()
+            }
+            return InputAccessStatus(
+                accessibilityTrusted: axTrusted,
+                inputMonitoringTrusted: listenTrusted
+            )
         }
     )
 }

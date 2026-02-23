@@ -234,6 +234,13 @@ public final class RootStore: Composable {
         appDependencies.launchAtLoginClient.setEnabled(enabled)
     }
 
+    public nonisolated func inputAccessStatus(
+        promptAccessibility: Bool,
+        requestInputMonitoring: Bool
+    ) -> InputAccessStatus {
+        appDependencies.inputAccessClient.checkStatus(promptAccessibility, requestInputMonitoring)
+    }
+
     public enum Action: Sendable {
         case showSettingsOnLaunchToggleSwitched(Bool)
         case settingsWindowLaunchRequestConsumed
