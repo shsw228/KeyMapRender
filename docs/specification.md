@@ -68,6 +68,7 @@
   - matrix rows/cols の自動推定
 
 ## 9. 今後の検討事項
+- LUCAアーキテクチャ（DataSource / Model / UserInterface）への段階移行
 - 実機の Vial JSON バリエーション対応強化
 - キーコード入力を物理キー押下で学習するUI追加
 - 複数レイアウト切替、ファイル選択UI追加
@@ -80,3 +81,5 @@
 - 2026-02-23: 接続キーボード列挙とVial Raw HID最小通信テスト要件を追記
 - 2026-02-23: dynamic keymap buffer読出し（rows/cols指定）を追記
 - 2026-02-23: レイアウト分岐（split space 等）の選択反映要件を追記
+
+- 2026-02-24: LUCA適合方針（段階移行）を追記

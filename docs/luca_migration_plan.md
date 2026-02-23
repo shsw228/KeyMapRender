@@ -1,0 +1,98 @@
+# LUCA適合 移行計画（KeyMapRender）
+
+## 1. 目的
+- 既存の単一ターゲット構成（`AppModel` 中心）を、LUCAの3レイヤ構成へ段階移行する。
+- 機能退行を避けつつ、責務分離・テスト容易性・将来拡張性を改善する。
+
+## 2. 現状と課題
+- 現状は `AppModel.swift` に状態管理・ユースケース・一部インフラ呼び出しが集中。
+- `VialRawHIDService.swift` / `HIDKeyboardService.swift` は分離されているが、依存注入の統一ルールがない。
+- View から `@EnvironmentObject AppModel` で広範囲に状態/操作へ直接アクセスしている。
+- ロジック単体テストを追加しづらい。
+
+## 3. LUCAへのマッピング
+
+### DataSource
+- `Entities`
+  - `KeyboardLayout`（必要なら表示向けと通信向けを分離）
+  - `HIDKeyboardDevice`
+  - `VialProbeResult` / `VialKeymapDump` / `VialMatrixInfo` / `VialSwitchMatrixState`
+- `Dependencies`
+  - `VialRawHIDClient`（現 `VialRawHIDService` を client 化）
+  - `HIDKeyboardClient`（現 `HIDKeyboardService` + hotplug 監視 API）
+  - `GlobalKeyMonitorClient`（現 `GlobalKeyLongPressMonitor`）
+  - `LaunchAtLoginClient`（`SMAppService`）
+  - `UserDefaultsClient`
+  - `LoggerClient`（`OSLog` 書き込み）
+  - `OverlayWindowClient`（`OverlayWindowController` 呼び出し面）
+- `Repositories`
+  - `KeyboardRepository`（列挙・選択・ignore 管理）
+  - `VialRepository`（probe/keymap/definition/matrix state）
+  - `SettingsRepository`（targetKey/threshold/animation/起動設定）
+
+### Model
+- `AppDependencies`
+  - 上記 DependencyClient を束ねる。
+- `Services`
+  - `VialDecodeService`（キーコード表示解釈・複合キーラベル生成）
+  - `OverlayLayoutService`（表示レイヤ/分岐レイアウト反映）
+  - `ActiveLayerTrackingService`（レイヤ追従ロジック）
+- `Stores`
+  - `SettingsStore`（設定タブ群の状態/イベント）
+  - `OverlayStore`（長押し開始/終了、オーバーレイ表示制御）
+  - `DiagnosticsStore`（ログ集約・コピー）
+  - `RootStore`（現在の `AppModel` 相当。子Store委譲）
+
+### UserInterface
+- `Scenes`
+  - `SettingsScene`（現 `ContentView` 系）
+  - `MenuBarScene`
+- `Views`
+  - 既存 `GeneralSettingsView` / `VialSettingsView` / `StatusView` / `DiagnosticsView` / `HelpView` を Store注入型へ変更
+  - `KeyboardOverlayView` は表示専用化
+
+## 4. 段階移行（機能維持優先）
+
+### Phase 0: 足場
+- `LocalPackage` 追加（`DataSource`/`Model`/`UserInterface`）
+- `AppDependencies` と `DependencyClient` 最小セットを作成
+- 既存 target から package を参照
+
+### Phase 1: インフラ抽出
+- `VialRawHIDService` / `HIDKeyboardService` / `GlobalKeyLongPressMonitor` / `OverlayWindowController` を DependencyClient 経由へ
+- 挙動を変えず `AppModel` 内呼び出し先のみ差し替え
+
+### Phase 2: Store分割
+- `AppModel` を `RootStore` へ置換開始
+- 設定系・診断系・オーバーレイ系を子Storeへ分離
+- View は `EnvironmentObject` 依存を段階的に縮小
+
+### Phase 3: Service分離とテスト
+- レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出
+- `ModelTests` に Service/Store テスト追加
+
+### Phase 4: 完了整理
+- 旧 `AppModel` を削除
+- DataSource/Model/UserInterface の依存方向を固定
+
+## 5. 既存ファイル対応表
+- `AppModel.swift` → `Model/Stores/RootStore.swift` + 子Store群へ分割
+- `VialRawHIDService.swift` → `DataSource/Dependencies/VialRawHIDClient.swift`
+- `HIDKeyboardService.swift` → `DataSource/Dependencies/HIDKeyboardClient.swift`
+- `HIDKeyboardHotplugMonitor.swift` → `DataSource/Dependencies/HIDKeyboardClient` 内部
+- `OverlayWindowController.swift` → `DataSource/Dependencies/OverlayWindowClient.swift`
+- `GlobalKeyLongPressMonitor.swift` → `DataSource/Dependencies/GlobalKeyMonitorClient.swift`
+- `KeyboardLayout.swift` → Entity層 + UI拡張へ再配置
+- `*View.swift` 群 → `UserInterface/Views`
+
+## 6. 先に決めるべき設計事項
+- `AppStateClient` に何を載せるか（永続設定と実行時状態の境界）
+- Overlay Window 操作をどこまで DataSource 化するか（AppKit境界）
+- Python bridge 呼び出し面を Repository か Client か
+
+## 7. 初手の実装提案（次コミット候補）
+1. `LocalPackage` 作成
+2. `DependencyClient` / `AppDependencies` / `Composable` を最小実装
+3. `VialRawHIDClient` と `HIDKeyboardClient` を追加し、既存実装を委譲
+4. `AppModel` の呼び出し先を client 経由に切替（機能同等）
+
