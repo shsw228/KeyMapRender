@@ -237,6 +237,9 @@ final class AppModel: ObservableObject {
                 name: "Live \(dump.backend)"
             )
         }
+        if isOverlayVisible {
+            overlayWindowController.show(layout: layout)
+        }
         logBottomLeftThirdKey(layer: layer)
         logNumericLabelDiagnostics(layer: layer)
     }
