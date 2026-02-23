@@ -28,7 +28,7 @@ public final class RootStore: Composable {
         }
     }
 
-    private let appDependencies: AppDependencies
+    private nonisolated let appDependencies: AppDependencies
     private var userDefaultsRepository: UserDefaultsRepository
     private var didConsumeInitialSettingsOpenRequest: Bool
     private var ignoredDeviceIDs: Set<String>
@@ -110,7 +110,7 @@ public final class RootStore: Composable {
         allDetected.filter { !ignoredDeviceIDs.contains($0.id) }
     }
 
-    public func listKeyboards() -> [HIDKeyboardDevice] {
+    public nonisolated func listKeyboards() -> [HIDKeyboardDevice] {
         appDependencies.hidKeyboardClient.listKeyboards()
     }
 
@@ -143,11 +143,11 @@ public final class RootStore: Composable {
         return "検出: \(connectedKeyboards.count) 台 / 無視: \(ignoredCount) 台"
     }
 
-    public func probeVial(on device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError> {
+    public nonisolated func probeVial(on device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError> {
         appDependencies.vialRawHIDClient.probe(device)
     }
 
-    public func readVialKeymap(
+    public nonisolated func readVialKeymap(
         on device: HIDKeyboardDevice,
         rows: Int,
         cols: Int
@@ -155,15 +155,15 @@ public final class RootStore: Composable {
         appDependencies.vialRawHIDClient.readKeymap(device, rows, cols)
     }
 
-    public func inferVialMatrix(on device: HIDKeyboardDevice) -> Result<VialMatrixInfo, VialProbeError> {
+    public nonisolated func inferVialMatrix(on device: HIDKeyboardDevice) -> Result<VialMatrixInfo, VialProbeError> {
         appDependencies.vialRawHIDClient.inferMatrix(device)
     }
 
-    public func readVialDefinition(on device: HIDKeyboardDevice) -> Result<String, VialProbeError> {
+    public nonisolated func readVialDefinition(on device: HIDKeyboardDevice) -> Result<String, VialProbeError> {
         appDependencies.vialRawHIDClient.readDefinition(device)
     }
 
-    public func readVialSwitchMatrixState(
+    public nonisolated func readVialSwitchMatrixState(
         on device: HIDKeyboardDevice,
         rows: Int,
         cols: Int

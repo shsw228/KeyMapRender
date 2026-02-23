@@ -1,6 +1,6 @@
 import Foundation
 
-public struct HIDKeyboardDevice: Identifiable, Hashable {
+public struct HIDKeyboardDevice: Identifiable, Hashable, Sendable {
     public let id: String
     public let vendorID: Int
     public let productID: Int
