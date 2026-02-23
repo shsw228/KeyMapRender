@@ -293,9 +293,7 @@ enum KeyboardLayoutLoader {
         if text.hasPrefix("0x") || text.hasPrefix("0X") {
             return UInt16(text.dropFirst(2), radix: 16)
         }
-        let separators = CharacterSet.decimalDigits.inverted
-        let token = text.components(separatedBy: separators).first(where: { !$0.isEmpty }) ?? ""
-        guard let decimal = Int(token), decimal >= 0, decimal <= Int(UInt16.max) else {
+        guard let decimal = Int(text), decimal >= 0, decimal <= Int(UInt16.max) else {
             return nil
         }
         return UInt16(decimal)
@@ -399,9 +397,6 @@ private struct PhysicalKeyCandidate {
 
 enum KeycodeLabelFormatter {
     static func label(for keycode: UInt16) -> String {
-        if keycode >= 0x0100, keycode <= 0x1FFF {
-            return modsTapLabel(for: keycode)
-        }
         if keycode >= 0x2000, keycode <= 0x3FFF {
             return modTapLabel(for: keycode)
         }
@@ -433,13 +428,6 @@ enum KeycodeLabelFormatter {
         let tap = UInt16(keycode & 0x00FF)
         let tapLabel = basicLabel(for: tap) ?? String(format: "%02X", tap)
         return "\(modTapMacroLabel(mods: mods, tapLabel: tapLabel))\n短: \(tapLabel)"
-    }
-
-    private static func modsTapLabel(for keycode: UInt16) -> String {
-        let mods = Int((keycode >> 8) & 0x1F)
-        let inner = UInt16(keycode & 0x00FF)
-        let innerLabel = basicLabel(for: inner) ?? String(format: "0x%02X", inner)
-        return "\(modsLabel(mods))(\(innerLabel))"
     }
 
     private static func layerTapLabel(for keycode: UInt16) -> String {
