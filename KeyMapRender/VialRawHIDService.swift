@@ -17,6 +17,12 @@ struct VialKeymapDump {
     let backend: String
 }
 
+struct VialMatrixInfo {
+    let rows: Int
+    let cols: Int
+    let backend: String
+}
+
 enum VialProbeError: Error {
     case message(String)
 }
@@ -39,6 +45,7 @@ enum VialRawHIDService {
     private enum BridgeMode: String {
         case probe
         case dump
+        case matrix
     }
 
     private final class InputReportCapture {
@@ -103,6 +110,24 @@ enum VialRawHIDService {
                 backend: "native"
             )
         }
+    }
+
+    static func inferMatrix(device: HIDKeyboardDevice) -> Result<VialMatrixInfo, VialProbeError> {
+        guard let json = runPythonBridge(mode: .matrix, device: device, rows: nil, cols: nil) else {
+            return .failure(.message("python bridge が見つかりません。"))
+        }
+        guard let ok = json["ok"] as? Bool else { return .failure(.message("python bridge: invalid response")) }
+        if !ok {
+            let message = json["error"] as? String ?? "unknown error"
+            return .failure(.message("python bridge: \(message)"))
+        }
+        guard
+            let rows = json["matrix_rows"] as? Int,
+            let cols = json["matrix_cols"] as? Int
+        else {
+            return .failure(.message("python bridge: missing matrix fields"))
+        }
+        return .success(VialMatrixInfo(rows: rows, cols: cols, backend: "python"))
     }
 
     private static func probeViaPythonBridge(device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError>? {

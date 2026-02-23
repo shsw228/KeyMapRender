@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import lzma
 import os
 import struct
 import sys
@@ -25,6 +26,9 @@ CMD_VIA_GET_PROTOCOL_VERSION = 0x01
 CMD_VIA_GET_LAYER_COUNT = 0x11
 CMD_VIA_KEYMAP_GET_BUFFER = 0x12
 CMD_VIA_GET_KEYCODE = 0x04
+CMD_VIA_VIAL_PREFIX = 0xFE
+CMD_VIAL_GET_SIZE = 0x01
+CMD_VIAL_GET_DEFINITION = 0x02
 
 
 def fail(message: str, logs: List[str] | None = None, extra: Dict[str, Any] | None = None) -> None:
@@ -187,6 +191,57 @@ def dump_keymap(vid: int, pid: int, rows: int, cols: int) -> None:
     finally:
         dev.close()
 
+def infer_matrix(vid: int, pid: int) -> None:
+    try:
+        desc, logs = find_rawhid_device(vid, pid)
+    except Exception as exc:
+        fail(str(exc))
+
+    dev = hid.device()
+    try:
+        dev.open_path(desc["path"])
+    except OSError as exc:
+        fail(f"open_path failed: {exc}", logs)
+
+    try:
+        size_data = hid_send(dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_SIZE))
+        sz = struct.unpack("<I", size_data[0:4])[0]
+        if sz <= 0 or sz > 2_000_000:
+            fail(f"invalid definition size: {sz}", logs, {"path": str(desc.get("path"))})
+
+        payload = b""
+        block = 0
+        while len(payload) < sz:
+            data = hid_send(dev, struct.pack("<BBI", CMD_VIA_VIAL_PREFIX, CMD_VIAL_GET_DEFINITION, block))
+            payload += data
+            block += 1
+
+        payload = payload[:sz]
+        definition = json.loads(lzma.decompress(payload))
+        matrix = definition.get("matrix", {})
+        rows = int(matrix.get("rows", 0))
+        cols = int(matrix.get("cols", 0))
+        if rows <= 0 or cols <= 0:
+            fail("matrix rows/cols not found in vial definition", logs, {"path": str(desc.get("path"))})
+
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    "mode": "matrix",
+                    "matrix_rows": rows,
+                    "matrix_cols": cols,
+                    "path": str(desc.get("path")),
+                    "logs": logs,
+                },
+                ensure_ascii=False,
+            )
+        )
+    except Exception as exc:
+        fail(str(exc), logs, {"path": str(desc.get("path"))})
+    finally:
+        dev.close()
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -201,6 +256,10 @@ def parse_args() -> argparse.Namespace:
     dump_cmd.add_argument("--pid", type=lambda s: int(s, 0), required=True)
     dump_cmd.add_argument("--rows", type=int, required=True)
     dump_cmd.add_argument("--cols", type=int, required=True)
+
+    matrix_cmd = sub.add_parser("matrix")
+    matrix_cmd.add_argument("--vid", type=lambda s: int(s, 0), required=True)
+    matrix_cmd.add_argument("--pid", type=lambda s: int(s, 0), required=True)
     return parser.parse_args()
 
 
@@ -220,3 +279,5 @@ if __name__ == "__main__":
         probe(args.vid, args.pid)
     elif args.mode == "dump":
         dump_keymap(args.vid, args.pid, args.rows, args.cols)
+    elif args.mode == "matrix":
+        infer_matrix(args.vid, args.pid)
