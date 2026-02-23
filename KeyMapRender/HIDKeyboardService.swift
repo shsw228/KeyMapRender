@@ -31,11 +31,10 @@ enum HIDKeyboardService {
             kIOHIDDeviceUsageKey as String: kHIDUsage_GD_Keypad
         ]
         IOHIDManagerSetDeviceMatchingMultiple(manager, [keyboardMatch, keypadMatch] as CFArray)
-        let openResult = IOHIDManagerOpen(manager, options)
-        guard openResult == kIOReturnSuccess else {
-            return []
+        let didOpen = IOHIDManagerOpen(manager, options) == kIOReturnSuccess
+        if didOpen {
+            defer { IOHIDManagerClose(manager, options) }
         }
-        defer { IOHIDManagerClose(manager, options) }
 
         guard let set = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else {
             return []
@@ -58,11 +57,10 @@ enum HIDKeyboardService {
             kIOHIDProductIDKey as String: keyboard.productID
         ]
         IOHIDManagerSetDeviceMatching(manager, match as CFDictionary)
-        let openResult = IOHIDManagerOpen(manager, options)
-        guard openResult == kIOReturnSuccess else {
-            return []
+        let didOpen = IOHIDManagerOpen(manager, options) == kIOReturnSuccess
+        if didOpen {
+            defer { IOHIDManagerClose(manager, options) }
         }
-        defer { IOHIDManagerClose(manager, options) }
 
         guard let set = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else {
             return []
