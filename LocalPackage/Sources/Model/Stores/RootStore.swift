@@ -241,6 +241,14 @@ public final class RootStore: Composable {
         appDependencies.inputAccessClient.checkStatus(promptAccessibility, requestInputMonitoring)
     }
 
+    public nonisolated func copyToClipboard(_ text: String) {
+        appDependencies.clipboardClient.copyString(text)
+    }
+
+    public nonisolated func saveTextFile(_ request: SaveFileRequest) -> Result<SaveFileResult, SaveFileError> {
+        appDependencies.fileSaveClient.saveText(request)
+    }
+
     public enum Action: Sendable {
         case showSettingsOnLaunchToggleSwitched(Bool)
         case settingsWindowLaunchRequestConsumed

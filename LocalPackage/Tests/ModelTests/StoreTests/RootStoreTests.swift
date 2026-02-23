@@ -174,4 +174,49 @@ struct RootStoreTests {
         #expect(status.accessibilityTrusted)
         #expect(status.inputMonitoringTrusted == false)
     }
+
+    @MainActor @Test
+    func copyToClipboard_delegatesToDependencyClient() async {
+        let copied = OSAllocatedUnfairLock(initialState: "")
+        let sut = RootStore(.testDependencies(
+            clipboardClient: testDependency(of: ClipboardClient.self) {
+                $0.copyString = { text in copied.withLock { $0 = text } }
+            }
+        ))
+        sut.copyToClipboard("hello")
+        #expect(copied.withLock(\.self) == "hello")
+    }
+
+    @MainActor @Test
+    func saveTextFile_delegatesToDependencyClient() async {
+        let received = OSAllocatedUnfairLock(initialState: "")
+        let sut = RootStore(.testDependencies(
+            fileSaveClient: testDependency(of: FileSaveClient.self) {
+                $0.saveText = { request in
+                    received.withLock { $0 = request.content }
+                    return .success(.saved(path: "/tmp/sample.json"))
+                }
+            }
+        ))
+        let result = sut.saveTextFile(
+            SaveFileRequest(
+                suggestedFileName: "sample.json",
+                allowedExtensions: ["json"],
+                title: "save",
+                content: "{\"k\":1}"
+            )
+        )
+        #expect(received.withLock(\.self) == "{\"k\":1}")
+        switch result {
+        case let .success(value):
+            switch value {
+            case let .saved(path):
+                #expect(path == "/tmp/sample.json")
+            case .cancelled:
+                Issue.record("Expected saved result.")
+            }
+        case .failure:
+            Issue.record("Expected saveTextFile success.")
+        }
+    }
 }

@@ -1,15 +1,19 @@
+import AppKit
 import DataSource
 import Foundation
 import Model
 import ServiceManagement
 import ApplicationServices
+import UniformTypeIdentifiers
 
 extension AppDependencies {
     static let keyMapRenderLive = AppDependencies(
         hidKeyboardClient: .keyMapRenderLiveValue,
         vialRawHIDClient: .keyMapRenderLiveValue,
         launchAtLoginClient: .keyMapRenderLiveValue,
-        inputAccessClient: .keyMapRenderLiveValue
+        inputAccessClient: .keyMapRenderLiveValue,
+        clipboardClient: .keyMapRenderLiveValue,
+        fileSaveClient: .keyMapRenderLiveValue
     )
 }
 
@@ -80,6 +84,41 @@ extension InputAccessClient {
                 accessibilityTrusted: axTrusted,
                 inputMonitoringTrusted: listenTrusted
             )
+        }
+    )
+}
+
+extension ClipboardClient {
+    static let keyMapRenderLiveValue = Self(
+        copyString: { text in
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(text, forType: .string)
+        }
+    )
+}
+
+extension FileSaveClient {
+    static let keyMapRenderLiveValue = Self(
+        saveText: { request in
+            let panel = NSSavePanel()
+            panel.nameFieldStringValue = request.suggestedFileName
+            let contentTypes = request.allowedExtensions.compactMap { UTType(filenameExtension: $0) }
+            if !contentTypes.isEmpty {
+                panel.allowedContentTypes = contentTypes
+            }
+            panel.canCreateDirectories = true
+            panel.title = request.title
+            let response = panel.runModal()
+            guard response == .OK, let url = panel.url else {
+                return .success(.cancelled)
+            }
+            do {
+                try request.content.write(to: url, atomically: true, encoding: .utf8)
+                return .success(.saved(path: url.path))
+            } catch {
+                return .failure(.message(error.localizedDescription))
+            }
         }
     )
 }

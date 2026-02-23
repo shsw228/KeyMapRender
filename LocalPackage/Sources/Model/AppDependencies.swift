@@ -9,6 +9,8 @@ public final class AppDependencies: Sendable {
     public let vialRawHIDClient: VialRawHIDClient
     public let launchAtLoginClient: LaunchAtLoginClient
     public let inputAccessClient: InputAccessClient
+    public let clipboardClient: ClipboardClient
+    public let fileSaveClient: FileSaveClient
 
     public nonisolated init(
         appStateClient: AppStateClient = .liveValue,
@@ -17,7 +19,9 @@ public final class AppDependencies: Sendable {
         hidKeyboardClient: HIDKeyboardClient = .liveValue,
         vialRawHIDClient: VialRawHIDClient = .liveValue,
         launchAtLoginClient: LaunchAtLoginClient = .liveValue,
-        inputAccessClient: InputAccessClient = .liveValue
+        inputAccessClient: InputAccessClient = .liveValue,
+        clipboardClient: ClipboardClient = .liveValue,
+        fileSaveClient: FileSaveClient = .liveValue
     ) {
         self.appStateClient = appStateClient
         self.loggingSystemClient = loggingSystemClient
@@ -26,6 +30,8 @@ public final class AppDependencies: Sendable {
         self.vialRawHIDClient = vialRawHIDClient
         self.launchAtLoginClient = launchAtLoginClient
         self.inputAccessClient = inputAccessClient
+        self.clipboardClient = clipboardClient
+        self.fileSaveClient = fileSaveClient
     }
 
     public static let shared = AppDependencies()
@@ -43,7 +49,9 @@ extension AppDependencies {
         hidKeyboardClient: HIDKeyboardClient = .testValue,
         vialRawHIDClient: VialRawHIDClient = .testValue,
         launchAtLoginClient: LaunchAtLoginClient = .testValue,
-        inputAccessClient: InputAccessClient = .testValue
+        inputAccessClient: InputAccessClient = .testValue,
+        clipboardClient: ClipboardClient = .testValue,
+        fileSaveClient: FileSaveClient = .testValue
     ) -> AppDependencies {
         AppDependencies(
             appStateClient: appStateClient,
@@ -52,7 +60,9 @@ extension AppDependencies {
             hidKeyboardClient: hidKeyboardClient,
             vialRawHIDClient: vialRawHIDClient,
             launchAtLoginClient: launchAtLoginClient,
-            inputAccessClient: inputAccessClient
+            inputAccessClient: inputAccessClient,
+            clipboardClient: clipboardClient,
+            fileSaveClient: fileSaveClient
         )
     }
 }

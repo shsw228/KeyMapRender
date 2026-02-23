@@ -31,6 +31,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - レイアウト選択肢の型を `Model.VialLayoutChoiceValue` に統一し、`AppModel` 側の重複定義を削除
 - 自動起動設定（Launch at Login）を `LaunchAtLoginClient` 経由にし、`AppModel` からプラットフォームAPI直接依存を削減
 - 権限確認（Accessibility/Input Monitoring）を `InputAccessClient` 経由へ移行
+- クリップボード書き込みと `vial.json` 保存を `ClipboardClient` / `FileSaveClient` 経由へ移行
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

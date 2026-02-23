@@ -1,10 +1,8 @@
-import AppKit
 import Combine
 import DataSource
 import Model
 import OSLog
 import SwiftUI
-import UniformTypeIdentifiers
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -408,28 +406,32 @@ final class AppModel: ObservableObject {
                     self.appendDiagnostics("vial.json検証失敗: \(error.localizedDescription)")
                     return
                 }
-                let panel = NSSavePanel()
-                panel.nameFieldStringValue = String(
+                let suggestedName = String(
                     format: "vial-%04X-%04X.json",
                     selected.vendorID,
                     selected.productID
                 )
-                panel.allowedContentTypes = [.json]
-                panel.canCreateDirectories = true
-                panel.title = "vial.json を保存"
-                let response = panel.runModal()
-                guard response == .OK, let url = panel.url else {
-                    self.keymapStatusText = "vial.json保存をキャンセルしました。"
-                    self.appendDiagnostics("vial.json保存キャンセル")
-                    return
-                }
-                do {
-                    try prettyJSON.write(to: url, atomically: true, encoding: .utf8)
-                    self.keymapStatusText = "vial.json保存完了: \(url.path)"
-                    self.appendDiagnostics("vial.json保存完了: \(url.path)")
-                } catch {
-                    self.keymapStatusText = "vial.json保存失敗: \(error.localizedDescription)"
-                    self.appendDiagnostics("vial.json保存失敗: \(error.localizedDescription)")
+                let saveResult = self.rootStore.saveTextFile(
+                    SaveFileRequest(
+                        suggestedFileName: suggestedName,
+                        allowedExtensions: ["json"],
+                        title: "vial.json を保存",
+                        content: prettyJSON
+                    )
+                )
+                switch saveResult {
+                case let .success(result):
+                    switch result {
+                    case let .saved(path):
+                        self.keymapStatusText = "vial.json保存完了: \(path)"
+                        self.appendDiagnostics("vial.json保存完了: \(path)")
+                    case .cancelled:
+                        self.keymapStatusText = "vial.json保存をキャンセルしました。"
+                        self.appendDiagnostics("vial.json保存キャンセル")
+                    }
+                case let .failure(.message(message)):
+                    self.keymapStatusText = "vial.json保存失敗: \(message)"
+                    self.appendDiagnostics("vial.json保存失敗: \(message)")
                 }
             case let .failure(.message(message)):
                 self.keymapStatusText = "vial.json取得失敗: \(message)"
@@ -439,9 +441,7 @@ final class AppModel: ObservableObject {
     }
 
     func copyDiagnosticsLog() {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(diagnosticsLogText, forType: .string)
+        rootStore.copyToClipboard(diagnosticsLogText)
     }
 
     func ignoreSelectedKeyboard() {

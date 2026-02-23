@@ -86,6 +86,7 @@
 - 状態: `RootStore` のキーボード選別/選択解決/状態文言ロジックに単体テストを追加
 - 状態: 自動起動設定の依存を `LaunchAtLoginClient` + `RootStore` API へ移し、`AppModel` 直依存を削減
 - 状態: 権限確認（Accessibility/Input Monitoring）を `InputAccessClient` + `RootStore` API へ移し、`AppModel` 直依存を削減
+- 状態: クリップボード書き込みと保存ダイアログを `ClipboardClient` / `FileSaveClient` + `RootStore` API へ移し、`AppModel` 直依存を削減
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出
