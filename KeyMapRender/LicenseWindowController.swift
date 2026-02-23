@@ -17,7 +17,7 @@ final class LicenseWindowController {
 
     private func makeWindow() -> NSWindow {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 820, height: 620),
+            contentRect: NSRect(x: 0, y: 0, width: 680, height: 500),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -43,4 +43,3 @@ struct ThirdPartyLicensesView: View {
         .padding(16)
     }
 }
-

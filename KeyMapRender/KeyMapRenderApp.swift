@@ -15,7 +15,7 @@ struct KeyMapRenderApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(appModel)
-                .frame(minWidth: 520, minHeight: 340)
+                .frame(minWidth: 640, minHeight: 380)
                 .onAppear {
                     appModel.start()
                 }
