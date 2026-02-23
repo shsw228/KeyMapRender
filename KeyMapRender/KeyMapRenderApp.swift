@@ -47,13 +47,6 @@ private struct MenuBarContentView: View {
                 openWindow(id: "main")
                 NSApp.activate(ignoringOtherApps: true)
             }
-            Toggle(
-                "PC起動時に自動起動",
-                isOn: Binding(
-                    get: { appModel.launchAtLoginEnabled },
-                    set: { appModel.setLaunchAtLogin($0) }
-                )
-            )
             Divider()
             Button("終了") {
                 appModel.shutdown()
