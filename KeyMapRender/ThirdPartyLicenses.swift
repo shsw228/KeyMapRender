@@ -1,16 +1,42 @@
 import Foundation
 
+struct ThirdPartyLibraryLicense: Identifiable {
+    let id: String
+    let name: String
+    let body: String
+}
+
 enum ThirdPartyLicenses {
+    static func libraries() -> [ThirdPartyLibraryLicense] {
+        var items: [ThirdPartyLibraryLicense] = []
+
+        if let hidapi = loadHidapiLicenses() {
+            items.append(
+                ThirdPartyLibraryLicense(
+                    id: "hidapi",
+                    name: "hidapi (cython-hidapi 0.15.0)",
+                    body: hidapi
+                )
+            )
+        }
+
+        if items.isEmpty {
+            items.append(
+                ThirdPartyLibraryLicense(
+                    id: "unavailable",
+                    name: "ライセンス情報",
+                    body: "ライセンス情報を読み込めませんでした。"
+                )
+            )
+        }
+        return items
+    }
+
     static func load() -> String {
         var sections: [String] = []
         sections.append("# Third-Party Licenses")
         sections.append("このアプリは以下の外部ライブラリを利用します。")
-
-        if let hidapi = loadHidapiLicenses() {
-            sections.append(hidapi)
-        } else {
-            sections.append("hidapi: ライセンス情報を読み込めませんでした。")
-        }
+        sections.append(contentsOf: libraries().map(\.body))
 
         return sections.joined(separator: "\n\n")
     }
