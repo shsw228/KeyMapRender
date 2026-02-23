@@ -179,24 +179,20 @@ enum KeyboardLayoutLoader {
             return makeMatrixLayout(rows: fallbackRows, cols: fallbackCols, keycodes: keycodes, layer: 0, name: name)
         }
 
-        var positioned: [PositionedKey] = []
-        var keyIndex = 0
+        var candidates: [PhysicalKeyCandidate] = []
         var cursorY = 0.0
 
-        let rows: [[KeyboardKey]] = keymapRows.enumerated().map { rowIndex, rowItems in
+        keymapRows.enumerated().forEach { rowIndex, rowItems in
             if rowIndex > 0 {
                 cursorY += 1.0
             }
-            var keys: [KeyboardKey] = []
             var width = 1.0
             var height = 1.0
-            var spacerX = 0.0
             var cursorX = 0.0
 
             for item in rowItems {
                 if let dict = item as? [String: Any] {
                     if let x = toDouble(dict["x"]) {
-                        spacerX += x
                         cursorX += x
                     }
                     if let y = toDouble(dict["y"]) {
@@ -209,41 +205,64 @@ enum KeyboardLayoutLoader {
 
                 let raw = String(describing: item)
                 let parsed = parseRawLabel(raw)
-                if spacerX > 0 {
-                    keys.append(KeyboardKey(label: "", width: spacerX, height: 1, isSpacer: true))
-                    spacerX = 0
-                }
-                let shouldInclude = isVisibleForLayoutOption(parsed, selectedLayoutOptions: selectedLayoutOptions)
                 let mappedLabel = mapKeyLabel(parsed: parsed, layer: layer, keycodes: keycodes)
-                if shouldInclude {
-                    positioned.append(
-                        PositionedKey(
-                            id: "k\(keyIndex)",
-                            label: mappedLabel,
-                            x: cursorX,
-                            y: cursorY,
-                            width: width,
-                            height: height
-                        )
+                candidates.append(
+                    PhysicalKeyCandidate(
+                        label: mappedLabel,
+                        x: cursorX,
+                        y: cursorY,
+                        width: width,
+                        height: height,
+                        layoutIndex: parsed.layoutIndex,
+                        layoutOption: parsed.layoutOption
                     )
-                    keyIndex += 1
-                    keys.append(
-                        KeyboardKey(
-                            label: mappedLabel,
-                            width: width,
-                            height: height,
-                            isSpacer: false
-                        )
-                    )
-                }
+                )
                 cursorX += width
                 width = 1.0
                 height = 1.0
             }
-            return keys
         }
 
-        return makeLayout(name: "\(name) L\(layer)", rows: rows, positionedKeys: positioned)
+        var layoutMin: [Int: [Int: (x: Double, y: Double)]] = [:]
+        for candidate in candidates {
+            guard let idx = candidate.layoutIndex, let opt = candidate.layoutOption else { continue }
+            let current = layoutMin[idx]?[opt] ?? (x: Double.greatestFiniteMagnitude, y: Double.greatestFiniteMagnitude)
+            let next = (x: min(current.x, candidate.x), y: min(current.y, candidate.y))
+            var options = layoutMin[idx] ?? [:]
+            options[opt] = next
+            layoutMin[idx] = options
+        }
+
+        var positioned: [PositionedKey] = []
+        var keyIndex = 0
+        for candidate in candidates {
+            let shifted: (x: Double, y: Double)?
+            if let idx = candidate.layoutIndex, let opt = candidate.layoutOption {
+                let selected = selectedLayoutOptions[idx] ?? 0
+                guard selected == opt else { continue }
+                let origin = layoutMin[idx]?[0]
+                let selectedTopLeft = layoutMin[idx]?[selected]
+                let shiftX = (selectedTopLeft?.x ?? 0) - (origin?.x ?? 0)
+                let shiftY = (selectedTopLeft?.y ?? 0) - (origin?.y ?? 0)
+                shifted = (candidate.x - shiftX, candidate.y - shiftY)
+            } else {
+                shifted = (candidate.x, candidate.y)
+            }
+            guard let point = shifted else { continue }
+            positioned.append(
+                PositionedKey(
+                    id: "k\(keyIndex)",
+                    label: candidate.label,
+                    x: point.x,
+                    y: point.y,
+                    width: candidate.width,
+                    height: candidate.height
+                )
+            )
+            keyIndex += 1
+        }
+
+        return makeLayout(name: "\(name) L\(layer)", rows: [], positionedKeys: positioned)
     }
 
     nonisolated private static func mapKeyLabel(
@@ -258,15 +277,6 @@ enum KeyboardLayoutLoader {
             return "----"
         }
         return parsed.displayLabel.isEmpty ? "----" : parsed.displayLabel
-    }
-
-    nonisolated private static func isVisibleForLayoutOption(
-        _ parsed: RawLabel,
-        selectedLayoutOptions: [Int: Int]
-    ) -> Bool {
-        guard let idx = parsed.layoutIndex, let opt = parsed.layoutOption else { return true }
-        let selected = selectedLayoutOptions[idx] ?? 0
-        return selected == opt
     }
 
     nonisolated private static func parseRawLabel(_ raw: String) -> RawLabel {
@@ -333,6 +343,16 @@ private struct RawLabel {
     let displayLabel: String
     let row: Int?
     let col: Int?
+    let layoutIndex: Int?
+    let layoutOption: Int?
+}
+
+private struct PhysicalKeyCandidate {
+    let label: String
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
     let layoutIndex: Int?
     let layoutOption: Int?
 }
