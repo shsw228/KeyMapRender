@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import OSLog
 import ServiceManagement
 import SwiftUI
 import UniformTypeIdentifiers
@@ -48,6 +49,10 @@ final class AppModel: ObservableObject {
     private var activeLayerTrackingGeneration: UInt64 = 0
     private var matrixPollFailureCount = 0
     private var hasStarted = false
+    private let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
+        category: "AppModel"
+    )
 
     private enum DefaultsKey {
         static let targetKeyCode = "targetKeyCode"
@@ -646,7 +651,49 @@ final class AppModel: ObservableObject {
         } else {
             diagnosticsLogText = diagnosticsLogText + "\n" + line
         }
-        NSLog("[KeyMapRender] %@", line)
+        switch diagnosticLevel(for: message) {
+        case .debug:
+            logger.debug("\(line, privacy: .public)")
+        case .info:
+            logger.info("\(line, privacy: .public)")
+        case .notice:
+            logger.notice("\(line, privacy: .public)")
+        case .warning:
+            logger.warning("\(line, privacy: .public)")
+        case .error:
+            logger.error("\(line, privacy: .public)")
+        case .fault:
+            logger.fault("\(line, privacy: .public)")
+        }
+    }
+
+    private enum DiagnosticLevel {
+        case debug
+        case info
+        case notice
+        case warning
+        case error
+        case fault
+    }
+
+    private func diagnosticLevel(for message: String) -> DiagnosticLevel {
+        let text = message.lowercased()
+        if text.contains("crash") || text.contains("fatal") || message.contains("致命") {
+            return .fault
+        }
+        if message.contains("失敗") || message.contains("応答なし") || text.contains("error") {
+            return .error
+        }
+        if message.contains("不足") || message.contains("無効") || message.contains("キャンセル") {
+            return .warning
+        }
+        if message.contains("開始") || message.contains("更新") {
+            return .notice
+        }
+        if message.contains("成功") || message.contains("完了") {
+            return .info
+        }
+        return .debug
     }
 
     private func persistIgnoredDeviceIDs() {

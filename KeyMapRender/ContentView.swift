@@ -174,7 +174,7 @@ struct ContentView: View {
                         Button("診断ログをコピー") {
                             appModel.copyDiagnosticsLog()
                         }
-                        Text("Xcodeログにも同内容を出力")
+                        Text("Xcode/Console にも同内容を出力")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
