@@ -68,6 +68,7 @@
   - `KeyMapRender.xcodeproj` に `LocalPackage(DataSource)` を接続し、段階移行の実行経路を確立
   - HID/Vial 通信の dependency client 契約（`HIDKeyboardClient` / `VialRawHIDClient`）を `DataSource` へ移設
   - HID/Vial 通信の実装本体（`HIDKeyboardService` / `VialRawHIDService`）を `DataSource/Services` へ移設
+  - 監視実装本体（`HIDKeyboardHotplugMonitor` / `GlobalKeyLongPressMonitor`）を `DataSource/Services` へ移設
   - `AppModel` の依存注入先を `Model.AppDependencies` ベースへ切替
   - 起動時設定（showSettingsOnLaunch）の状態管理を `Model.RootStore` へ移設
   - 設定永続化（target key / long press / overlay animation / ignored devices）を `RootStore` + `UserDefaultsRepository` 経由へ移行

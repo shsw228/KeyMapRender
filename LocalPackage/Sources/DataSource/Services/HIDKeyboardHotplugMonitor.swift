@@ -1,18 +1,18 @@
 import Foundation
 import IOKit.hid
 
-final class HIDKeyboardHotplugMonitor {
+public final class HIDKeyboardHotplugMonitor {
     private let manager: IOHIDManager
     private let callback: @Sendable () -> Void
     private var isRunning = false
 
-    init(callback: @escaping @Sendable () -> Void) {
+    public init(callback: @escaping @Sendable () -> Void) {
         self.manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
         self.callback = callback
     }
 
     @discardableResult
-    func start() -> Bool {
+    public func start() -> Bool {
         guard !isRunning else { return true }
 
         let keyboardMatch: [String: Any] = [
@@ -42,7 +42,7 @@ final class HIDKeyboardHotplugMonitor {
         return true
     }
 
-    func stop() {
+    public func stop() {
         guard isRunning else { return }
         IOHIDManagerRegisterDeviceMatchingCallback(manager, nil, nil)
         IOHIDManagerRegisterDeviceRemovalCallback(manager, nil, nil)
