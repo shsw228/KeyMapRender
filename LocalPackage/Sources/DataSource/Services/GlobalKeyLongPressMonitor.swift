@@ -1,10 +1,12 @@
-import AppKit
+import ApplicationServices
+import Foundation
 
-final class GlobalKeyLongPressMonitor {
-    var targetKeyCode: CGKeyCode = 49
-    var longPressThreshold: TimeInterval = 0.45
-    var onLongPressStart: (() -> Void)?
-    var onLongPressEnd: (() -> Void)?
+public final class GlobalKeyLongPressMonitor {
+    public var targetKeyCode: CGKeyCode = 49
+    public var longPressThreshold: TimeInterval = 0.45
+    public var onLongPressStart: (() -> Void)?
+    public var onLongPressEnd: (() -> Void)?
+    public var onShortPress: (() -> Void)?
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -12,7 +14,9 @@ final class GlobalKeyLongPressMonitor {
     private var isLongPressActive = false
     private var workItem: DispatchWorkItem?
 
-    func start() -> Bool {
+    public init() {}
+
+    public func start() -> Bool {
         let mask =
             (1 << CGEventType.keyDown.rawValue) |
             (1 << CGEventType.keyUp.rawValue) |
@@ -42,7 +46,7 @@ final class GlobalKeyLongPressMonitor {
         return true
     }
 
-    func stop() {
+    public func stop() {
         workItem?.cancel()
         workItem = nil
         isTargetPressed = false
@@ -118,6 +122,8 @@ final class GlobalKeyLongPressMonitor {
         if isLongPressActive {
             isLongPressActive = false
             onLongPressEnd?()
+        } else {
+            onShortPress?()
         }
     }
 

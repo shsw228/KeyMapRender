@@ -1,4 +1,5 @@
 import SwiftUI
+import DataSource
 
 struct HelpView: View {
     var body: some View {

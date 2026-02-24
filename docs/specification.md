@@ -63,11 +63,28 @@
   - 接続キーボード列挙（VID/PID表示）
   - Vial Raw HID 通信テスト（最小読出し）
   - 全キー行列読出し（rows/cols 手動指定）
+  - LUCA移行の第一段として、DependencyClient / AppDependencies 経由の依存注入基盤を導入
+  - `luca --platform macOS` 生成の `LocalPackage` 雛形（DataSource/Model/UserInterface）を導入
+  - `KeyMapRender.xcodeproj` に `LocalPackage(DataSource)` を接続し、段階移行の実行経路を確立
+  - HID/Vial 通信の dependency client 契約（`HIDKeyboardClient` / `VialRawHIDClient`）を `DataSource` へ移設
+  - HID/Vial 通信の実装本体（`HIDKeyboardService` / `VialRawHIDService`）を `DataSource/Services` へ移設
+  - 監視実装本体（`HIDKeyboardHotplugMonitor` / `GlobalKeyLongPressMonitor`）を `DataSource/Services` へ移設
+  - HID/Vial/監視系クライアントの live 実装（`*.keyMapRenderLiveValue`）を `DataSource/Dependencies` へ移設
+  - オーバーレイ表示実装本体（`OverlayWindowController` / `KeyboardOverlayView`）を `DataSource/Services` へ移設
+  - 起動時設定/権限/クリップボード/保存ダイアログ/オーバーレイの live 実装を `DataSource/Dependencies` へ移設し、`AppDependencies+Live` を依存束ね中心に整理
+  - `AppDependencies.keyMapRenderLive` 定義を `Model` 側へ移し、アプリターゲット側の依存注入構成コードを削減
+  - `KeyboardLayoutLoader` を廃止し、`AppModel` は `KeyboardLayoutService` を直接参照
+  - Third-Party ライセンス表示実装（`LicenseWindowController` / `ThirdPartyLicenses`）を `DataSource/Services` へ移設
+  - 設定画面/メニューバーUIと `AppModel` 実体を `UserInterface` ターゲットへ移設し、appターゲットは `KeyMapRenderRootScene` 呼び出し中心へ簡素化
+  - `AppModel` の依存注入先を `Model.AppDependencies` ベースへ切替
+  - 起動時設定（showSettingsOnLaunch）の状態管理を `Model.RootStore` へ移設
+  - 設定永続化（target key / long press / overlay animation / ignored devices）を `RootStore` + `UserDefaultsRepository` 経由へ移行
 - 未実装
   - 接続キーボードの自動識別とレイアウト自動切替
   - matrix rows/cols の自動推定
 
 ## 9. 今後の検討事項
+- LUCAアーキテクチャ（DataSource / Model / UserInterface）への段階移行
 - 実機の Vial JSON バリエーション対応強化
 - キーコード入力を物理キー押下で学習するUI追加
 - 複数レイアウト切替、ファイル選択UI追加
@@ -80,3 +97,8 @@
 - 2026-02-23: 接続キーボード列挙とVial Raw HID最小通信テスト要件を追記
 - 2026-02-23: dynamic keymap buffer読出し（rows/cols指定）を追記
 - 2026-02-23: レイアウト分岐（split space 等）の選択反映要件を追記
+
+- 2026-02-24: LUCA適合方針（段階移行）を追記
+
+- 2026-02-24: LUCA依存注入基盤（DependencyClient / AppDependencies）を導入
+- 2026-02-24: `luca --platform macOS` 生成の LocalPackage 雛形を導入

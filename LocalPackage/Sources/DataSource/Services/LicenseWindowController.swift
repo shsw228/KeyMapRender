@@ -2,12 +2,12 @@ import AppKit
 import SwiftUI
 
 @MainActor
-final class LicenseWindowController {
-    static let shared = LicenseWindowController()
+public final class LicenseWindowController {
+    public static let shared = LicenseWindowController()
 
     private var window: NSWindow?
 
-    func show() {
+    public func show() {
         let window = window ?? makeWindow()
         window.contentView = NSHostingView(rootView: ThirdPartyLicensesView())
         window.makeKeyAndOrderFront(nil)
@@ -26,6 +26,8 @@ final class LicenseWindowController {
         window.center()
         return window
     }
+
+    public init() {}
 }
 
 struct ThirdPartyLicensesView: View {

@@ -1,16 +1,11 @@
-//
-//  ContentView.swift
-//  KeyMapRender
-//
-//  Created by Kengo Tate on 2026/02/23.
-//
-
 import SwiftUI
 
-struct ContentView: View {
+public struct ContentView: View {
     @State private var selection: Pane = .general
 
-    var body: some View {
+    public init() {}
+
+    public var body: some View {
         TabView(selection: $selection) {
             GeneralSettingsView()
                 .tag(Pane.general)

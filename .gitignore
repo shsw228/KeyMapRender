@@ -1,0 +1,10 @@
+# SwiftPM build artifacts
+LocalPackage/.build/
+LocalPackage/.swiftpm/
+
+# Xcode user/workspace local artifacts
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcshareddata/swiftpm/
+*.xcworkspace/xcshareddata/swiftpm/*
+KeyMapRender.xcodeproj/project.xcworkspace/xcshareddata/

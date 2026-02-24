@@ -1,34 +1,8 @@
 import Foundation
+import DataSource
 
-struct KeyboardLayout {
-    let name: String
-    let rows: [[KeyboardKey]]
-    let positionedKeys: [PositionedKey]
-    let positionedWidth: Double
-    let positionedHeight: Double
-}
-
-struct KeyboardKey {
-    let label: String
-    let width: Double
-    let height: Double
-    let isSpacer: Bool
-}
-
-struct PositionedKey: Identifiable {
-    let id: String
-    let label: String
-    let x: Double
-    let y: Double
-    let width: Double
-    let height: Double
-    let matrixRow: Int?
-    let matrixCol: Int?
-    let rawKeycode: UInt16?
-}
-
-enum KeyboardLayoutLoader {
-    nonisolated static func loadDefaultLayout() -> KeyboardLayout {
+public enum KeyboardLayoutService {
+    public nonisolated static func loadDefaultLayout() -> KeyboardLayout {
         guard
             let url = Bundle.main.url(forResource: "default-layout", withExtension: "json"),
             let data = try? Data(contentsOf: url),
@@ -135,7 +109,7 @@ enum KeyboardLayoutLoader {
         )
     }
 
-    nonisolated static func makeMatrixLayout(
+    public nonisolated static func makeMatrixLayout(
         rows: Int,
         cols: Int,
         keycodes: [[[UInt16]]],
@@ -166,7 +140,7 @@ enum KeyboardLayoutLoader {
         return makeLayout(name: "\(name) L\(layer)", rows: matrixRows, positionedKeys: [])
     }
 
-    nonisolated static func makePhysicalLayoutFromVialKeymap(
+    public nonisolated static func makePhysicalLayoutFromVialKeymap(
         keymapRows: [[Any]],
         keycodes: [[[UInt16]]],
         layer: Int,

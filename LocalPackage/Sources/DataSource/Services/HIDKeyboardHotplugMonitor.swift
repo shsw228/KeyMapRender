@@ -1,18 +1,19 @@
 import Foundation
 import IOKit.hid
 
-final class HIDKeyboardHotplugMonitor {
+public final class HIDKeyboardHotplugMonitor {
     private let manager: IOHIDManager
-    private let callback: @MainActor () -> Void
+    private let callback: @Sendable () -> Void
     private var isRunning = false
+    public private(set) var lastOpenResult: IOReturn = kIOReturnSuccess
 
-    init(callback: @escaping @MainActor () -> Void) {
+    public init(callback: @escaping @Sendable () -> Void) {
         self.manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
         self.callback = callback
     }
 
     @discardableResult
-    func start() -> Bool {
+    public func start() -> Bool {
         guard !isRunning else { return true }
 
         let keyboardMatch: [String: Any] = [
@@ -31,6 +32,7 @@ final class HIDKeyboardHotplugMonitor {
         IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
 
         let openResult = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
+        lastOpenResult = openResult
         guard openResult == kIOReturnSuccess else {
             IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
             IOHIDManagerRegisterDeviceMatchingCallback(manager, nil, nil)
@@ -42,7 +44,7 @@ final class HIDKeyboardHotplugMonitor {
         return true
     }
 
-    func stop() {
+    public func stop() {
         guard isRunning else { return }
         IOHIDManagerRegisterDeviceMatchingCallback(manager, nil, nil)
         IOHIDManagerRegisterDeviceRemovalCallback(manager, nil, nil)
@@ -52,9 +54,7 @@ final class HIDKeyboardHotplugMonitor {
     }
 
     private func handleDeviceChanged() {
-        Task { @MainActor in
-            callback()
-        }
+        callback()
     }
 
     private static let deviceChangedCallback: IOHIDDeviceCallback = { context, _, _, _ in

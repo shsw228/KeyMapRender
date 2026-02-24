@@ -1,43 +1,7 @@
 import Foundation
 import IOKit.hid
 
-nonisolated struct VialProbeResult {
-    let protocolVersion: String
-    let layerCount: Int
-    let keycodeL0R0C0: UInt16
-    let backend: String
-}
-
-nonisolated struct VialKeymapDump {
-    let protocolVersion: String
-    let layerCount: Int
-    let matrixRows: Int
-    let matrixCols: Int
-    let keycodes: [[[UInt16]]]
-    let layoutKeymapRows: [[Any]]?
-    let layoutLabels: [Any]?
-    let layoutOptions: UInt32?
-    let backend: String
-}
-
-nonisolated struct VialMatrixInfo {
-    let rows: Int
-    let cols: Int
-    let backend: String
-}
-
-nonisolated struct VialSwitchMatrixState {
-    let rows: Int
-    let cols: Int
-    let pressed: [[Bool]]
-    let backend: String
-}
-
-enum VialProbeError: Error {
-    case message(String)
-}
-
-enum VialRawHIDService {
+public enum VialRawHIDService {
     private nonisolated static let reportLength = 32
     private nonisolated static let reportIDs: [CFIndex] = [0, 1]
     private nonisolated static let hidSendRetries = 20
@@ -67,7 +31,7 @@ enum VialRawHIDService {
         var response: [UInt8]?
     }
 
-    nonisolated static func probe(device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError> {
+    public nonisolated static func probe(device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError> {
         if let bridge = probeViaPythonBridge(device: device) {
             return bridge
         }
@@ -85,7 +49,7 @@ enum VialRawHIDService {
         }
     }
 
-    nonisolated static func readKeymap(device: HIDKeyboardDevice, matrixRows: Int, matrixCols: Int) -> Result<VialKeymapDump, VialProbeError> {
+    public nonisolated static func readKeymap(device: HIDKeyboardDevice, matrixRows: Int, matrixCols: Int) -> Result<VialKeymapDump, VialProbeError> {
         guard matrixRows > 0, matrixCols > 0 else {
             return .failure(.message("matrixRows と matrixCols は 1 以上で指定してください。"))
         }
@@ -130,7 +94,7 @@ enum VialRawHIDService {
         }
     }
 
-    nonisolated static func inferMatrix(device: HIDKeyboardDevice) -> Result<VialMatrixInfo, VialProbeError> {
+    public nonisolated static func inferMatrix(device: HIDKeyboardDevice) -> Result<VialMatrixInfo, VialProbeError> {
         guard let json = runPythonBridge(mode: .matrix, device: device, rows: nil, cols: nil) else {
             return .failure(.message("python bridge が見つかりません。"))
         }
@@ -148,7 +112,7 @@ enum VialRawHIDService {
         return .success(VialMatrixInfo(rows: rows, cols: cols, backend: "python"))
     }
 
-    nonisolated static func readDefinition(device: HIDKeyboardDevice) -> Result<String, VialProbeError> {
+    public nonisolated static func readDefinition(device: HIDKeyboardDevice) -> Result<String, VialProbeError> {
         guard let json = runPythonBridge(mode: .definition, device: device, rows: nil, cols: nil) else {
             return .failure(.message("python bridge が見つかりません。"))
         }
@@ -174,7 +138,7 @@ enum VialRawHIDService {
         }
     }
 
-    nonisolated static func readSwitchMatrixState(
+    public nonisolated static func readSwitchMatrixState(
         device: HIDKeyboardDevice,
         matrixRows: Int,
         matrixCols: Int
