@@ -66,6 +66,57 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct VialProbePresentation: Sendable {
+        public let vialStatusText: String
+        public let diagnosticMessage: String
+        public let availableLayerCount: Int?
+
+        public init(
+            vialStatusText: String,
+            diagnosticMessage: String,
+            availableLayerCount: Int?
+        ) {
+            self.vialStatusText = vialStatusText
+            self.diagnosticMessage = diagnosticMessage
+            self.availableLayerCount = availableLayerCount
+        }
+    }
+
+    public struct VialKeymapPresentation: Sendable {
+        public let keymapStatusText: String
+        public let diagnosticMessage: String
+        public let availableLayerCount: Int?
+
+        public init(
+            keymapStatusText: String,
+            diagnosticMessage: String,
+            availableLayerCount: Int?
+        ) {
+            self.keymapStatusText = keymapStatusText
+            self.diagnosticMessage = diagnosticMessage
+            self.availableLayerCount = availableLayerCount
+        }
+    }
+
+    public struct VialMatrixPresentation: Sendable {
+        public let keymapStatusText: String
+        public let diagnosticMessage: String
+        public let matrixRows: Int?
+        public let matrixCols: Int?
+
+        public init(
+            keymapStatusText: String,
+            diagnosticMessage: String,
+            matrixRows: Int?,
+            matrixCols: Int?
+        ) {
+            self.keymapStatusText = keymapStatusText
+            self.diagnosticMessage = diagnosticMessage
+            self.matrixRows = matrixRows
+            self.matrixCols = matrixCols
+        }
+    }
+
     public struct KeyboardRefreshResult: Sendable {
         public let allDetectedKeyboards: [HIDKeyboardDevice]
         public let connectedKeyboards: [HIDKeyboardDevice]
@@ -328,6 +379,61 @@ public final class RootStore: Composable {
                 completionDiagnosticMessage: "起動時全マップ読出し失敗: \(message)",
                 matrixRows: matrixRows,
                 matrixCols: matrixCols
+            )
+        }
+    }
+
+    public func presentVialProbeResult(_ result: Result<VialProbeResult, VialProbeError>) -> VialProbePresentation {
+        switch result {
+        case let .success(probe):
+            let statusText = "Vial応答(\(probe.backend)): protocol=\(probe.protocolVersion), layers=\(probe.layerCount), L0R0C0=0x\(String(probe.keycodeL0R0C0, radix: 16, uppercase: true))"
+            return VialProbePresentation(
+                vialStatusText: statusText,
+                diagnosticMessage: "Vial通信テスト成功: \(statusText)",
+                availableLayerCount: max(1, probe.layerCount)
+            )
+        case let .failure(.message(message)):
+            return VialProbePresentation(
+                vialStatusText: "Vial応答なし: \(message)",
+                diagnosticMessage: "Vial通信テスト失敗: \(message)",
+                availableLayerCount: nil
+            )
+        }
+    }
+
+    public func presentVialKeymapReadResult(_ result: Result<VialKeymapDump, VialProbeError>) -> VialKeymapPresentation {
+        switch result {
+        case let .success(dump):
+            let statusText = "取得成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
+            return VialKeymapPresentation(
+                keymapStatusText: statusText,
+                diagnosticMessage: "全マップ読出し成功: \(statusText)",
+                availableLayerCount: max(1, dump.layerCount)
+            )
+        case let .failure(.message(message)):
+            return VialKeymapPresentation(
+                keymapStatusText: "取得失敗: \(message)",
+                diagnosticMessage: "全マップ読出し失敗: \(message)",
+                availableLayerCount: nil
+            )
+        }
+    }
+
+    public func presentVialMatrixInferenceResult(_ result: Result<VialMatrixInfo, VialProbeError>) -> VialMatrixPresentation {
+        switch result {
+        case let .success(info):
+            return VialMatrixPresentation(
+                keymapStatusText: "matrix自動取得成功(\(info.backend)): \(info.rows)x\(info.cols)",
+                diagnosticMessage: "matrix自動取得成功: \(info.rows)x\(info.cols)",
+                matrixRows: info.rows,
+                matrixCols: info.cols
+            )
+        case let .failure(.message(message)):
+            return VialMatrixPresentation(
+                keymapStatusText: "matrix自動取得失敗: \(message)",
+                diagnosticMessage: "matrix自動取得失敗: \(message)",
+                matrixRows: nil,
+                matrixCols: nil
             )
         }
     }

@@ -192,6 +192,61 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func presentVialProbeResult_buildsSuccessAndFailureMessages() async {
+        let sut = RootStore(.testDependencies())
+        let success = sut.presentVialProbeResult(
+            .success(
+                VialProbeResult(
+                    protocolVersion: "0x0009",
+                    layerCount: 8,
+                    keycodeL0R0C0: 0x2B,
+                    backend: "python"
+                )
+            )
+        )
+        #expect(success.vialStatusText.contains("Vial応答(python)"))
+        #expect(success.diagnosticMessage.contains("Vial通信テスト成功"))
+        #expect(success.availableLayerCount == 8)
+
+        let failure = sut.presentVialProbeResult(.failure(.message("timeout")))
+        #expect(failure.vialStatusText == "Vial応答なし: timeout")
+        #expect(failure.diagnosticMessage == "Vial通信テスト失敗: timeout")
+        #expect(failure.availableLayerCount == nil)
+    }
+
+    @MainActor @Test
+    func presentVialKeymapReadResult_buildsSuccessAndFailureMessages() async {
+        let sut = RootStore(.testDependencies())
+        let success = sut.presentVialKeymapReadResult(.success(dump))
+        #expect(success.keymapStatusText.contains("取得成功(python)"))
+        #expect(success.diagnosticMessage.contains("全マップ読出し成功"))
+        #expect(success.availableLayerCount == 1)
+
+        let failure = sut.presentVialKeymapReadResult(.failure(.message("decode error")))
+        #expect(failure.keymapStatusText == "取得失敗: decode error")
+        #expect(failure.diagnosticMessage == "全マップ読出し失敗: decode error")
+        #expect(failure.availableLayerCount == nil)
+    }
+
+    @MainActor @Test
+    func presentVialMatrixInferenceResult_buildsSuccessAndFailureMessages() async {
+        let sut = RootStore(.testDependencies())
+        let success = sut.presentVialMatrixInferenceResult(
+            .success(.init(rows: 14, cols: 8, backend: "python"))
+        )
+        #expect(success.keymapStatusText == "matrix自動取得成功(python): 14x8")
+        #expect(success.diagnosticMessage == "matrix自動取得成功: 14x8")
+        #expect(success.matrixRows == 14)
+        #expect(success.matrixCols == 8)
+
+        let failure = sut.presentVialMatrixInferenceResult(.failure(.message("unsupported")))
+        #expect(failure.keymapStatusText == "matrix自動取得失敗: unsupported")
+        #expect(failure.diagnosticMessage == "matrix自動取得失敗: unsupported")
+        #expect(failure.matrixRows == nil)
+        #expect(failure.matrixCols == nil)
+    }
+
+    @MainActor @Test
     func launchAtLogin_wrappersDelegateToDependencyClient() async {
         let sut = RootStore(.testDependencies(
             launchAtLoginClient: testDependency(of: LaunchAtLoginClient.self) {

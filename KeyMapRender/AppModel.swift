@@ -222,17 +222,19 @@ final class AppModel: ObservableObject {
         Task { [weak self] in
             guard let self else { return }
             let result = await self.rootStore.probeVialAsync(on: selected)
+            let presentation = self.rootStore.presentVialProbeResult(result)
             guard !self.isShuttingDown else { return }
             self.isDiagnosticsRunning = false
+            self.vialStatusText = presentation.vialStatusText
+            self.appendDiagnostics(presentation.diagnosticMessage)
             switch result {
-            case let .success(probe):
-                self.vialStatusText = "Vial応答(\(probe.backend)): protocol=\(probe.protocolVersion), layers=\(probe.layerCount), L0R0C0=0x\(String(probe.keycodeL0R0C0, radix: 16, uppercase: true))"
-                self.availableLayerCount = max(1, probe.layerCount)
+            case .success:
+                if let availableLayerCount = presentation.availableLayerCount {
+                    self.availableLayerCount = availableLayerCount
+                }
                 self.setSelectedLayerIndex(self.selectedLayerIndex)
-                self.appendDiagnostics("Vial通信テスト成功: \(self.vialStatusText)")
-            case let .failure(.message(message)):
-                self.vialStatusText = "Vial応答なし: \(message)"
-                self.appendDiagnostics("Vial通信テスト失敗: \(message)")
+            case .failure:
+                break
             }
         }
     }
@@ -251,20 +253,22 @@ final class AppModel: ObservableObject {
         Task { [weak self] in
             guard let self else { return }
             let result = await self.rootStore.readVialKeymapAsync(on: selected, rows: rows, cols: cols)
+            let presentation = self.rootStore.presentVialKeymapReadResult(result)
             guard !self.isShuttingDown else { return }
-                    self.isDiagnosticsRunning = false
-                    switch result {
-                    case let .success(dump):
-                        self.latestKeymapDump = dump
-                        self.layoutChoices = self.vialPresentationService.makeLayoutChoices(from: dump)
-                        self.availableLayerCount = max(1, dump.layerCount)
-                        self.setSelectedLayerIndex(self.selectedLayerIndex)
-                        self.startActiveLayerTrackingIfNeeded()
-                self.keymapStatusText = "取得成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
-                self.appendDiagnostics("全マップ読出し成功: \(self.keymapStatusText)")
-            case let .failure(.message(message)):
-                self.keymapStatusText = "取得失敗: \(message)"
-                self.appendDiagnostics("全マップ読出し失敗: \(message)")
+            self.isDiagnosticsRunning = false
+            self.keymapStatusText = presentation.keymapStatusText
+            self.appendDiagnostics(presentation.diagnosticMessage)
+            switch result {
+            case let .success(dump):
+                self.latestKeymapDump = dump
+                self.layoutChoices = self.vialPresentationService.makeLayoutChoices(from: dump)
+                if let availableLayerCount = presentation.availableLayerCount {
+                    self.availableLayerCount = availableLayerCount
+                }
+                self.setSelectedLayerIndex(self.selectedLayerIndex)
+                self.startActiveLayerTrackingIfNeeded()
+            case .failure:
+                break
             }
         }
     }
@@ -377,17 +381,14 @@ final class AppModel: ObservableObject {
         Task { [weak self] in
             guard let self else { return }
             let result = await self.rootStore.inferVialMatrixAsync(on: selected)
+            let presentation = self.rootStore.presentVialMatrixInferenceResult(result)
             guard !self.isShuttingDown else { return }
             self.isDiagnosticsRunning = false
-            switch result {
-            case let .success(info):
-                self.matrixRowsText = "\(info.rows)"
-                self.matrixColsText = "\(info.cols)"
-                self.keymapStatusText = "matrix自動取得成功(\(info.backend)): \(info.rows)x\(info.cols)"
-                self.appendDiagnostics("matrix自動取得成功: \(info.rows)x\(info.cols)")
-            case let .failure(.message(message)):
-                self.keymapStatusText = "matrix自動取得失敗: \(message)"
-                self.appendDiagnostics("matrix自動取得失敗: \(message)")
+            self.keymapStatusText = presentation.keymapStatusText
+            self.appendDiagnostics(presentation.diagnosticMessage)
+            if let rows = presentation.matrixRows, let cols = presentation.matrixCols {
+                self.matrixRowsText = "\(rows)"
+                self.matrixColsText = "\(cols)"
             }
         }
     }
