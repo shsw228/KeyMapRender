@@ -609,6 +609,14 @@ public final class RootStore: Composable {
         "デバイス無視リストを全解除"
     }
 
+    public func launchAtLoginUpdatedDiagnosticMessage(enabled: Bool) -> String {
+        "自動起動設定を更新: \(enabled ? "ON" : "OFF")"
+    }
+
+    public func launchAtLoginUpdateFailureDiagnosticMessage(_ detail: String) -> String {
+        "自動起動設定の更新失敗: \(detail)"
+    }
+
     public nonisolated func copyToClipboard(_ text: String) {
         appDependencies.clipboardClient.copyString(text)
     }

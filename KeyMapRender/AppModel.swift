@@ -121,10 +121,10 @@ final class AppModel: ObservableObject {
         switch rootStore.setLaunchAtLoginEnabled(enabled) {
         case let .success(updated):
             launchAtLoginEnabled = updated
-            appendDiagnostics("自動起動設定を更新: \(updated ? "ON" : "OFF")")
+            appendDiagnostics(rootStore.launchAtLoginUpdatedDiagnosticMessage(enabled: updated))
         case let .failure(.message(message)):
             refreshLaunchAtLoginStatus()
-            appendDiagnostics("自動起動設定の更新失敗: \(message)")
+            appendDiagnostics(rootStore.launchAtLoginUpdateFailureDiagnosticMessage(message))
         }
     }
 

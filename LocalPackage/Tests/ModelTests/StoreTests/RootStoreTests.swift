@@ -371,6 +371,9 @@ struct RootStoreTests {
         #expect(sut.activeLayerTrackingFailureDiagnosticMessage("timeout") == "アクティブレイヤー追従失敗: timeout")
         #expect(sut.ignoredDeviceAddedDiagnosticMessage(device).contains("id=kbd-1"))
         #expect(sut.ignoredDevicesClearedDiagnosticMessage() == "デバイス無視リストを全解除")
+        #expect(sut.launchAtLoginUpdatedDiagnosticMessage(enabled: true) == "自動起動設定を更新: ON")
+        #expect(sut.launchAtLoginUpdatedDiagnosticMessage(enabled: false) == "自動起動設定を更新: OFF")
+        #expect(sut.launchAtLoginUpdateFailureDiagnosticMessage("denied") == "自動起動設定の更新失敗: denied")
         #expect(sut.overlayKeyboardName(for: device) == "Test Test Keyboard")
         let blankDevice = HIDKeyboardDevice(
             id: "blank",
