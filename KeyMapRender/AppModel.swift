@@ -70,14 +70,15 @@ final class AppModel: ObservableObject {
     }
 
     func start() {
-        guard !hasStarted else { return }
-        guard !isShuttingDown else { return }
-        hasStarted = true
-        let accessStatus = rootStore.inputAccessStatus(
-            promptAccessibility: true,
-            requestInputMonitoring: true
+        let workflow = rootStore.runStartupLifecycle(
+            hasStarted: hasStarted,
+            isShuttingDown: isShuttingDown
         )
-        permissionStatusText = rootStore.permissionStatusText(for: accessStatus)
+        guard workflow.shouldStart else { return }
+        hasStarted = true
+        if let permissionStatusText = workflow.permissionStatusText {
+            self.permissionStatusText = permissionStatusText
+        }
         refreshKeyboards()
         startKeyboardHotplugMonitor()
         refreshLaunchAtLoginStatus()
@@ -505,23 +506,32 @@ final class AppModel: ObservableObject {
     }
 
     private func autoLoadKeymapIfPossibleOnStartup() {
-        guard !hasAutoLoadedOnStartup else { return }
-        guard let selected = selectedKeyboard else { return }
-        guard !isDiagnosticsRunning else { return }
-        hasAutoLoadedOnStartup = true
-
-        isDiagnosticsRunning = true
-        keymapStatusText = rootStore.startupAutoLoadInProgressStatusText()
-        let initialMatrix = rootStore.resolveInitialMatrixSize(
+        let preparation = rootStore.runPrepareStartupAutoLoad(
+            hasAutoLoadedOnStartup: hasAutoLoadedOnStartup,
+            hasSelectedKeyboard: selectedKeyboard != nil,
+            isDiagnosticsRunning: isDiagnosticsRunning,
             rowsText: matrixRowsText,
             colsText: matrixColsText
         )
+        guard preparation.shouldRun else {
+            hasAutoLoadedOnStartup = preparation.nextHasAutoLoadedOnStartup
+            return
+        }
+        guard let selected = selectedKeyboard else { return }
+        guard let initialRows = preparation.initialRows,
+              let initialCols = preparation.initialCols,
+              let statusText = preparation.statusText
+        else { return }
+
+        hasAutoLoadedOnStartup = preparation.nextHasAutoLoadedOnStartup
+        isDiagnosticsRunning = true
+        keymapStatusText = statusText
         Task { [weak self] in
             guard let self else { return }
             let workflow = await self.rootStore.runStartupKeymapLoadAsync(
                 on: selected,
-                initialRows: initialMatrix.rows,
-                initialCols: initialMatrix.cols
+                initialRows: initialRows,
+                initialCols: initialCols
             )
             guard !self.isShuttingDown else { return }
             self.isDiagnosticsRunning = false

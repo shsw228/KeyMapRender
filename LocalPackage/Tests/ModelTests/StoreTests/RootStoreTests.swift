@@ -651,6 +651,63 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func runStartupLifecycle_returnsStartFlagAndPermissionText() async {
+        let sut = RootStore(.testDependencies(
+            inputAccessClient: testDependency(of: InputAccessClient.self) {
+                $0.checkStatus = { _, _ in
+                    .init(accessibilityTrusted: true, inputMonitoringTrusted: true)
+                }
+            }
+        ))
+
+        let blocked = sut.runStartupLifecycle(hasStarted: true, isShuttingDown: false)
+        #expect(blocked.shouldStart == false)
+        #expect(blocked.permissionStatusText == nil)
+
+        let ready = sut.runStartupLifecycle(hasStarted: false, isShuttingDown: false)
+        #expect(ready.shouldStart)
+        #expect(ready.permissionStatusText == "権限: Accessibility/Input Monitoring 許可済み")
+    }
+
+    @MainActor @Test
+    func runPrepareStartupAutoLoad_returnsWorkflowByConditions() async {
+        let sut = RootStore(.testDependencies())
+
+        let alreadyLoaded = sut.runPrepareStartupAutoLoad(
+            hasAutoLoadedOnStartup: true,
+            hasSelectedKeyboard: true,
+            isDiagnosticsRunning: false,
+            rowsText: "14",
+            colsText: "8"
+        )
+        #expect(alreadyLoaded.shouldRun == false)
+        #expect(alreadyLoaded.nextHasAutoLoadedOnStartup)
+
+        let blocked = sut.runPrepareStartupAutoLoad(
+            hasAutoLoadedOnStartup: false,
+            hasSelectedKeyboard: false,
+            isDiagnosticsRunning: false,
+            rowsText: "14",
+            colsText: "8"
+        )
+        #expect(blocked.shouldRun == false)
+        #expect(blocked.nextHasAutoLoadedOnStartup == false)
+
+        let ready = sut.runPrepareStartupAutoLoad(
+            hasAutoLoadedOnStartup: false,
+            hasSelectedKeyboard: true,
+            isDiagnosticsRunning: false,
+            rowsText: "x",
+            colsText: "y"
+        )
+        #expect(ready.shouldRun)
+        #expect(ready.nextHasAutoLoadedOnStartup)
+        #expect(ready.statusText == "起動時自動読込中...")
+        #expect(ready.initialRows == 6)
+        #expect(ready.initialCols == 17)
+    }
+
+    @MainActor @Test
     func inputAccessStatus_delegatesToDependencyClient() async {
         let sut = RootStore(.testDependencies(
             inputAccessClient: testDependency(of: InputAccessClient.self) {

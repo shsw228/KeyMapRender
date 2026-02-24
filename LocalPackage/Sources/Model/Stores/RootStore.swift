@@ -219,6 +219,38 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct StartupLifecycleWorkflowResult: Sendable {
+        public let shouldStart: Bool
+        public let permissionStatusText: String?
+
+        public init(shouldStart: Bool, permissionStatusText: String?) {
+            self.shouldStart = shouldStart
+            self.permissionStatusText = permissionStatusText
+        }
+    }
+
+    public struct StartupAutoLoadPreparationResult: Sendable {
+        public let shouldRun: Bool
+        public let nextHasAutoLoadedOnStartup: Bool
+        public let statusText: String?
+        public let initialRows: Int?
+        public let initialCols: Int?
+
+        public init(
+            shouldRun: Bool,
+            nextHasAutoLoadedOnStartup: Bool,
+            statusText: String?,
+            initialRows: Int?,
+            initialCols: Int?
+        ) {
+            self.shouldRun = shouldRun
+            self.nextHasAutoLoadedOnStartup = nextHasAutoLoadedOnStartup
+            self.statusText = statusText
+            self.initialRows = initialRows
+            self.initialCols = initialCols
+        }
+    }
+
     public struct GlobalMonitoringWorkflowResult: Sendable {
         public let session: GlobalKeyMonitorSession?
         public let permissionStatusText: String
@@ -891,6 +923,64 @@ public final class RootStore: Composable {
                 diagnosticMessage: launchAtLoginStatusFailureDiagnosticMessage(message)
             )
         }
+    }
+
+    public func runStartupLifecycle(
+        hasStarted: Bool,
+        isShuttingDown: Bool
+    ) -> StartupLifecycleWorkflowResult {
+        guard !hasStarted, !isShuttingDown else {
+            return StartupLifecycleWorkflowResult(
+                shouldStart: false,
+                permissionStatusText: nil
+            )
+        }
+        let accessStatus = inputAccessStatus(
+            promptAccessibility: true,
+            requestInputMonitoring: true
+        )
+        return StartupLifecycleWorkflowResult(
+            shouldStart: true,
+            permissionStatusText: permissionStatusText(for: accessStatus)
+        )
+    }
+
+    public func runPrepareStartupAutoLoad(
+        hasAutoLoadedOnStartup: Bool,
+        hasSelectedKeyboard: Bool,
+        isDiagnosticsRunning: Bool,
+        rowsText: String,
+        colsText: String
+    ) -> StartupAutoLoadPreparationResult {
+        guard !hasAutoLoadedOnStartup else {
+            return StartupAutoLoadPreparationResult(
+                shouldRun: false,
+                nextHasAutoLoadedOnStartup: true,
+                statusText: nil,
+                initialRows: nil,
+                initialCols: nil
+            )
+        }
+        guard hasSelectedKeyboard, !isDiagnosticsRunning else {
+            return StartupAutoLoadPreparationResult(
+                shouldRun: false,
+                nextHasAutoLoadedOnStartup: false,
+                statusText: nil,
+                initialRows: nil,
+                initialCols: nil
+            )
+        }
+        let initialMatrix = resolveInitialMatrixSize(
+            rowsText: rowsText,
+            colsText: colsText
+        )
+        return StartupAutoLoadPreparationResult(
+            shouldRun: true,
+            nextHasAutoLoadedOnStartup: true,
+            statusText: startupAutoLoadInProgressStatusText(),
+            initialRows: initialMatrix.rows,
+            initialCols: initialMatrix.cols
+        )
     }
 
     public nonisolated func inputAccessStatus(
