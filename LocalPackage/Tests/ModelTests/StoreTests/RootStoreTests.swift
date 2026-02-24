@@ -353,6 +353,20 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func commonStatusMessages_returnExpectedValues() async {
+        let sut = RootStore(.testDependencies())
+        #expect(sut.keyboardSelectionRequiredMessage() == "キーボードを選択してください。")
+        #expect(sut.ignoredKeyboardSelectionRequiredMessage() == "無視対象のキーボードを選択してください。")
+        #expect(sut.matrixInputValidationFailureMessage() == "Rows/Cols は 1 以上の整数で入力してください。")
+        #expect(sut.vialProbeInProgressStatusText() == "Vial通信テスト中...")
+        #expect(sut.keymapReadInProgressStatusText() == "全マップ読出し中...")
+        #expect(sut.matrixInferenceInProgressStatusText() == "matrix自動取得中...")
+        #expect(sut.vialDefinitionReadInProgressStatusText() == "vial.json取得中...")
+        #expect(sut.startupAutoLoadInProgressStatusText() == "起動時自動読込中...")
+        #expect(sut.keyboardHotplugStartFailureDiagnosticMessage() == "キーボード接続監視の開始に失敗しました。")
+    }
+
+    @MainActor @Test
     func copyToClipboard_delegatesToDependencyClient() async {
         let copied = OSAllocatedUnfairLock(initialState: "")
         let sut = RootStore(.testDependencies(

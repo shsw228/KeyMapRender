@@ -537,6 +537,42 @@ public final class RootStore: Composable {
         "キー監視を開始できませんでした。Accessibility / Input Monitoring を確認してください。"
     }
 
+    public func keyboardSelectionRequiredMessage() -> String {
+        "キーボードを選択してください。"
+    }
+
+    public func ignoredKeyboardSelectionRequiredMessage() -> String {
+        "無視対象のキーボードを選択してください。"
+    }
+
+    public func matrixInputValidationFailureMessage() -> String {
+        "Rows/Cols は 1 以上の整数で入力してください。"
+    }
+
+    public func vialProbeInProgressStatusText() -> String {
+        "Vial通信テスト中..."
+    }
+
+    public func keymapReadInProgressStatusText() -> String {
+        "全マップ読出し中..."
+    }
+
+    public func matrixInferenceInProgressStatusText() -> String {
+        "matrix自動取得中..."
+    }
+
+    public func vialDefinitionReadInProgressStatusText() -> String {
+        "vial.json取得中..."
+    }
+
+    public func startupAutoLoadInProgressStatusText() -> String {
+        "起動時自動読込中..."
+    }
+
+    public func keyboardHotplugStartFailureDiagnosticMessage() -> String {
+        "キーボード接続監視の開始に失敗しました。"
+    }
+
     public nonisolated func copyToClipboard(_ text: String) {
         appDependencies.clipboardClient.copyString(text)
     }

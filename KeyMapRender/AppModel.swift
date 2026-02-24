@@ -212,11 +212,11 @@ final class AppModel: ObservableObject {
 
     func probeVialOnSelectedKeyboard() {
         guard let selected = selectedKeyboard else {
-            vialStatusText = "キーボードを選択してください。"
+            vialStatusText = rootStore.keyboardSelectionRequiredMessage()
             return
         }
         isDiagnosticsRunning = true
-        vialStatusText = "Vial通信テスト中..."
+        vialStatusText = rootStore.vialProbeInProgressStatusText()
         Task { [weak self] in
             guard let self else { return }
             let result = await self.rootStore.probeVialAsync(on: selected)
@@ -239,15 +239,15 @@ final class AppModel: ObservableObject {
 
     func readFullVialKeymapOnSelectedKeyboard() {
         guard let selected = selectedKeyboard else {
-            keymapStatusText = "キーボードを選択してください。"
+            keymapStatusText = rootStore.keyboardSelectionRequiredMessage()
             return
         }
         guard let rows = Int(matrixRowsText), let cols = Int(matrixColsText), rows > 0, cols > 0 else {
-            keymapStatusText = "Rows/Cols は 1 以上の整数で入力してください。"
+            keymapStatusText = rootStore.matrixInputValidationFailureMessage()
             return
         }
         isDiagnosticsRunning = true
-        keymapStatusText = "全マップ読出し中..."
+        keymapStatusText = rootStore.keymapReadInProgressStatusText()
         Task { [weak self] in
             guard let self else { return }
             let result = await self.rootStore.readVialKeymapAsync(on: selected, rows: rows, cols: cols)
@@ -340,11 +340,11 @@ final class AppModel: ObservableObject {
 
     func autoDetectMatrixOnSelectedKeyboard() {
         guard let selected = selectedKeyboard else {
-            keymapStatusText = "キーボードを選択してください。"
+            keymapStatusText = rootStore.keyboardSelectionRequiredMessage()
             return
         }
         isDiagnosticsRunning = true
-        keymapStatusText = "matrix自動取得中..."
+        keymapStatusText = rootStore.matrixInferenceInProgressStatusText()
         Task { [weak self] in
             guard let self else { return }
             let result = await self.rootStore.inferVialMatrixAsync(on: selected)
@@ -362,11 +362,11 @@ final class AppModel: ObservableObject {
 
     func exportVialDefinitionOnSelectedKeyboard() {
         guard let selected = selectedKeyboard else {
-            keymapStatusText = "キーボードを選択してください。"
+            keymapStatusText = rootStore.keyboardSelectionRequiredMessage()
             return
         }
         isDiagnosticsRunning = true
-        keymapStatusText = "vial.json取得中..."
+        keymapStatusText = rootStore.vialDefinitionReadInProgressStatusText()
         Task { [weak self] in
             guard let self else { return }
             let result = await self.rootStore.readVialDefinitionAsync(on: selected)
@@ -408,7 +408,7 @@ final class AppModel: ObservableObject {
 
     func ignoreSelectedKeyboard() {
         guard let selected = selectedKeyboard else {
-            keyboardStatusText = "無視対象のキーボードを選択してください。"
+            keyboardStatusText = rootStore.ignoredKeyboardSelectionRequiredMessage()
             return
         }
         rootStore.addIgnoredDeviceID(selected.id)
@@ -543,7 +543,7 @@ final class AppModel: ObservableObject {
         case let .success(session):
             keyboardHotplugSession = session
         case .failure:
-            appendDiagnostics("キーボード接続監視の開始に失敗しました。")
+            appendDiagnostics(rootStore.keyboardHotplugStartFailureDiagnosticMessage())
         }
     }
 
@@ -554,7 +554,7 @@ final class AppModel: ObservableObject {
         hasAutoLoadedOnStartup = true
 
         isDiagnosticsRunning = true
-        keymapStatusText = "起動時自動読込中..."
+        keymapStatusText = rootStore.startupAutoLoadInProgressStatusText()
         let initialRows = Int(matrixRowsText) ?? 6
         let initialCols = Int(matrixColsText) ?? 17
         Task { [weak self] in

@@ -100,6 +100,7 @@
 - 状態: レイヤ反映時のプレビュー/レイアウト/診断メッセージ生成を `Model/Services/KeymapLayerRenderingService` へ移設
 - 状態: `vial.json` エクスポートのファイル名/結果文言生成を `RootStore` プレゼンテーションAPIへ集約
 - 状態: 権限状態/ターゲットキー入力検証/監視状態文言を `RootStore` APIへ集約
+- 状態: キーボード未選択/読込中などの共通固定メッセージを `RootStore` APIへ集約
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出
