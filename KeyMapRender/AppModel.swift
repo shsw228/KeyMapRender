@@ -477,30 +477,13 @@ final class AppModel: ObservableObject {
     }
 
     private func autoLoadKeymapIfPossibleOnStartup() {
-        let preparation = rootStore.runPrepareStartupAutoLoad(
-            hasAutoLoadedOnStartup: hasAutoLoadedOnStartup,
-            hasSelectedKeyboard: selectedKeyboard != nil,
-            isDiagnosticsRunning: isDiagnosticsRunning,
-            rowsText: matrixRowsText,
-            colsText: matrixColsText
-        )
-        guard preparation.shouldRun else {
-            hasAutoLoadedOnStartup = preparation.nextHasAutoLoadedOnStartup
-            return
-        }
-        guard let selected = selectedKeyboard else { return }
-        guard let initialRows = preparation.initialRows,
-              let initialCols = preparation.initialCols,
-              let statusText = preparation.statusText
-        else { return }
-
-        hasAutoLoadedOnStartup = preparation.nextHasAutoLoadedOnStartup
-        keymapStatusText = statusText
+        guard let context = prepareStartupAutoLoadContext() else { return }
+        keymapStatusText = context.statusText
         runDiagnosticsTask { model in
             let workflow = await model.rootStore.runStartupKeymapLoadAsync(
-                on: selected,
-                initialRows: initialRows,
-                initialCols: initialCols
+                on: context.selected,
+                initialRows: context.initialRows,
+                initialCols: context.initialCols
             )
             model.applyIfNotShuttingDown {
                 model.applyStartupKeymapPresentation(workflow.presentation, dump: workflow.dump)
@@ -598,6 +581,27 @@ final class AppModel: ObservableObject {
             cols: presentation.matrixCols,
             dump: dump
         )
+    }
+
+    private func prepareStartupAutoLoadContext() -> (selected: HIDKeyboardDevice, initialRows: Int, initialCols: Int, statusText: String)? {
+        let preparation = rootStore.runPrepareStartupAutoLoad(
+            hasAutoLoadedOnStartup: hasAutoLoadedOnStartup,
+            hasSelectedKeyboard: selectedKeyboard != nil,
+            isDiagnosticsRunning: isDiagnosticsRunning,
+            rowsText: matrixRowsText,
+            colsText: matrixColsText
+        )
+        guard preparation.shouldRun else {
+            hasAutoLoadedOnStartup = preparation.nextHasAutoLoadedOnStartup
+            return nil
+        }
+        guard let selected = selectedKeyboard,
+              let initialRows = preparation.initialRows,
+              let initialCols = preparation.initialCols,
+              let statusText = preparation.statusText
+        else { return nil }
+        hasAutoLoadedOnStartup = preparation.nextHasAutoLoadedOnStartup
+        return (selected, initialRows, initialCols, statusText)
     }
 
     private func applyPermissionStatusTextIfPresent(_ statusText: String?) {
