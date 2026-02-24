@@ -141,15 +141,13 @@ final class AppModel: ObservableObject {
             existingSession: globalKeyMonitorSession,
             configuration: configuration,
             onLongPressStart: { [weak self] in
-                Task { @MainActor in
-                    guard let self else { return }
-                    self.handleOverlayLongPressStart()
+                self?.runMainActorTask { model in
+                    model.handleOverlayLongPressStart()
                 }
             },
             onLongPressEnd: { [weak self] in
-                Task { @MainActor in
-                    guard let self else { return }
-                    self.handleOverlayLongPressEnd()
+                self?.runMainActorTask { model in
+                    model.handleOverlayLongPressEnd()
                 }
             }
         )
@@ -424,10 +422,9 @@ final class AppModel: ObservableObject {
     private func startKeyboardHotplugMonitor() {
         guard keyboardHotplugSession == nil else { return }
         let workflow = rootStore.runStartKeyboardHotplugMonitoring { [weak self] in
-            Task { @MainActor in
-                guard let self else { return }
-                guard !self.isShuttingDown else { return }
-                self.refreshKeyboards()
+            self?.runMainActorTask { model in
+                guard !model.isShuttingDown else { return }
+                model.refreshKeyboards()
             }
         }
         if let session = workflow.session {
@@ -528,6 +525,13 @@ final class AppModel: ObservableObject {
             guard let self else { return }
             defer { self.isDiagnosticsRunning = false }
             await operation(self)
+        }
+    }
+
+    private nonisolated func runMainActorTask(_ operation: @escaping @MainActor (AppModel) -> Void) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            operation(self)
         }
     }
 }
