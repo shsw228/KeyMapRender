@@ -578,6 +578,19 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func appendDiagnosticsLog_buildsTimestampedBuffer() async {
+        let sut = RootStore(.testDependencies())
+        let first = sut.appendDiagnosticsLog(existingText: "-", message: "hello")
+        #expect(first.updatedText.contains("hello"))
+        #expect(first.level == .debug)
+
+        let second = sut.appendDiagnosticsLog(existingText: first.updatedText, message: "失敗")
+        #expect(second.updatedText.contains("hello"))
+        #expect(second.updatedText.contains("失敗"))
+        #expect(second.level == .error)
+    }
+
+    @MainActor @Test
     func copyToClipboard_delegatesToDependencyClient() async {
         let copied = OSAllocatedUnfairLock(initialState: "")
         let sut = RootStore(.testDependencies(

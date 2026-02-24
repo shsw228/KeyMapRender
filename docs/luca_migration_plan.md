@@ -107,6 +107,7 @@
 - 状態: Vial非同期ユースケース（probe/keymap/matrix/definition）を `RootStore` workflow API（実行+表示統合）へ集約し、`AppModel` の分岐を縮小
 - 状態: 起動時自動読込ユースケース（matrix推定→keymap取得→表示文言）を `RootStore.runStartupKeymapLoadAsync` へ集約
 - 状態: レイアウト選択肢生成/レイヤ描画ロジックを `RootStore` API 化し、`AppModel` の `Service` 直接依存を縮小
+- 状態: 診断ログ追記のバッファ処理を `RootStore.appendDiagnosticsLog` へ集約
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

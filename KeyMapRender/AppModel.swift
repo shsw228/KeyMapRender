@@ -45,7 +45,6 @@ final class AppModel: ObservableObject {
     private let activeLayerTrackingService = ActiveLayerTrackingService()
     private let activeLayerPollingService = ActiveLayerPollingService()
     private let layerSelectionService = LayerSelectionService()
-    private let diagnosticsLogBufferService = DiagnosticsLogBufferService()
     private let vialDefinitionValidationService = VialDefinitionValidationService()
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
@@ -500,7 +499,7 @@ final class AppModel: ObservableObject {
     }
 
     private func appendDiagnostics(_ message: String) {
-        let result = diagnosticsLogBufferService.append(
+        let result = rootStore.appendDiagnosticsLog(
             existingText: diagnosticsLogText,
             message: message
         )

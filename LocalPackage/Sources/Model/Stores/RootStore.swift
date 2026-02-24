@@ -210,6 +210,7 @@ public final class RootStore: Composable {
     private var ignoredDeviceIDs: Set<String>
     private let vialPresentationService: VialPresentationService
     private let keymapLayerRenderingService: KeymapLayerRenderingService
+    private let diagnosticsLogBufferService: DiagnosticsLogBufferService
 
     public var showSettingsOnLaunch: Bool
     public let action: (Action) async -> Void
@@ -230,6 +231,7 @@ public final class RootStore: Composable {
         self.didConsumeInitialSettingsOpenRequest = didConsumeInitialSettingsOpenRequest
         self.vialPresentationService = VialPresentationService()
         self.keymapLayerRenderingService = KeymapLayerRenderingService()
+        self.diagnosticsLogBufferService = DiagnosticsLogBufferService()
         self.action = action
     }
 
@@ -460,6 +462,16 @@ public final class RootStore: Composable {
             requestedLayer: requestedLayer,
             selectedLayoutChoices: selectedLayoutChoices,
             overlayName: overlayName
+        )
+    }
+
+    public func appendDiagnosticsLog(
+        existingText: String,
+        message: String
+    ) -> DiagnosticsLogAppendResult {
+        diagnosticsLogBufferService.append(
+            existingText: existingText,
+            message: message
         )
     }
 
