@@ -248,6 +248,16 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct KeyboardIgnoreWorkflowResult: Sendable {
+        public let snapshot: KeyboardRefreshResult
+        public let diagnosticMessage: String
+
+        public init(snapshot: KeyboardRefreshResult, diagnosticMessage: String) {
+            self.snapshot = snapshot
+            self.diagnosticMessage = diagnosticMessage
+        }
+    }
+
     public enum VialDefinitionWorkflowResult: Sendable {
         case success(prettyJSON: String, suggestedFileName: String)
         case failure(VialDefinitionPresentation)
@@ -381,6 +391,27 @@ public final class RootStore: Composable {
                 selectedKeyboard: selectedKeyboard
             ),
             ignoredDeviceCount: ignoredDeviceCount
+        )
+    }
+
+    public func runIgnoreDeviceAndRefresh(
+        _ device: HIDKeyboardDevice,
+        currentSelectedID: String
+    ) -> KeyboardIgnoreWorkflowResult {
+        addIgnoredDeviceID(device.id)
+        let snapshot = refreshKeyboardSnapshot(currentSelectedID: currentSelectedID)
+        return KeyboardIgnoreWorkflowResult(
+            snapshot: snapshot,
+            diagnosticMessage: ignoredDeviceAddedDiagnosticMessage(device)
+        )
+    }
+
+    public func runClearIgnoredDevicesAndRefresh(currentSelectedID: String) -> KeyboardIgnoreWorkflowResult {
+        clearIgnoredDeviceIDs()
+        let snapshot = refreshKeyboardSnapshot(currentSelectedID: currentSelectedID)
+        return KeyboardIgnoreWorkflowResult(
+            snapshot: snapshot,
+            diagnosticMessage: ignoredDevicesClearedDiagnosticMessage()
         )
     }
 

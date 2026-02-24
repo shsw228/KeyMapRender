@@ -113,6 +113,7 @@
 - 状態: レイヤ選択/レイヤ追従/ポーリングTask生成の Service 利用を `RootStore` API経由へ統一し、`AppModel` 直接依存を削減
 - 状態: グローバルキー監視開始とキーボードホットプラグ監視開始を `RootStore` workflow API へ集約
 - 状態: アクティブレイヤ追従ポーリング結果の解釈（成功時レイヤ導出/失敗時ログ間引き）を `RootStore.runResolveActiveLayerPollResult` へ集約
+- 状態: デバイス無視追加/全解除後の再読込スナップショット生成を `RootStore` workflow API へ集約
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

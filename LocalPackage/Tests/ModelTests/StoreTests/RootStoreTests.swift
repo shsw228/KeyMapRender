@@ -224,6 +224,38 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func runIgnoreDeviceAndRefresh_updatesSnapshotAndMessage() async {
+        let sut = RootStore(.testDependencies(
+            hidKeyboardClient: testDependency(of: HIDKeyboardClient.self) {
+                $0.listKeyboards = { [self.device, self.device2] }
+            }
+        ))
+
+        let workflow = sut.runIgnoreDeviceAndRefresh(device, currentSelectedID: device.id)
+
+        #expect(workflow.snapshot.connectedKeyboards.map(\.id) == [device2.id])
+        #expect(workflow.snapshot.selectedKeyboardID == device2.id)
+        #expect(workflow.snapshot.ignoredDeviceCount == 1)
+        #expect(workflow.diagnosticMessage.contains("id=\(device.id)"))
+    }
+
+    @MainActor @Test
+    func runClearIgnoredDevicesAndRefresh_restoresVisibleKeyboards() async {
+        let sut = RootStore(.testDependencies(
+            hidKeyboardClient: testDependency(of: HIDKeyboardClient.self) {
+                $0.listKeyboards = { [self.device, self.device2] }
+            }
+        ))
+        _ = sut.runIgnoreDeviceAndRefresh(device, currentSelectedID: device.id)
+
+        let workflow = sut.runClearIgnoredDevicesAndRefresh(currentSelectedID: device2.id)
+
+        #expect(workflow.snapshot.connectedKeyboards.map(\.id) == [device.id, device2.id])
+        #expect(workflow.snapshot.ignoredDeviceCount == 0)
+        #expect(workflow.diagnosticMessage == "デバイス無視リストを全解除")
+    }
+
+    @MainActor @Test
     func presentStartupKeymapLoadResult_buildsSuccessMessages() async {
         let sut = RootStore(.testDependencies())
         let loadResult = RootStore.StartupKeymapLoadResult(

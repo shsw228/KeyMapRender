@@ -182,14 +182,8 @@ final class AppModel: ObservableObject {
     }
 
     func refreshKeyboards() {
-        let snapshot = rootStore.refreshKeyboardSnapshot(
-            currentSelectedID: selectedKeyboardID
-        )
-        allDetectedKeyboards = snapshot.allDetectedKeyboards
-        connectedKeyboards = snapshot.connectedKeyboards
-        selectedKeyboardID = snapshot.selectedKeyboardID
-        keyboardStatusText = snapshot.keyboardStatusText
-        ignoredDeviceCount = snapshot.ignoredDeviceCount
+        let snapshot = rootStore.refreshKeyboardSnapshot(currentSelectedID: selectedKeyboardID)
+        applyKeyboardSnapshot(snapshot)
         if connectedKeyboards.isEmpty { return }
         autoLoadKeymapIfPossibleOnStartup()
     }
@@ -376,17 +370,20 @@ final class AppModel: ObservableObject {
             keyboardStatusText = rootStore.ignoredKeyboardSelectionRequiredMessage()
             return
         }
-        rootStore.addIgnoredDeviceID(selected.id)
-        persistIgnoredDeviceCount()
-        appendDiagnostics(rootStore.ignoredDeviceAddedDiagnosticMessage(selected))
-        refreshKeyboards()
+        let workflow = rootStore.runIgnoreDeviceAndRefresh(
+            selected,
+            currentSelectedID: selectedKeyboardID
+        )
+        applyKeyboardSnapshot(workflow.snapshot)
+        appendDiagnostics(workflow.diagnosticMessage)
     }
 
     func clearIgnoredKeyboards() {
-        rootStore.clearIgnoredDeviceIDs()
-        persistIgnoredDeviceCount()
-        appendDiagnostics(rootStore.ignoredDevicesClearedDiagnosticMessage())
-        refreshKeyboards()
+        let workflow = rootStore.runClearIgnoredDevicesAndRefresh(
+            currentSelectedID: selectedKeyboardID
+        )
+        applyKeyboardSnapshot(workflow.snapshot)
+        appendDiagnostics(workflow.diagnosticMessage)
     }
 
     private func startActiveLayerTrackingIfNeeded() {
@@ -476,8 +473,12 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func persistIgnoredDeviceCount() {
-        ignoredDeviceCount = rootStore.currentIgnoredDeviceIDs().count
+    private func applyKeyboardSnapshot(_ snapshot: RootStore.KeyboardRefreshResult) {
+        allDetectedKeyboards = snapshot.allDetectedKeyboards
+        connectedKeyboards = snapshot.connectedKeyboards
+        selectedKeyboardID = snapshot.selectedKeyboardID
+        keyboardStatusText = snapshot.keyboardStatusText
+        ignoredDeviceCount = snapshot.ignoredDeviceCount
     }
 
     private func currentOverlayKeyboardName() -> String {
