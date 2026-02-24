@@ -144,20 +144,17 @@ public final class RootStore: Composable {
     }
 
     public struct KeyboardRefreshResult: Sendable {
-        public let allDetectedKeyboards: [HIDKeyboardDevice]
         public let connectedKeyboards: [HIDKeyboardDevice]
         public let selectedKeyboardID: String
         public let keyboardStatusText: String
         public let ignoredDeviceCount: Int
 
         public init(
-            allDetectedKeyboards: [HIDKeyboardDevice],
             connectedKeyboards: [HIDKeyboardDevice],
             selectedKeyboardID: String,
             keyboardStatusText: String,
             ignoredDeviceCount: Int
         ) {
-            self.allDetectedKeyboards = allDetectedKeyboards
             self.connectedKeyboards = connectedKeyboards
             self.selectedKeyboardID = selectedKeyboardID
             self.keyboardStatusText = keyboardStatusText
@@ -457,7 +454,6 @@ public final class RootStore: Composable {
         let ignoredDeviceCount = ignoredDeviceIDs.count
         guard !connectedKeyboards.isEmpty else {
             return KeyboardRefreshResult(
-                allDetectedKeyboards: allDetectedKeyboards,
                 connectedKeyboards: connectedKeyboards,
                 selectedKeyboardID: "",
                 keyboardStatusText: keyboardStatusText(
@@ -475,7 +471,6 @@ public final class RootStore: Composable {
         )
         let selectedKeyboard = connectedKeyboards.first { $0.id == selectedKeyboardID }
         return KeyboardRefreshResult(
-            allDetectedKeyboards: allDetectedKeyboards,
             connectedKeyboards: connectedKeyboards,
             selectedKeyboardID: selectedKeyboardID,
             keyboardStatusText: keyboardStatusText(
