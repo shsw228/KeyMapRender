@@ -113,19 +113,12 @@ final class AppModel: ObservableObject {
     func applySettings() {
         guard !isShuttingDown else { return }
         guard let configuration = resolveMonitoringConfiguration() else { return }
+        let callbacks = makeLongPressCallbacks()
         let workflow = rootStore.runRestartGlobalMonitoring(
             existingSession: globalKeyMonitorSession,
             configuration: configuration,
-            onLongPressStart: { [weak self] in
-                self?.runMainActorTask { model in
-                    model.handleOverlayLongPressStart()
-                }
-            },
-            onLongPressEnd: { [weak self] in
-                self?.runMainActorTask { model in
-                    model.handleOverlayLongPressEnd()
-                }
-            }
+            onLongPressStart: callbacks.onStart,
+            onLongPressEnd: callbacks.onEnd
         )
         applyRestartMonitoringWorkflow(workflow)
     }
@@ -633,6 +626,20 @@ final class AppModel: ObservableObject {
     private func applyRestartMonitoringWorkflow(_ workflow: RootStore.RestartGlobalMonitoringWorkflowResult) {
         globalKeyMonitorSession = workflow.session
         permissionStatusText = workflow.permissionStatusText
+    }
+
+    private func makeLongPressCallbacks() -> (onStart: @Sendable () -> Void, onEnd: @Sendable () -> Void) {
+        let onStart: @Sendable () -> Void = { [weak self] in
+            self?.runMainActorTask { model in
+                model.handleOverlayLongPressStart()
+            }
+        }
+        let onEnd: @Sendable () -> Void = { [weak self] in
+            self?.runMainActorTask { model in
+                model.handleOverlayLongPressEnd()
+            }
+        }
+        return (onStart, onEnd)
     }
 
     private func applyLaunchAtLoginState(enabled: Bool, diagnosticMessage: String?) {
