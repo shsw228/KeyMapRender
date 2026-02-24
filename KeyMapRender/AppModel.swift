@@ -217,7 +217,7 @@ final class AppModel: ObservableObject {
             emitLog: emitLog
         ) else { return }
         selectedLayerIndex = workflow.clampedLayer
-        applySelectedLayerToLatestDump()
+        applySelectedLayerToLatestDumpIfNeeded()
         appendDiagnosticsIfPresent(workflow.diagnosticMessage)
     }
 
@@ -542,8 +542,17 @@ final class AppModel: ObservableObject {
     private func handleOverlayLongPressEnd() {
         isOverlayVisible = false
         stopActiveLayerTracking()
-        setDisplayedLayerIndex(manualSelectedLayerIndex, reason: "長押し終了", emitLog: false)
+        restoreManualDisplayedLayerOnOverlayEnd()
         rootStore.hideOverlay()
+    }
+
+    private func restoreManualDisplayedLayerOnOverlayEnd() {
+        setDisplayedLayerIndex(manualSelectedLayerIndex, reason: "長押し終了", emitLog: false)
+    }
+
+    private func applySelectedLayerToLatestDumpIfNeeded() {
+        guard latestKeymapDump != nil else { return }
+        applySelectedLayerToLatestDump()
     }
 
     private func applyMatrixSize(rows: Int, cols: Int) {
