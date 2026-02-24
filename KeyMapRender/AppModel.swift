@@ -183,13 +183,11 @@ final class AppModel: ObservableObject {
             vialStatusText = rootStore.keyboardSelectionRequiredMessage()
             return
         }
-        isDiagnosticsRunning = true
         vialStatusText = rootStore.vialProbeInProgressStatusText()
-        Task { [weak self] in
+        runDiagnosticsTask { [weak self] in
             guard let self else { return }
             let workflow = await self.rootStore.runVialProbeAsync(on: selected)
             guard !self.isShuttingDown else { return }
-            self.isDiagnosticsRunning = false
             self.vialStatusText = workflow.presentation.vialStatusText
             self.appendDiagnostics(workflow.presentation.diagnosticMessage)
             if workflow.probe != nil {
@@ -210,9 +208,8 @@ final class AppModel: ObservableObject {
             keymapStatusText = rootStore.matrixInputValidationFailureMessage()
             return
         }
-        isDiagnosticsRunning = true
         keymapStatusText = rootStore.keymapReadInProgressStatusText()
-        Task { [weak self] in
+        runDiagnosticsTask { [weak self] in
             guard let self else { return }
             let workflow = await self.rootStore.runReadVialKeymapAsync(
                 on: selected,
@@ -220,7 +217,6 @@ final class AppModel: ObservableObject {
                 cols: matrix.cols
             )
             guard !self.isShuttingDown else { return }
-            self.isDiagnosticsRunning = false
             self.keymapStatusText = workflow.presentation.keymapStatusText
             self.appendDiagnostics(workflow.presentation.diagnosticMessage)
             if let dump = workflow.dump {
@@ -293,18 +289,15 @@ final class AppModel: ObservableObject {
             keymapStatusText = rootStore.keyboardSelectionRequiredMessage()
             return
         }
-        isDiagnosticsRunning = true
         keymapStatusText = rootStore.matrixInferenceInProgressStatusText()
-        Task { [weak self] in
+        runDiagnosticsTask { [weak self] in
             guard let self else { return }
             let workflow = await self.rootStore.runInferVialMatrixAsync(on: selected)
             guard !self.isShuttingDown else { return }
-            self.isDiagnosticsRunning = false
             self.keymapStatusText = workflow.presentation.keymapStatusText
             self.appendDiagnostics(workflow.presentation.diagnosticMessage)
             if let rows = workflow.presentation.matrixRows, let cols = workflow.presentation.matrixCols {
-                self.matrixRowsText = "\(rows)"
-                self.matrixColsText = "\(cols)"
+                self.applyMatrixSize(rows: rows, cols: cols)
             }
         }
     }
@@ -314,13 +307,11 @@ final class AppModel: ObservableObject {
             keymapStatusText = rootStore.keyboardSelectionRequiredMessage()
             return
         }
-        isDiagnosticsRunning = true
         keymapStatusText = rootStore.vialDefinitionReadInProgressStatusText()
-        Task { [weak self] in
+        runDiagnosticsTask { [weak self] in
             guard let self else { return }
             let presentation = await self.rootStore.runExportVialDefinitionAsync(on: selected)
             guard !self.isShuttingDown else { return }
-            self.isDiagnosticsRunning = false
             self.keymapStatusText = presentation.keymapStatusText
             self.appendDiagnostics(presentation.diagnosticMessage)
         }
@@ -486,9 +477,8 @@ final class AppModel: ObservableObject {
         else { return }
 
         hasAutoLoadedOnStartup = preparation.nextHasAutoLoadedOnStartup
-        isDiagnosticsRunning = true
         keymapStatusText = statusText
-        Task { [weak self] in
+        runDiagnosticsTask { [weak self] in
             guard let self else { return }
             let workflow = await self.rootStore.runStartupKeymapLoadAsync(
                 on: selected,
@@ -496,11 +486,9 @@ final class AppModel: ObservableObject {
                 initialCols: initialCols
             )
             guard !self.isShuttingDown else { return }
-            self.isDiagnosticsRunning = false
             self.appendDiagnostics(workflow.presentation.matrixDiagnosticMessage)
             if let rows = workflow.presentation.matrixRows, let cols = workflow.presentation.matrixCols {
-                self.matrixRowsText = "\(rows)"
-                self.matrixColsText = "\(cols)"
+                self.applyMatrixSize(rows: rows, cols: cols)
             }
 
             if let dump = workflow.dump {
@@ -530,5 +518,19 @@ final class AppModel: ObservableObject {
         availableLayerCount = availableLayerCountOverride ?? adoption.availableLayerCount
         setSelectedLayerIndex(selectedLayerIndex)
         startActiveLayerTrackingIfNeeded()
+    }
+
+    private func applyMatrixSize(rows: Int, cols: Int) {
+        matrixRowsText = "\(rows)"
+        matrixColsText = "\(cols)"
+    }
+
+    private func runDiagnosticsTask(_ operation: @escaping @MainActor () async -> Void) {
+        isDiagnosticsRunning = true
+        Task { [weak self] in
+            guard let self else { return }
+            defer { self.isDiagnosticsRunning = false }
+            await operation()
+        }
     }
 }
