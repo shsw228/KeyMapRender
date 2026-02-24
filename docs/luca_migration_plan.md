@@ -98,6 +98,7 @@
 - 状態: 起動時自動読込の表示文言生成を `RootStore.presentStartupKeymapLoadResult` へ集約
 - 状態: Vial通信テスト/全マップ読出し/matrix自動取得の表示文言生成を `RootStore` プレゼンテーションAPIへ集約
 - 状態: レイヤ反映時のプレビュー/レイアウト/診断メッセージ生成を `Model/Services/KeymapLayerRenderingService` へ移設
+- 状態: `vial.json` エクスポートのファイル名/結果文言生成を `RootStore` プレゼンテーションAPIへ集約
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

@@ -117,6 +117,19 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct VialDefinitionPresentation: Sendable {
+        public let keymapStatusText: String
+        public let diagnosticMessage: String
+
+        public init(
+            keymapStatusText: String,
+            diagnosticMessage: String
+        ) {
+            self.keymapStatusText = keymapStatusText
+            self.diagnosticMessage = diagnosticMessage
+        }
+    }
+
     public struct KeyboardRefreshResult: Sendable {
         public let allDetectedKeyboards: [HIDKeyboardDevice]
         public let connectedKeyboards: [HIDKeyboardDevice]
@@ -434,6 +447,51 @@ public final class RootStore: Composable {
                 diagnosticMessage: "matrix自動取得失敗: \(message)",
                 matrixRows: nil,
                 matrixCols: nil
+            )
+        }
+    }
+
+    public func suggestedVialDefinitionFileName(for device: HIDKeyboardDevice) -> String {
+        String(
+            format: "vial-%04X-%04X.json",
+            device.vendorID,
+            device.productID
+        )
+    }
+
+    public func presentVialDefinitionValidationFailure(_ message: String) -> VialDefinitionPresentation {
+        VialDefinitionPresentation(
+            keymapStatusText: "vial.json検証失敗: \(message)",
+            diagnosticMessage: "vial.json検証失敗: \(message)"
+        )
+    }
+
+    public func presentVialDefinitionReadFailure(_ message: String) -> VialDefinitionPresentation {
+        VialDefinitionPresentation(
+            keymapStatusText: "vial.json取得失敗: \(message)",
+            diagnosticMessage: "vial.json取得失敗: \(message)"
+        )
+    }
+
+    public func presentVialDefinitionSaveResult(_ result: Result<SaveFileResult, SaveFileError>) -> VialDefinitionPresentation {
+        switch result {
+        case let .success(value):
+            switch value {
+            case let .saved(path):
+                return VialDefinitionPresentation(
+                    keymapStatusText: "vial.json保存完了: \(path)",
+                    diagnosticMessage: "vial.json保存完了: \(path)"
+                )
+            case .cancelled:
+                return VialDefinitionPresentation(
+                    keymapStatusText: "vial.json保存をキャンセルしました。",
+                    diagnosticMessage: "vial.json保存キャンセル"
+                )
+            }
+        case let .failure(.message(message)):
+            return VialDefinitionPresentation(
+                keymapStatusText: "vial.json保存失敗: \(message)",
+                diagnosticMessage: "vial.json保存失敗: \(message)"
             )
         }
     }

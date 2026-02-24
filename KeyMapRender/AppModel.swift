@@ -379,15 +379,12 @@ final class AppModel: ObservableObject {
                 do {
                     try vialDefinitionValidationService.validate(prettyJSON)
                 } catch {
-                    self.keymapStatusText = "vial.json検証失敗: \(error.localizedDescription)"
-                    self.appendDiagnostics("vial.json検証失敗: \(error.localizedDescription)")
+                    let presentation = self.rootStore.presentVialDefinitionValidationFailure(error.localizedDescription)
+                    self.keymapStatusText = presentation.keymapStatusText
+                    self.appendDiagnostics(presentation.diagnosticMessage)
                     return
                 }
-                let suggestedName = String(
-                    format: "vial-%04X-%04X.json",
-                    selected.vendorID,
-                    selected.productID
-                )
+                let suggestedName = self.rootStore.suggestedVialDefinitionFileName(for: selected)
                 let saveResult = self.rootStore.saveTextFile(
                     SaveFileRequest(
                         suggestedFileName: suggestedName,
@@ -396,23 +393,13 @@ final class AppModel: ObservableObject {
                         content: prettyJSON
                     )
                 )
-                switch saveResult {
-                case let .success(result):
-                    switch result {
-                    case let .saved(path):
-                        self.keymapStatusText = "vial.json保存完了: \(path)"
-                        self.appendDiagnostics("vial.json保存完了: \(path)")
-                    case .cancelled:
-                        self.keymapStatusText = "vial.json保存をキャンセルしました。"
-                        self.appendDiagnostics("vial.json保存キャンセル")
-                    }
-                case let .failure(.message(message)):
-                    self.keymapStatusText = "vial.json保存失敗: \(message)"
-                    self.appendDiagnostics("vial.json保存失敗: \(message)")
-                }
+                let presentation = self.rootStore.presentVialDefinitionSaveResult(saveResult)
+                self.keymapStatusText = presentation.keymapStatusText
+                self.appendDiagnostics(presentation.diagnosticMessage)
             case let .failure(.message(message)):
-                self.keymapStatusText = "vial.json取得失敗: \(message)"
-                self.appendDiagnostics("vial.json取得失敗: \(message)")
+                let presentation = self.rootStore.presentVialDefinitionReadFailure(message)
+                self.keymapStatusText = presentation.keymapStatusText
+                self.appendDiagnostics(presentation.diagnosticMessage)
             }
         }
     }

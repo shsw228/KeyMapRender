@@ -247,6 +247,32 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func presentVialDefinitionPresentations_buildExpectedMessages() async {
+        let sut = RootStore(.testDependencies())
+        #expect(sut.suggestedVialDefinitionFileName(for: device) == "vial-1234-5678.json")
+
+        let validation = sut.presentVialDefinitionValidationFailure("invalid matrix")
+        #expect(validation.keymapStatusText == "vial.json検証失敗: invalid matrix")
+        #expect(validation.diagnosticMessage == "vial.json検証失敗: invalid matrix")
+
+        let readFailure = sut.presentVialDefinitionReadFailure("timeout")
+        #expect(readFailure.keymapStatusText == "vial.json取得失敗: timeout")
+        #expect(readFailure.diagnosticMessage == "vial.json取得失敗: timeout")
+
+        let saved = sut.presentVialDefinitionSaveResult(.success(.saved(path: "/tmp/vial.json")))
+        #expect(saved.keymapStatusText == "vial.json保存完了: /tmp/vial.json")
+        #expect(saved.diagnosticMessage == "vial.json保存完了: /tmp/vial.json")
+
+        let cancelled = sut.presentVialDefinitionSaveResult(.success(.cancelled))
+        #expect(cancelled.keymapStatusText == "vial.json保存をキャンセルしました。")
+        #expect(cancelled.diagnosticMessage == "vial.json保存キャンセル")
+
+        let saveFailure = sut.presentVialDefinitionSaveResult(.failure(.message("no permission")))
+        #expect(saveFailure.keymapStatusText == "vial.json保存失敗: no permission")
+        #expect(saveFailure.diagnosticMessage == "vial.json保存失敗: no permission")
+    }
+
+    @MainActor @Test
     func launchAtLogin_wrappersDelegateToDependencyClient() async {
         let sut = RootStore(.testDependencies(
             launchAtLoginClient: testDependency(of: LaunchAtLoginClient.self) {
