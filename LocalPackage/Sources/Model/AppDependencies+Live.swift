@@ -1,8 +1,7 @@
 import DataSource
-import Model
 
 extension AppDependencies {
-    static let keyMapRenderLive = AppDependencies(
+    public static let keyMapRenderLive = AppDependencies(
         hidKeyboardClient: .keyMapRenderLiveValue,
         vialRawHIDClient: .keyMapRenderLiveValue,
         launchAtLoginClient: .keyMapRenderLiveValue,
