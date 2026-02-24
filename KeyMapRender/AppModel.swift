@@ -150,9 +150,10 @@ final class AppModel: ObservableObject {
     }
 
     func probeVialOnSelectedKeyboard() {
-        guard let selected = requireSelectedKeyboard(statusKeyPath: \.vialStatusText) else { return }
-        vialStatusText = rootStore.vialProbeInProgressStatusText()
-        runDiagnosticsTask { model in
+        runSelectedKeyboardDiagnostics(
+            statusKeyPath: \.vialStatusText,
+            initialStatusText: rootStore.vialProbeInProgressStatusText()
+        ) { model, selected in
             let workflow = await model.rootStore.runVialProbeAsync(on: selected)
             guard !model.isShuttingDown else { return }
             model.vialStatusText = workflow.presentation.vialStatusText
@@ -167,13 +168,13 @@ final class AppModel: ObservableObject {
     }
 
     func readFullVialKeymapOnSelectedKeyboard() {
-        guard let selected = requireSelectedKeyboard(statusKeyPath: \.keymapStatusText) else { return }
         guard let matrix = rootStore.parseMatrixSize(rowsText: matrixRowsText, colsText: matrixColsText) else {
             keymapStatusText = rootStore.matrixInputValidationFailureMessage()
             return
         }
-        keymapStatusText = rootStore.keymapReadInProgressStatusText()
-        runDiagnosticsTask { model in
+        runSelectedKeyboardDiagnostics(
+            initialStatusText: rootStore.keymapReadInProgressStatusText()
+        ) { model, selected in
             let workflow = await model.rootStore.runReadVialKeymapAsync(
                 on: selected,
                 rows: matrix.rows,
@@ -246,9 +247,9 @@ final class AppModel: ObservableObject {
     }
 
     func autoDetectMatrixOnSelectedKeyboard() {
-        guard let selected = requireSelectedKeyboard(statusKeyPath: \.keymapStatusText) else { return }
-        keymapStatusText = rootStore.matrixInferenceInProgressStatusText()
-        runDiagnosticsTask { model in
+        runSelectedKeyboardDiagnostics(
+            initialStatusText: rootStore.matrixInferenceInProgressStatusText()
+        ) { model, selected in
             let workflow = await model.rootStore.runInferVialMatrixAsync(on: selected)
             guard !model.isShuttingDown else { return }
             model.keymapStatusText = workflow.presentation.keymapStatusText
@@ -260,9 +261,9 @@ final class AppModel: ObservableObject {
     }
 
     func exportVialDefinitionOnSelectedKeyboard() {
-        guard let selected = requireSelectedKeyboard(statusKeyPath: \.keymapStatusText) else { return }
-        keymapStatusText = rootStore.vialDefinitionReadInProgressStatusText()
-        runDiagnosticsTask { model in
+        runSelectedKeyboardDiagnostics(
+            initialStatusText: rootStore.vialDefinitionReadInProgressStatusText()
+        ) { model, selected in
             let presentation = await model.rootStore.runExportVialDefinitionAsync(on: selected)
             guard !model.isShuttingDown else { return }
             model.keymapStatusText = presentation.keymapStatusText
@@ -534,6 +535,22 @@ final class AppModel: ObservableObject {
             guard let self else { return }
             defer { self.isDiagnosticsRunning = false }
             await operation(self)
+        }
+    }
+
+    private func runSelectedKeyboardDiagnostics(
+        statusKeyPath: ReferenceWritableKeyPath<AppModel, String> = \.keymapStatusText,
+        initialStatusText: String,
+        missingMessage: String? = nil,
+        operation: @escaping @MainActor (AppModel, HIDKeyboardDevice) async -> Void
+    ) {
+        guard let selected = requireSelectedKeyboard(
+            statusKeyPath: statusKeyPath,
+            missingMessage: missingMessage
+        ) else { return }
+        self[keyPath: statusKeyPath] = initialStatusText
+        runDiagnosticsTask { model in
+            await operation(model, selected)
         }
     }
 
