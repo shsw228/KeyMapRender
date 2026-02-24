@@ -30,7 +30,6 @@ final class AppModel: ObservableObject {
     @Published var launchAtLoginEnabled = false
     @Published var showSettingsOnLaunch: Bool
 
-    private var allDetectedKeyboards: [HIDKeyboardDevice] = []
     private var latestKeymapDump: VialKeymapDump?
     private var hasAutoLoadedOnStartup = false
     private var isShuttingDown = false
@@ -227,13 +226,10 @@ final class AppModel: ObservableObject {
             self.keymapStatusText = workflow.presentation.keymapStatusText
             self.appendDiagnostics(workflow.presentation.diagnosticMessage)
             if let dump = workflow.dump {
-                self.latestKeymapDump = dump
-                let dumpAdoption = self.rootStore.runAdoptKeymapDump(dump)
-                self.layoutChoices = dumpAdoption.layoutChoices
-                self.availableLayerCount = workflow.presentation.availableLayerCount
-                    ?? dumpAdoption.availableLayerCount
-                self.setSelectedLayerIndex(self.selectedLayerIndex)
-                self.startActiveLayerTrackingIfNeeded()
+                self.adoptKeymapDump(
+                    dump,
+                    availableLayerCountOverride: workflow.presentation.availableLayerCount
+                )
             }
         }
     }
@@ -250,13 +246,7 @@ final class AppModel: ObservableObject {
         )
         keymapPreviewText = workflow.keymapPreviewText
         layout = workflow.layout
-        if isOverlayVisible {
-            rootStore.showOverlay(
-                layout: layout,
-                currentLayer: selectedLayerIndex,
-                totalLayers: availableLayerCount
-            )
-        }
+        refreshOverlayIfVisible()
         for message in workflow.diagnosticMessages {
             appendDiagnostics(message)
         }
@@ -287,13 +277,6 @@ final class AppModel: ObservableObject {
         ) else { return }
         selectedLayerIndex = workflow.clampedLayer
         applySelectedLayerToLatestDump()
-        if isOverlayVisible {
-            rootStore.showOverlay(
-                layout: layout,
-                currentLayer: selectedLayerIndex,
-                totalLayers: availableLayerCount
-            )
-        }
         if let diagnosticMessage = workflow.diagnosticMessage {
             appendDiagnostics(diagnosticMessage)
         }
@@ -401,10 +384,10 @@ final class AppModel: ObservableObject {
         guard let dump = latestKeymapDump else { return false }
         let baseLayer = manualSelectedLayerIndex
 
-        let result = await readSwitchMatrixStateAsync(
-            device: selected,
-            matrixRows: dump.matrixRows,
-            matrixCols: dump.matrixCols
+        let result = await rootStore.readVialSwitchMatrixStateAsync(
+            on: selected,
+            rows: dump.matrixRows,
+            cols: dump.matrixCols
         )
 
         guard generation == activeLayerTrackingGeneration else { return false }
@@ -425,14 +408,6 @@ final class AppModel: ObservableObject {
             appendDiagnostics(diagnosticMessage)
         }
         return workflow.isAnyKeyPressed
-    }
-
-    private func readSwitchMatrixStateAsync(
-        device: HIDKeyboardDevice,
-        matrixRows: Int,
-        matrixCols: Int
-    ) async -> Result<VialSwitchMatrixState, VialProbeError> {
-        await rootStore.readVialSwitchMatrixStateAsync(on: device, rows: matrixRows, cols: matrixCols)
     }
 
     private func appendDiagnostics(_ message: String) {
@@ -458,7 +433,6 @@ final class AppModel: ObservableObject {
     }
 
     private func applyKeyboardSnapshot(_ snapshot: RootStore.KeyboardRefreshResult) {
-        allDetectedKeyboards = snapshot.allDetectedKeyboards
         connectedKeyboards = snapshot.connectedKeyboards
         selectedKeyboardID = snapshot.selectedKeyboardID
         keyboardStatusText = snapshot.keyboardStatusText
@@ -526,15 +500,31 @@ final class AppModel: ObservableObject {
             }
 
             if let dump = workflow.dump {
-                self.latestKeymapDump = dump
-                let dumpAdoption = self.rootStore.runAdoptKeymapDump(dump)
-                self.layoutChoices = dumpAdoption.layoutChoices
-                self.availableLayerCount = dumpAdoption.availableLayerCount
-                self.setSelectedLayerIndex(self.selectedLayerIndex)
-                self.startActiveLayerTrackingIfNeeded()
+                self.adoptKeymapDump(dump)
             }
             self.keymapStatusText = workflow.presentation.keymapStatusText
             self.appendDiagnostics(workflow.presentation.completionDiagnosticMessage)
         }
+    }
+
+    private func refreshOverlayIfVisible() {
+        guard isOverlayVisible else { return }
+        rootStore.showOverlay(
+            layout: layout,
+            currentLayer: selectedLayerIndex,
+            totalLayers: availableLayerCount
+        )
+    }
+
+    private func adoptKeymapDump(
+        _ dump: VialKeymapDump,
+        availableLayerCountOverride: Int? = nil
+    ) {
+        latestKeymapDump = dump
+        let adoption = rootStore.runAdoptKeymapDump(dump)
+        layoutChoices = adoption.layoutChoices
+        availableLayerCount = availableLayerCountOverride ?? adoption.availableLayerCount
+        setSelectedLayerIndex(selectedLayerIndex)
+        startActiveLayerTrackingIfNeeded()
     }
 }
