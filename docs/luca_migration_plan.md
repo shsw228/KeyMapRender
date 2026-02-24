@@ -162,6 +162,4 @@
 4. `AppModel` の呼び出し先を client 経由に切替（機能同等）
 
 ## 8. TODO（後段実施）
-- TODO: `AppModel` の大規模リファクタ（メソッド再編/分割）は Package 移行完了後に実施する。
-- TODO: 現フェーズでは機能移行（DataSource/Model/UserInterface への責務移動）を優先し、`AppModel` は必要最小限の差分に留める。
-- TODO: `UserInterface` へ移設した UI 層の API 安定後、`ContentScene` などテンプレート由来の名称を整理する。
+- TODO: `UserInterface/AppModel` の大規模リファクタ（責務分割と Store 再編）を次フェーズで実施する。
