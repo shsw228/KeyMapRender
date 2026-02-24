@@ -224,7 +224,7 @@ final class AppModel: ObservableObject {
         let range = 0..<layoutChoices[pos].options.count
         guard range.contains(selected) else { return }
         layoutChoices[pos].selected = selected
-        applySelectedLayerToLatestDump()
+        applySelectedLayerToLatestDumpIfNeeded()
     }
 
     func autoDetectMatrixOnSelectedKeyboard() {
@@ -363,6 +363,12 @@ final class AppModel: ObservableObject {
         }
     }
 
+    private func appendDiagnostics(_ messages: [String]) {
+        for message in messages {
+            appendDiagnostics(message)
+        }
+    }
+
     private func appendDiagnosticsIfPresent(_ message: String?) {
         guard let message else { return }
         appendDiagnostics(message)
@@ -397,9 +403,7 @@ final class AppModel: ObservableObject {
         keymapPreviewText = workflow.keymapPreviewText
         layout = workflow.layout
         refreshOverlayIfVisible()
-        for message in workflow.diagnosticMessages {
-            appendDiagnostics(message)
-        }
+        appendDiagnostics(workflow.diagnosticMessages)
     }
 
     private func applyActiveLayerPollWorkflow(_ workflow: RootStore.ActiveLayerPollWorkflowResult) -> Bool {
