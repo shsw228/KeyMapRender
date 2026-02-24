@@ -653,6 +653,32 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func layerTrackingWrappers_delegateToServices() async {
+        let sut = RootStore(.testDependencies())
+        #expect(sut.clampLayerIndex(5, totalLayers: 2) == 1)
+        #expect(sut.resolveLayerSelectionUpdate(
+            current: 1,
+            requested: 1,
+            totalLayers: 2,
+            forceApply: false
+        ) == nil)
+
+        let singleLayerDump = VialKeymapDump(
+            protocolVersion: "0x0009",
+            layerCount: 1,
+            matrixRows: 1,
+            matrixCols: 1,
+            keycodes: [[[0x0029]]],
+            layoutKeymapRows: nil,
+            layoutLabels: nil,
+            layoutOptions: nil,
+            backend: "python"
+        )
+        let tracked = sut.deriveTrackedLayer(from: [[false]], dump: singleLayerDump, baseLayer: 3)
+        #expect(tracked == 0)
+    }
+
+    @MainActor @Test
     func copyToClipboard_delegatesToDependencyClient() async {
         let copied = OSAllocatedUnfairLock(initialState: "")
         let sut = RootStore(.testDependencies(

@@ -222,6 +222,9 @@ public final class RootStore: Composable {
     private let keymapLayerRenderingService: KeymapLayerRenderingService
     private let diagnosticsLogBufferService: DiagnosticsLogBufferService
     private let vialDefinitionValidationService: VialDefinitionValidationService
+    private let activeLayerTrackingService: ActiveLayerTrackingService
+    private let activeLayerPollingService: ActiveLayerPollingService
+    private let layerSelectionService: LayerSelectionService
 
     public var showSettingsOnLaunch: Bool
     public let action: (Action) async -> Void
@@ -244,6 +247,9 @@ public final class RootStore: Composable {
         self.keymapLayerRenderingService = KeymapLayerRenderingService()
         self.diagnosticsLogBufferService = DiagnosticsLogBufferService()
         self.vialDefinitionValidationService = VialDefinitionValidationService()
+        self.activeLayerTrackingService = ActiveLayerTrackingService()
+        self.activeLayerPollingService = ActiveLayerPollingService()
+        self.layerSelectionService = LayerSelectionService()
         self.action = action
     }
 
@@ -485,6 +491,42 @@ public final class RootStore: Composable {
             existingText: existingText,
             message: message
         )
+    }
+
+    public func clampLayerIndex(_ value: Int, totalLayers: Int) -> Int {
+        layerSelectionService.clamp(value, totalLayers: totalLayers)
+    }
+
+    public func resolveLayerSelectionUpdate(
+        current: Int,
+        requested: Int,
+        totalLayers: Int,
+        forceApply: Bool
+    ) -> LayerSelectionUpdate? {
+        layerSelectionService.resolveUpdate(
+            current: current,
+            requested: requested,
+            totalLayers: totalLayers,
+            forceApply: forceApply
+        )
+    }
+
+    public func deriveTrackedLayer(
+        from pressed: [[Bool]],
+        dump: VialKeymapDump,
+        baseLayer: Int
+    ) -> Int {
+        activeLayerTrackingService.deriveTrackedLayer(
+            from: pressed,
+            dump: dump,
+            baseLayer: baseLayer
+        )
+    }
+
+    public func makeActiveLayerPollingTask(
+        poll: @escaping @Sendable () async -> Bool
+    ) -> Task<Void, Never> {
+        activeLayerPollingService.makePollingTask(poll: poll)
     }
 
     public nonisolated func runVialProbeAsync(on device: HIDKeyboardDevice) async -> VialProbeWorkflowResult {

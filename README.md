@@ -55,6 +55,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - 診断ログの追記バッファ処理を `RootStore.appendDiagnosticsLog` へ移し、`AppModel` は表示反映とOSLog出力に専念
 - `vial.json` エクスポート（取得→検証→保存）のユースケースを `RootStore.runExportVialDefinitionAsync` に集約
 - Launch at Login 更新の成功/失敗分岐を `RootStore.runSetLaunchAtLogin` に集約
+- レイヤ選択クランプ/追従レイヤ導出/ポーリングTask生成を `RootStore` ラッパー経由に統一し、`AppModel` から Service 参照を削減
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

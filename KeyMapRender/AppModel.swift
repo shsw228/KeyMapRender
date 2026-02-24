@@ -42,9 +42,6 @@ final class AppModel: ObservableObject {
     private var keyboardHotplugSession: HIDKeyboardHotplugSession?
     private var globalKeyMonitorSession: GlobalKeyMonitorSession?
     private let rootStore: RootStore
-    private let activeLayerTrackingService = ActiveLayerTrackingService()
-    private let activeLayerPollingService = ActiveLayerPollingService()
-    private let layerSelectionService = LayerSelectionService()
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
         category: "AppModel"
@@ -293,7 +290,7 @@ final class AppModel: ObservableObject {
     }
 
     func setSelectedLayerIndex(_ newValue: Int) {
-        let clamped = layerSelectionService.clamp(
+        let clamped = rootStore.clampLayerIndex(
             newValue,
             totalLayers: availableLayerCount
         )
@@ -307,7 +304,7 @@ final class AppModel: ObservableObject {
         emitLog: Bool = true,
         forceApply: Bool = false
     ) {
-        guard let update = layerSelectionService.resolveUpdate(
+        guard let update = rootStore.resolveLayerSelectionUpdate(
             current: selectedLayerIndex,
             requested: newValue,
             totalLayers: availableLayerCount,
@@ -410,7 +407,7 @@ final class AppModel: ObservableObject {
         matrixPollFailureCount = 0
         activeLayerTrackingGeneration &+= 1
         let generation = activeLayerTrackingGeneration
-        activeLayerTrackingTask = activeLayerPollingService.makePollingTask { [weak self] in
+        activeLayerTrackingTask = rootStore.makeActiveLayerPollingTask { [weak self] in
             guard let self else { return false }
             return await self.pollActiveLayerFromKeyboard(generation: generation)
         }
@@ -445,7 +442,7 @@ final class AppModel: ObservableObject {
         switch result {
         case let .success(state):
             matrixPollFailureCount = 0
-            let trackedLayer = activeLayerTrackingService.deriveTrackedLayer(
+            let trackedLayer = rootStore.deriveTrackedLayer(
                 from: state.pressed,
                 dump: dump,
                 baseLayer: baseLayer
