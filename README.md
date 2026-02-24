@@ -1,5 +1,7 @@
 # KeyMapRender
 
+[![CI](https://github.com/shsw228/KeyMapRender/actions/workflows/ci.yml/badge.svg)](https://github.com/shsw228/KeyMapRender/actions/workflows/ci.yml)
+
 [日本語版 README](README.ja.md)
 
 KeyMapRender is a macOS utility that shows a semi-transparent keyboard overlay while a configurable key is held down (or toggled), focused on Vial/VIA-compatible keyboards.
