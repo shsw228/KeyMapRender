@@ -75,6 +75,7 @@
   - `AppDependencies.keyMapRenderLive` 定義を `Model` 側へ移し、アプリターゲット側の依存注入構成コードを削減
   - `KeyboardLayoutLoader` を廃止し、`AppModel` は `KeyboardLayoutService` を直接参照
   - Third-Party ライセンス表示実装（`LicenseWindowController` / `ThirdPartyLicenses`）を `DataSource/Services` へ移設
+  - 設定画面/メニューバーUIと `AppModel` 実体を `UserInterface` ターゲットへ移設し、appターゲットは `KeyMapRenderRootScene` 呼び出し中心へ簡素化
   - `AppModel` の依存注入先を `Model.AppDependencies` ベースへ切替
   - 起動時設定（showSettingsOnLaunch）の状態管理を `Model.RootStore` へ移設
   - 設定永続化（target key / long press / overlay animation / ignored devices）を `RootStore` + `UserDefaultsRepository` 経由へ移行

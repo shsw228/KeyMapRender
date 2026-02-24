@@ -128,6 +128,7 @@
 - 状態: 設定適用時の入力検証/永続化とグローバル監視再起動を `RootStore` workflow API へ集約
 - 状態: 表示レイヤ選択の更新判定/診断文生成を `RootStore.runResolveDisplayedLayerSelection` へ集約
 - 状態: レイヤ描画時のプレビュー/レイアウト/オーバーレイ更新診断の組み立てを `RootStore.runRenderSelectedLayer` へ集約
+- 状態: 設定UI（`ContentView`/各Pane）・メニューバーUI・`AppModel` 実体を `UserInterface` へ移設し、appターゲットは `KeyMapRenderRootScene` 呼び出しと互換ラッパーへ縮退
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出
@@ -161,3 +162,4 @@
 ## 8. TODO（後段実施）
 - TODO: `AppModel` の大規模リファクタ（メソッド再編/分割）は Package 移行完了後に実施する。
 - TODO: 現フェーズでは機能移行（DataSource/Model/UserInterface への責務移動）を優先し、`AppModel` は必要最小限の差分に留める。
+- TODO: appターゲット側に残した互換ラッパーファイル（`KeyMapRender/*.swift`）の最終削除は、起動確認と回帰確認後に実施する。
