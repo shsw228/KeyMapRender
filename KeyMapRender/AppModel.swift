@@ -94,9 +94,7 @@ final class AppModel: ObservableObject {
     func refreshLaunchAtLoginStatus() {
         let workflow = rootStore.runRefreshLaunchAtLoginStatus()
         launchAtLoginEnabled = workflow.enabled
-        if let diagnosticMessage = workflow.diagnosticMessage {
-            appendDiagnostics(diagnosticMessage)
-        }
+        appendDiagnosticsIfPresent(workflow.diagnosticMessage)
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
@@ -236,9 +234,7 @@ final class AppModel: ObservableObject {
         ) else { return }
         selectedLayerIndex = workflow.clampedLayer
         applySelectedLayerToLatestDump()
-        if let diagnosticMessage = workflow.diagnosticMessage {
-            appendDiagnostics(diagnosticMessage)
-        }
+        appendDiagnosticsIfPresent(workflow.diagnosticMessage)
     }
 
     func updateLayoutChoice(index: Int, selected: Int) {
@@ -345,9 +341,7 @@ final class AppModel: ObservableObject {
         if let trackedLayer = workflow.trackedLayer {
             setDisplayedLayerIndex(trackedLayer, reason: "押下追従", emitLog: false)
         }
-        if let diagnosticMessage = workflow.diagnosticMessage {
-            appendDiagnostics(diagnosticMessage)
-        }
+        appendDiagnosticsIfPresent(workflow.diagnosticMessage)
         return workflow.isAnyKeyPressed
     }
 
@@ -379,6 +373,11 @@ final class AppModel: ObservableObject {
         case .fault:
             logger.fault("\(result.line, privacy: .public)")
         }
+    }
+
+    private func appendDiagnosticsIfPresent(_ message: String?) {
+        guard let message else { return }
+        appendDiagnostics(message)
     }
 
     private func applyKeyboardSnapshot(_ snapshot: RootStore.KeyboardRefreshResult) {
@@ -423,8 +422,8 @@ final class AppModel: ObservableObject {
         }
         if let session = workflow.session {
             keyboardHotplugSession = session
-        } else if let diagnosticMessage = workflow.diagnosticMessage {
-            appendDiagnostics(diagnosticMessage)
+        } else {
+            appendDiagnosticsIfPresent(workflow.diagnosticMessage)
         }
     }
 
