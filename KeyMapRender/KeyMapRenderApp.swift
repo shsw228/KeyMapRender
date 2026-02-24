@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AppIntents
+import DataSource
 
 @main
 struct KeyMapRenderApp: App {

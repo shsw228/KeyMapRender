@@ -71,6 +71,7 @@
 - 状態: 起動時設定/権限/クリップボード/保存ダイアログ/オーバーレイの live 実装を `DataSource/Dependencies` へ移し、`AppDependencies+Live` を依存束ねのみへ簡素化
 - 状態: `AppDependencies.keyMapRenderLive` 定義を `Model` 側へ移し、アプリターゲットから依存注入構成コードを除去
 - 状態: `KeyboardLayoutLoader` を廃止し、`AppModel` は `Model.KeyboardLayoutService` を直接利用
+- 状態: Third-Party ライセンス表示実装（`LicenseWindowController` / `ThirdPartyLicenses`）を `DataSource/Services` へ移設
 - 状態: アプリ側の依存コンテナ実装を削除し、`Model.AppDependencies` を実行時DIの基準へ切替済み
 
 ### Phase 2: Store分割
