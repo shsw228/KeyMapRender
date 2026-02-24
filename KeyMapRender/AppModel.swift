@@ -171,7 +171,12 @@ final class AppModel: ObservableObject {
                         totalLayers: self.availableLayerCount
                     )
                     self.startActiveLayerTrackingIfNeeded()
-                    self.appendDiagnostics("オーバーレイ表示: L\(self.selectedLayerIndex)/\(max(0, self.availableLayerCount - 1))")
+                    self.appendDiagnostics(
+                        self.rootStore.overlayShownDiagnosticMessage(
+                            currentLayer: self.selectedLayerIndex,
+                            totalLayers: self.availableLayerCount
+                        )
+                    )
                 }
             },
             onLongPressEnd: { [weak self] in
@@ -288,7 +293,12 @@ final class AppModel: ObservableObject {
                 currentLayer: selectedLayerIndex,
                 totalLayers: availableLayerCount
             )
-            appendDiagnostics("オーバーレイ更新: L\(selectedLayerIndex)/\(max(0, availableLayerCount - 1))")
+            appendDiagnostics(
+                rootStore.overlayUpdatedDiagnosticMessage(
+                    currentLayer: selectedLayerIndex,
+                    totalLayers: availableLayerCount
+                )
+            )
         }
         for message in renderResult.diagnosticMessages {
             appendDiagnostics(message)
@@ -326,7 +336,13 @@ final class AppModel: ObservableObject {
             )
         }
         if update.changed, emitLog {
-            appendDiagnostics("表示レイヤー変更(\(reason)): L\(selectedLayerIndex)/\(max(0, availableLayerCount - 1))")
+            appendDiagnostics(
+                rootStore.displayLayerChangedDiagnosticMessage(
+                    reason: reason,
+                    currentLayer: selectedLayerIndex,
+                    totalLayers: availableLayerCount
+                )
+            )
         }
     }
 
@@ -413,14 +429,14 @@ final class AppModel: ObservableObject {
         }
         rootStore.addIgnoredDeviceID(selected.id)
         persistIgnoredDeviceCount()
-        appendDiagnostics("デバイス無視追加: \(selected.manufacturerName) \(selected.productName) id=\(selected.id)")
+        appendDiagnostics(rootStore.ignoredDeviceAddedDiagnosticMessage(selected))
         refreshKeyboards()
     }
 
     func clearIgnoredKeyboards() {
         rootStore.clearIgnoredDeviceIDs()
         persistIgnoredDeviceCount()
-        appendDiagnostics("デバイス無視リストを全解除")
+        appendDiagnostics(rootStore.ignoredDevicesClearedDiagnosticMessage())
         refreshKeyboards()
     }
 
@@ -437,7 +453,7 @@ final class AppModel: ObservableObject {
             guard let self else { return false }
             return await self.pollActiveLayerFromKeyboard(generation: generation)
         }
-        appendDiagnostics("アクティブレイヤー追従開始")
+        appendDiagnostics(rootStore.activeLayerTrackingStartedDiagnosticMessage())
     }
 
     private func stopActiveLayerTracking() {
@@ -478,7 +494,7 @@ final class AppModel: ObservableObject {
         case let .failure(.message(message)):
             matrixPollFailureCount += 1
             if matrixPollFailureCount == 1 || matrixPollFailureCount % 20 == 0 {
-                appendDiagnostics("アクティブレイヤー追従失敗: \(message)")
+                appendDiagnostics(rootStore.activeLayerTrackingFailureDiagnosticMessage(message))
             }
             return false
         }
@@ -519,11 +535,7 @@ final class AppModel: ObservableObject {
     }
 
     private func currentOverlayKeyboardName() -> String {
-        guard let keyboard = selectedKeyboard else { return "Keyboard" }
-        let manufacturer = keyboard.manufacturerName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let product = keyboard.productName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let joined = "\(manufacturer) \(product)".trimmingCharacters(in: .whitespacesAndNewlines)
-        return joined.isEmpty ? "Keyboard" : joined
+        rootStore.overlayKeyboardName(for: selectedKeyboard)
     }
 
     private var selectedKeyboard: HIDKeyboardDevice? {

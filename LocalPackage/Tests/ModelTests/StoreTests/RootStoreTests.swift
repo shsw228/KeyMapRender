@@ -364,6 +364,24 @@ struct RootStoreTests {
         #expect(sut.vialDefinitionReadInProgressStatusText() == "vial.json取得中...")
         #expect(sut.startupAutoLoadInProgressStatusText() == "起動時自動読込中...")
         #expect(sut.keyboardHotplugStartFailureDiagnosticMessage() == "キーボード接続監視の開始に失敗しました。")
+        #expect(sut.overlayShownDiagnosticMessage(currentLayer: 2, totalLayers: 8) == "オーバーレイ表示: L2/7")
+        #expect(sut.overlayUpdatedDiagnosticMessage(currentLayer: 3, totalLayers: 8) == "オーバーレイ更新: L3/7")
+        #expect(sut.displayLayerChangedDiagnosticMessage(reason: "手動", currentLayer: 1, totalLayers: 4) == "表示レイヤー変更(手動): L1/3")
+        #expect(sut.activeLayerTrackingStartedDiagnosticMessage() == "アクティブレイヤー追従開始")
+        #expect(sut.activeLayerTrackingFailureDiagnosticMessage("timeout") == "アクティブレイヤー追従失敗: timeout")
+        #expect(sut.ignoredDeviceAddedDiagnosticMessage(device).contains("id=kbd-1"))
+        #expect(sut.ignoredDevicesClearedDiagnosticMessage() == "デバイス無視リストを全解除")
+        #expect(sut.overlayKeyboardName(for: device) == "Test Test Keyboard")
+        let blankDevice = HIDKeyboardDevice(
+            id: "blank",
+            vendorID: 0,
+            productID: 0,
+            locationID: 0,
+            productName: " ",
+            manufacturerName: " "
+        )
+        #expect(sut.overlayKeyboardName(for: blankDevice) == "Keyboard")
+        #expect(sut.overlayKeyboardName(for: nil) == "Keyboard")
     }
 
     @MainActor @Test

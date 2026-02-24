@@ -573,6 +573,42 @@ public final class RootStore: Composable {
         "キーボード接続監視の開始に失敗しました。"
     }
 
+    public func overlayKeyboardName(for keyboard: HIDKeyboardDevice?) -> String {
+        guard let keyboard else { return "Keyboard" }
+        let manufacturer = keyboard.manufacturerName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let product = keyboard.productName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let joined = "\(manufacturer) \(product)".trimmingCharacters(in: .whitespacesAndNewlines)
+        return joined.isEmpty ? "Keyboard" : joined
+    }
+
+    public func overlayShownDiagnosticMessage(currentLayer: Int, totalLayers: Int) -> String {
+        "オーバーレイ表示: L\(currentLayer)/\(max(0, totalLayers - 1))"
+    }
+
+    public func overlayUpdatedDiagnosticMessage(currentLayer: Int, totalLayers: Int) -> String {
+        "オーバーレイ更新: L\(currentLayer)/\(max(0, totalLayers - 1))"
+    }
+
+    public func displayLayerChangedDiagnosticMessage(reason: String, currentLayer: Int, totalLayers: Int) -> String {
+        "表示レイヤー変更(\(reason)): L\(currentLayer)/\(max(0, totalLayers - 1))"
+    }
+
+    public func activeLayerTrackingStartedDiagnosticMessage() -> String {
+        "アクティブレイヤー追従開始"
+    }
+
+    public func activeLayerTrackingFailureDiagnosticMessage(_ detail: String) -> String {
+        "アクティブレイヤー追従失敗: \(detail)"
+    }
+
+    public func ignoredDeviceAddedDiagnosticMessage(_ device: HIDKeyboardDevice) -> String {
+        "デバイス無視追加: \(device.manufacturerName) \(device.productName) id=\(device.id)"
+    }
+
+    public func ignoredDevicesClearedDiagnosticMessage() -> String {
+        "デバイス無視リストを全解除"
+    }
+
     public nonisolated func copyToClipboard(_ text: String) {
         appDependencies.clipboardClient.copyString(text)
     }

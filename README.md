@@ -46,6 +46,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - `vial.json` エクスポートのファイル名/結果文言生成を `RootStore` プレゼンテーションAPIへ集約
 - 権限状態/ターゲットキー入力検証/監視状態文言を `RootStore` APIへ集約
 - キーボード未選択/読込中などの共通固定メッセージを `RootStore` APIへ集約
+- オーバーレイ表示名とオーバーレイ/追従/ignore関連の診断メッセージ生成を `RootStore` APIへ集約
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`
