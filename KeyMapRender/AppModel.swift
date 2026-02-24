@@ -93,14 +93,18 @@ final class AppModel: ObservableObject {
 
     func refreshLaunchAtLoginStatus() {
         let workflow = rootStore.runRefreshLaunchAtLoginStatus()
-        launchAtLoginEnabled = workflow.enabled
-        appendDiagnosticsIfPresent(workflow.diagnosticMessage)
+        applyLaunchAtLoginState(
+            enabled: workflow.enabled,
+            diagnosticMessage: workflow.diagnosticMessage
+        )
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
         let workflow = rootStore.runSetLaunchAtLogin(enabled)
-        launchAtLoginEnabled = workflow.enabled
-        appendDiagnostics(workflow.diagnosticMessage)
+        applyLaunchAtLoginState(
+            enabled: workflow.enabled,
+            diagnosticMessage: workflow.diagnosticMessage
+        )
     }
 
     func setShowSettingsOnLaunch(_ enabled: Bool) {
@@ -183,12 +187,10 @@ final class AppModel: ObservableObject {
             guard !model.isShuttingDown else { return }
             model.keymapStatusText = workflow.presentation.keymapStatusText
             model.appendDiagnostics(workflow.presentation.diagnosticMessage)
-            if let dump = workflow.dump {
-                model.adoptKeymapDump(
-                    dump,
-                    availableLayerCountOverride: workflow.presentation.availableLayerCount
-                )
-            }
+            model.adoptKeymapDumpIfPresent(
+                workflow.dump,
+                availableLayerCountOverride: workflow.presentation.availableLayerCount
+            )
         }
     }
 
@@ -254,9 +256,10 @@ final class AppModel: ObservableObject {
             guard !model.isShuttingDown else { return }
             model.keymapStatusText = workflow.presentation.keymapStatusText
             model.appendDiagnostics(workflow.presentation.diagnosticMessage)
-            if let rows = workflow.presentation.matrixRows, let cols = workflow.presentation.matrixCols {
-                model.applyMatrixSize(rows: rows, cols: cols)
-            }
+            model.applyMatrixSizeIfPresent(
+                rows: workflow.presentation.matrixRows,
+                cols: workflow.presentation.matrixCols
+            )
         }
     }
 
@@ -456,13 +459,11 @@ final class AppModel: ObservableObject {
             )
             guard !model.isShuttingDown else { return }
             model.appendDiagnostics(workflow.presentation.matrixDiagnosticMessage)
-            if let rows = workflow.presentation.matrixRows, let cols = workflow.presentation.matrixCols {
-                model.applyMatrixSize(rows: rows, cols: cols)
-            }
-
-            if let dump = workflow.dump {
-                model.adoptKeymapDump(dump)
-            }
+            model.applyMatrixSizeIfPresent(
+                rows: workflow.presentation.matrixRows,
+                cols: workflow.presentation.matrixCols
+            )
+            model.adoptKeymapDumpIfPresent(workflow.dump)
             model.keymapStatusText = workflow.presentation.keymapStatusText
             model.appendDiagnostics(workflow.presentation.completionDiagnosticMessage)
         }
@@ -513,9 +514,27 @@ final class AppModel: ObservableObject {
         matrixColsText = "\(cols)"
     }
 
+    private func applyMatrixSizeIfPresent(rows: Int?, cols: Int?) {
+        guard let rows, let cols else { return }
+        applyMatrixSize(rows: rows, cols: cols)
+    }
+
+    private func adoptKeymapDumpIfPresent(
+        _ dump: VialKeymapDump?,
+        availableLayerCountOverride: Int? = nil
+    ) {
+        guard let dump else { return }
+        adoptKeymapDump(dump, availableLayerCountOverride: availableLayerCountOverride)
+    }
+
     private func applyPermissionStatusTextIfPresent(_ statusText: String?) {
         guard let statusText else { return }
         permissionStatusText = statusText
+    }
+
+    private func applyLaunchAtLoginState(enabled: Bool, diagnosticMessage: String?) {
+        launchAtLoginEnabled = enabled
+        appendDiagnosticsIfPresent(diagnosticMessage)
     }
 
     private func stopMonitoringSessions() {
