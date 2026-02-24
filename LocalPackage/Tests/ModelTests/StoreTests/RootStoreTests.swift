@@ -643,6 +643,62 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func runPrepareApplySettings_validatesAndPersistsPreferences() async {
+        let sut = RootStore(.testDependencies())
+        let failure = sut.runPrepareApplySettings(
+            targetKeyCodeText: "abc",
+            longPressDuration: 0.5,
+            overlayShowAnimationDuration: 0.2,
+            overlayHideAnimationDuration: 0.2,
+            showSettingsOnLaunch: true
+        )
+        switch failure {
+        case .success:
+            Issue.record("Expected invalid key code failure.")
+        case let .failure(permissionStatusText):
+            #expect(permissionStatusText == "キーコードは 0-127 の整数で入力してください。")
+        }
+
+        let success = sut.runPrepareApplySettings(
+            targetKeyCodeText: "61",
+            longPressDuration: 0.6,
+            overlayShowAnimationDuration: 0.3,
+            overlayHideAnimationDuration: 0.4,
+            showSettingsOnLaunch: false
+        )
+        switch success {
+        case let .success(configuration):
+            #expect(configuration.targetKeyCode == 61)
+            #expect(configuration.longPressThreshold == 0.6)
+        case .failure:
+            Issue.record("Expected runPrepareApplySettings success.")
+        }
+    }
+
+    @MainActor @Test
+    func runRestartGlobalMonitoring_stopsExistingSessionAndStartsNewOne() async {
+        let stopped = OSAllocatedUnfairLock(initialState: false)
+        let expectedSession = GlobalKeyMonitorSession(id: UUID())
+        let sut = RootStore(.testDependencies(
+            globalKeyMonitorClient: testDependency(of: GlobalKeyMonitorClient.self) {
+                $0.start = { _, _, _ in .success(expectedSession) }
+                $0.stop = { _ in stopped.withLock { $0 = true } }
+            }
+        ))
+
+        let workflow = sut.runRestartGlobalMonitoring(
+            existingSession: .init(id: UUID()),
+            configuration: .init(targetKeyCode: 60, longPressThreshold: 0.4),
+            onLongPressStart: {},
+            onLongPressEnd: {}
+        )
+
+        #expect(stopped.withLock { $0 })
+        #expect(workflow.session?.id == expectedSession.id)
+        #expect(workflow.permissionStatusText.contains("監視中: keyCode 60"))
+    }
+
+    @MainActor @Test
     func runStartKeyboardHotplugMonitoring_returnsSessionAndDiagnostic() async {
         let successSUT = RootStore(.testDependencies(
             hidKeyboardHotplugClient: testDependency(of: HIDKeyboardHotplugClient.self) {

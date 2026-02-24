@@ -123,32 +123,25 @@ final class AppModel: ObservableObject {
 
     func applySettings() {
         guard !isShuttingDown else { return }
-        guard let keyCodeValue = rootStore.parseTargetKeyCode(targetKeyCodeText) else {
-            permissionStatusText = rootStore.invalidTargetKeyCodeMessage()
+        let preparation = rootStore.runPrepareApplySettings(
+            targetKeyCodeText: targetKeyCodeText,
+            longPressDuration: longPressDuration,
+            overlayShowAnimationDuration: overlayShowAnimationDuration,
+            overlayHideAnimationDuration: overlayHideAnimationDuration,
+            showSettingsOnLaunch: showSettingsOnLaunch
+        )
+        let configuration: GlobalKeyMonitorConfiguration
+        switch preparation {
+        case let .success(value):
+            configuration = value
+        case let .failure(permissionStatusText):
+            self.permissionStatusText = permissionStatusText
             return
         }
 
-        rootStore.saveAppPreferences(
-            targetKeyCode: Int(keyCodeValue),
-            longPressDuration: longPressDuration,
-            overlayShowAnimationDuration: overlayShowAnimationDuration,
-            overlayHideAnimationDuration: overlayHideAnimationDuration
-        )
-        rootStore.setShowSettingsOnLaunch(showSettingsOnLaunch)
-        rootStore.updateOverlayAnimationDurations(
-            show: overlayShowAnimationDuration,
-            hide: overlayHideAnimationDuration
-        )
-
-        if let globalKeyMonitorSession {
-            rootStore.stopGlobalKeyMonitoring(globalKeyMonitorSession)
-            self.globalKeyMonitorSession = nil
-        }
-        let monitorWorkflow = rootStore.runStartGlobalMonitoring(
-            configuration: GlobalKeyMonitorConfiguration(
-                targetKeyCode: keyCodeValue,
-                longPressThreshold: longPressDuration
-            ),
+        let monitorWorkflow = rootStore.runRestartGlobalMonitoring(
+            existingSession: globalKeyMonitorSession,
+            configuration: configuration,
             onLongPressStart: { [weak self] in
                 Task { @MainActor in
                     guard let self else { return }

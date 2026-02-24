@@ -261,6 +261,21 @@ public final class RootStore: Composable {
         }
     }
 
+    public enum ApplySettingsPreparationResult: Sendable {
+        case success(configuration: GlobalKeyMonitorConfiguration)
+        case failure(permissionStatusText: String)
+    }
+
+    public struct RestartGlobalMonitoringWorkflowResult: Sendable {
+        public let session: GlobalKeyMonitorSession?
+        public let permissionStatusText: String
+
+        public init(session: GlobalKeyMonitorSession?, permissionStatusText: String) {
+            self.session = session
+            self.permissionStatusText = permissionStatusText
+        }
+    }
+
     public struct GlobalMonitoringWorkflowResult: Sendable {
         public let session: GlobalKeyMonitorSession?
         public let permissionStatusText: String
@@ -1000,6 +1015,36 @@ public final class RootStore: Composable {
         )
     }
 
+    public func runPrepareApplySettings(
+        targetKeyCodeText: String,
+        longPressDuration: Double,
+        overlayShowAnimationDuration: Double,
+        overlayHideAnimationDuration: Double,
+        showSettingsOnLaunch: Bool
+    ) -> ApplySettingsPreparationResult {
+        guard let keyCodeValue = parseTargetKeyCode(targetKeyCodeText) else {
+            return .failure(permissionStatusText: invalidTargetKeyCodeMessage())
+        }
+
+        saveAppPreferences(
+            targetKeyCode: Int(keyCodeValue),
+            longPressDuration: longPressDuration,
+            overlayShowAnimationDuration: overlayShowAnimationDuration,
+            overlayHideAnimationDuration: overlayHideAnimationDuration
+        )
+        setShowSettingsOnLaunch(showSettingsOnLaunch)
+        updateOverlayAnimationDurations(
+            show: overlayShowAnimationDuration,
+            hide: overlayHideAnimationDuration
+        )
+        return .success(
+            configuration: GlobalKeyMonitorConfiguration(
+                targetKeyCode: keyCodeValue,
+                longPressThreshold: longPressDuration
+            )
+        )
+    }
+
     public nonisolated func inputAccessStatus(
         promptAccessibility: Bool,
         requestInputMonitoring: Bool
@@ -1199,6 +1244,26 @@ public final class RootStore: Composable {
                 permissionStatusText: monitoringStartFailureStatusText()
             )
         }
+    }
+
+    public func runRestartGlobalMonitoring(
+        existingSession: GlobalKeyMonitorSession?,
+        configuration: GlobalKeyMonitorConfiguration,
+        onLongPressStart: @escaping @Sendable () -> Void,
+        onLongPressEnd: @escaping @Sendable () -> Void
+    ) -> RestartGlobalMonitoringWorkflowResult {
+        if let existingSession {
+            stopGlobalKeyMonitoring(existingSession)
+        }
+        let workflow = runStartGlobalMonitoring(
+            configuration: configuration,
+            onLongPressStart: onLongPressStart,
+            onLongPressEnd: onLongPressEnd
+        )
+        return RestartGlobalMonitoringWorkflowResult(
+            session: workflow.session,
+            permissionStatusText: workflow.permissionStatusText
+        )
     }
 
     public func runStartKeyboardHotplugMonitoring(
