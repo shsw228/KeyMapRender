@@ -209,6 +209,26 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct GlobalMonitoringWorkflowResult: Sendable {
+        public let session: GlobalKeyMonitorSession?
+        public let permissionStatusText: String
+
+        public init(session: GlobalKeyMonitorSession?, permissionStatusText: String) {
+            self.session = session
+            self.permissionStatusText = permissionStatusText
+        }
+    }
+
+    public struct KeyboardHotplugWorkflowResult: Sendable {
+        public let session: HIDKeyboardHotplugSession?
+        public let diagnosticMessage: String?
+
+        public init(session: HIDKeyboardHotplugSession?, diagnosticMessage: String?) {
+            self.session = session
+            self.diagnosticMessage = diagnosticMessage
+        }
+    }
+
     public enum VialDefinitionWorkflowResult: Sendable {
         case success(prettyJSON: String, suggestedFileName: String)
         case failure(VialDefinitionPresentation)
@@ -933,6 +953,49 @@ public final class RootStore: Composable {
 
     public nonisolated func stopGlobalKeyMonitoring(_ session: GlobalKeyMonitorSession) {
         appDependencies.globalKeyMonitorClient.stop(session)
+    }
+
+    public func runStartGlobalMonitoring(
+        configuration: GlobalKeyMonitorConfiguration,
+        onLongPressStart: @escaping @Sendable () -> Void,
+        onLongPressEnd: @escaping @Sendable () -> Void
+    ) -> GlobalMonitoringWorkflowResult {
+        switch startGlobalKeyMonitoring(
+            configuration,
+            onLongPressStart: onLongPressStart,
+            onLongPressEnd: onLongPressEnd
+        ) {
+        case let .success(session):
+            return GlobalMonitoringWorkflowResult(
+                session: session,
+                permissionStatusText: monitoringStatusText(
+                    targetKeyCode: configuration.targetKeyCode,
+                    longPressDuration: configuration.longPressThreshold
+                )
+            )
+        case .failure:
+            return GlobalMonitoringWorkflowResult(
+                session: nil,
+                permissionStatusText: monitoringStartFailureStatusText()
+            )
+        }
+    }
+
+    public func runStartKeyboardHotplugMonitoring(
+        onChanged: @escaping @Sendable () -> Void
+    ) -> KeyboardHotplugWorkflowResult {
+        switch startKeyboardHotplugMonitoring(onChanged: onChanged) {
+        case let .success(session):
+            return KeyboardHotplugWorkflowResult(
+                session: session,
+                diagnosticMessage: nil
+            )
+        case .failure:
+            return KeyboardHotplugWorkflowResult(
+                session: nil,
+                diagnosticMessage: keyboardHotplugStartFailureDiagnosticMessage()
+            )
+        }
     }
 
     public nonisolated func updateOverlayAnimationDurations(show: Double, hide: Double) {

@@ -111,6 +111,7 @@
 - 状態: `vial.json` エクスポート（取得→検証→保存）を `RootStore.runExportVialDefinitionAsync` へ集約
 - 状態: Launch at Login 更新の分岐/診断メッセージ生成を `RootStore.runSetLaunchAtLogin` へ集約
 - 状態: レイヤ選択/レイヤ追従/ポーリングTask生成の Service 利用を `RootStore` API経由へ統一し、`AppModel` 直接依存を削減
+- 状態: グローバルキー監視開始とキーボードホットプラグ監視開始を `RootStore` workflow API へ集約
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

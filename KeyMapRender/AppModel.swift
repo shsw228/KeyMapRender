@@ -144,8 +144,8 @@ final class AppModel: ObservableObject {
             rootStore.stopGlobalKeyMonitoring(globalKeyMonitorSession)
             self.globalKeyMonitorSession = nil
         }
-        let monitorResult = rootStore.startGlobalKeyMonitoring(
-            GlobalKeyMonitorConfiguration(
+        let monitorWorkflow = rootStore.runStartGlobalMonitoring(
+            configuration: GlobalKeyMonitorConfiguration(
                 targetKeyCode: keyCodeValue,
                 longPressThreshold: longPressDuration
             ),
@@ -177,17 +177,8 @@ final class AppModel: ObservableObject {
                 }
             }
         )
-
-        switch monitorResult {
-        case let .success(session):
-            globalKeyMonitorSession = session
-            permissionStatusText = rootStore.monitoringStatusText(
-                targetKeyCode: keyCodeValue,
-                longPressDuration: longPressDuration
-            )
-        case .failure:
-            permissionStatusText = rootStore.monitoringStartFailureStatusText()
-        }
+        globalKeyMonitorSession = monitorWorkflow.session
+        permissionStatusText = monitorWorkflow.permissionStatusText
     }
 
     func refreshKeyboards() {
@@ -502,18 +493,17 @@ final class AppModel: ObservableObject {
 
     private func startKeyboardHotplugMonitor() {
         guard keyboardHotplugSession == nil else { return }
-        let result = rootStore.startKeyboardHotplugMonitoring { [weak self] in
+        let workflow = rootStore.runStartKeyboardHotplugMonitoring { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
                 guard !self.isShuttingDown else { return }
                 self.refreshKeyboards()
             }
         }
-        switch result {
-        case let .success(session):
+        if let session = workflow.session {
             keyboardHotplugSession = session
-        case .failure:
-            appendDiagnostics(rootStore.keyboardHotplugStartFailureDiagnosticMessage())
+        } else if let diagnosticMessage = workflow.diagnosticMessage {
+            appendDiagnostics(diagnosticMessage)
         }
     }
 

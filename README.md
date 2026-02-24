@@ -56,6 +56,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - `vial.json` エクスポート（取得→検証→保存）のユースケースを `RootStore.runExportVialDefinitionAsync` に集約
 - Launch at Login 更新の成功/失敗分岐を `RootStore.runSetLaunchAtLogin` に集約
 - レイヤ選択クランプ/追従レイヤ導出/ポーリングTask生成を `RootStore` ラッパー経由に統一し、`AppModel` から Service 参照を削減
+- グローバルキー監視開始とキーボードホットプラグ監視開始の分岐を `RootStore` workflow APIへ集約
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

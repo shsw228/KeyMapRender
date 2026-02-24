@@ -537,6 +537,60 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func runStartGlobalMonitoring_returnsSessionAndStatusText() async {
+        let successSUT = RootStore(.testDependencies(
+            globalKeyMonitorClient: testDependency(of: GlobalKeyMonitorClient.self) {
+                $0.start = { _, _, _ in .success(.init(id: UUID())) }
+                $0.stop = { _ in }
+            }
+        ))
+        let success = successSUT.runStartGlobalMonitoring(
+            configuration: .init(targetKeyCode: 60, longPressThreshold: 0.4),
+            onLongPressStart: {},
+            onLongPressEnd: {}
+        )
+        #expect(success.session != nil)
+        #expect(success.permissionStatusText.contains("監視中: keyCode 60"))
+
+        let failureSUT = RootStore(.testDependencies(
+            globalKeyMonitorClient: testDependency(of: GlobalKeyMonitorClient.self) {
+                $0.start = { _, _, _ in .failure(.message("failed")) }
+                $0.stop = { _ in }
+            }
+        ))
+        let failure = failureSUT.runStartGlobalMonitoring(
+            configuration: .init(targetKeyCode: 60, longPressThreshold: 0.4),
+            onLongPressStart: {},
+            onLongPressEnd: {}
+        )
+        #expect(failure.session == nil)
+        #expect(failure.permissionStatusText == "キー監視を開始できませんでした。Accessibility / Input Monitoring を確認してください。")
+    }
+
+    @MainActor @Test
+    func runStartKeyboardHotplugMonitoring_returnsSessionAndDiagnostic() async {
+        let successSUT = RootStore(.testDependencies(
+            hidKeyboardHotplugClient: testDependency(of: HIDKeyboardHotplugClient.self) {
+                $0.start = { _ in .success(.init(id: UUID())) }
+                $0.stop = { _ in }
+            }
+        ))
+        let success = successSUT.runStartKeyboardHotplugMonitoring(onChanged: {})
+        #expect(success.session != nil)
+        #expect(success.diagnosticMessage == nil)
+
+        let failureSUT = RootStore(.testDependencies(
+            hidKeyboardHotplugClient: testDependency(of: HIDKeyboardHotplugClient.self) {
+                $0.start = { _ in .failure(.message("failed")) }
+                $0.stop = { _ in }
+            }
+        ))
+        let failure = failureSUT.runStartKeyboardHotplugMonitoring(onChanged: {})
+        #expect(failure.session == nil)
+        #expect(failure.diagnosticMessage == "キーボード接続監視の開始に失敗しました。")
+    }
+
+    @MainActor @Test
     func shouldOpenSettingsWindowOnLaunch_returnsTrueOnlyFirstTime() async {
         let sut = RootStore(.testDependencies(), showSettingsOnLaunch: true)
         #expect(sut.shouldOpenSettingsWindowOnLaunch())
