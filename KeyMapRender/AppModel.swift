@@ -85,10 +85,8 @@ final class AppModel: ObservableObject {
     func shutdown() {
         guard !isShuttingDown else { return }
         isShuttingDown = true
-        stopActiveLayerTracking()
         stopMonitoringSessions()
-        rootStore.hideOverlay()
-        isOverlayVisible = false
+        hideOverlayAndStopTracking(restoreManualLayer: false)
     }
 
     func refreshLaunchAtLoginStatus() {
@@ -544,14 +542,20 @@ final class AppModel: ObservableObject {
     }
 
     private func handleOverlayLongPressEnd() {
-        isOverlayVisible = false
-        stopActiveLayerTracking()
-        restoreManualDisplayedLayerOnOverlayEnd()
-        rootStore.hideOverlay()
+        hideOverlayAndStopTracking(restoreManualLayer: true)
     }
 
     private func restoreManualDisplayedLayerOnOverlayEnd() {
         setDisplayedLayerIndex(manualSelectedLayerIndex, reason: "長押し終了", emitLog: false)
+    }
+
+    private func hideOverlayAndStopTracking(restoreManualLayer: Bool) {
+        isOverlayVisible = false
+        stopActiveLayerTracking()
+        if restoreManualLayer {
+            restoreManualDisplayedLayerOnOverlayEnd()
+        }
+        rootStore.hideOverlay()
     }
 
     private func applySelectedLayerToLatestDumpIfNeeded() {
