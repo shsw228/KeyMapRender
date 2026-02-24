@@ -157,6 +157,41 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func presentStartupKeymapLoadResult_buildsSuccessMessages() async {
+        let sut = RootStore(.testDependencies())
+        let loadResult = RootStore.StartupKeymapLoadResult(
+            matrixMessage: "matrix自動取得成功(python): 4x5",
+            matrixInfo: .init(rows: 4, cols: 5, backend: "python"),
+            dumpResult: .success(dump)
+        )
+
+        let presentation = sut.presentStartupKeymapLoadResult(loadResult)
+
+        #expect(presentation.matrixDiagnosticMessage.contains("起動時自動読込"))
+        #expect(presentation.keymapStatusText.contains("起動時読込成功"))
+        #expect(presentation.completionDiagnosticMessage.contains("起動時全マップ読出し成功"))
+        #expect(presentation.matrixRows == 4)
+        #expect(presentation.matrixCols == 5)
+    }
+
+    @MainActor @Test
+    func presentStartupKeymapLoadResult_buildsFailureMessages() async {
+        let sut = RootStore(.testDependencies())
+        let loadResult = RootStore.StartupKeymapLoadResult(
+            matrixMessage: "matrix自動取得失敗: timeout",
+            matrixInfo: nil,
+            dumpResult: .failure(.message("decode error"))
+        )
+
+        let presentation = sut.presentStartupKeymapLoadResult(loadResult)
+
+        #expect(presentation.keymapStatusText == "起動時読込失敗: decode error")
+        #expect(presentation.completionDiagnosticMessage == "起動時全マップ読出し失敗: decode error")
+        #expect(presentation.matrixRows == nil)
+        #expect(presentation.matrixCols == nil)
+    }
+
+    @MainActor @Test
     func launchAtLogin_wrappersDelegateToDependencyClient() async {
         let sut = RootStore(.testDependencies(
             launchAtLoginClient: testDependency(of: LaunchAtLoginClient.self) {

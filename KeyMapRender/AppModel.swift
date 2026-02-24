@@ -619,12 +619,13 @@ final class AppModel: ObservableObject {
                 initialRows: initialRows,
                 initialCols: initialCols
             )
+            let presentation = self.rootStore.presentStartupKeymapLoadResult(startupLoad)
             guard !self.isShuttingDown else { return }
             self.isDiagnosticsRunning = false
-            self.appendDiagnostics("起動時自動読込: \(startupLoad.matrixMessage)")
-            if let info = startupLoad.matrixInfo {
-                self.matrixRowsText = "\(info.rows)"
-                self.matrixColsText = "\(info.cols)"
+            self.appendDiagnostics(presentation.matrixDiagnosticMessage)
+            if let rows = presentation.matrixRows, let cols = presentation.matrixCols {
+                self.matrixRowsText = "\(rows)"
+                self.matrixColsText = "\(cols)"
             }
 
             switch startupLoad.dumpResult {
@@ -634,11 +635,11 @@ final class AppModel: ObservableObject {
                 self.availableLayerCount = max(1, dump.layerCount)
                 self.setSelectedLayerIndex(self.selectedLayerIndex)
                 self.startActiveLayerTrackingIfNeeded()
-                self.keymapStatusText = "起動時読込成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
-                self.appendDiagnostics("起動時全マップ読出し成功: \(self.keymapStatusText)")
-            case let .failure(.message(message)):
-                self.keymapStatusText = "起動時読込失敗: \(message)"
-                self.appendDiagnostics("起動時全マップ読出し失敗: \(message)")
+                self.keymapStatusText = presentation.keymapStatusText
+                self.appendDiagnostics(presentation.completionDiagnosticMessage)
+            case .failure:
+                self.keymapStatusText = presentation.keymapStatusText
+                self.appendDiagnostics(presentation.completionDiagnosticMessage)
             }
         }
     }

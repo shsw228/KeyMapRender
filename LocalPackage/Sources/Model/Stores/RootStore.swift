@@ -44,6 +44,28 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct StartupKeymapPresentation: Sendable {
+        public let matrixDiagnosticMessage: String
+        public let keymapStatusText: String
+        public let completionDiagnosticMessage: String
+        public let matrixRows: Int?
+        public let matrixCols: Int?
+
+        public init(
+            matrixDiagnosticMessage: String,
+            keymapStatusText: String,
+            completionDiagnosticMessage: String,
+            matrixRows: Int?,
+            matrixCols: Int?
+        ) {
+            self.matrixDiagnosticMessage = matrixDiagnosticMessage
+            self.keymapStatusText = keymapStatusText
+            self.completionDiagnosticMessage = completionDiagnosticMessage
+            self.matrixRows = matrixRows
+            self.matrixCols = matrixCols
+        }
+    }
+
     public struct KeyboardRefreshResult: Sendable {
         public let allDetectedKeyboards: [HIDKeyboardDevice]
         public let connectedKeyboards: [HIDKeyboardDevice]
@@ -282,6 +304,32 @@ public final class RootStore: Composable {
             matrixInfo: matrixInfo,
             dumpResult: dumpResult
         )
+    }
+
+    public func presentStartupKeymapLoadResult(_ result: StartupKeymapLoadResult) -> StartupKeymapPresentation {
+        let matrixRows = result.matrixInfo?.rows
+        let matrixCols = result.matrixInfo?.cols
+
+        switch result.dumpResult {
+        case let .success(dump):
+            let keymapStatusText = "起動時読込成功(\(dump.backend)): protocol=\(dump.protocolVersion), layers=\(dump.layerCount), matrix=\(dump.matrixRows)x\(dump.matrixCols)"
+            return StartupKeymapPresentation(
+                matrixDiagnosticMessage: "起動時自動読込: \(result.matrixMessage)",
+                keymapStatusText: keymapStatusText,
+                completionDiagnosticMessage: "起動時全マップ読出し成功: \(keymapStatusText)",
+                matrixRows: matrixRows,
+                matrixCols: matrixCols
+            )
+        case let .failure(.message(message)):
+            let keymapStatusText = "起動時読込失敗: \(message)"
+            return StartupKeymapPresentation(
+                matrixDiagnosticMessage: "起動時自動読込: \(result.matrixMessage)",
+                keymapStatusText: keymapStatusText,
+                completionDiagnosticMessage: "起動時全マップ読出し失敗: \(message)",
+                matrixRows: matrixRows,
+                matrixCols: matrixCols
+            )
+        }
     }
 
     public nonisolated func launchAtLoginStatus() -> Result<Bool, LaunchAtLoginError> {

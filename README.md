@@ -40,6 +40,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - 診断ログの追記整形を `Model.DiagnosticsLogBufferService` へ移設
 - レイヤ選択のクランプ/変更判定を `Model.LayerSelectionService` へ移設
 - キーボード再読込の選択補正/状態文言生成を `RootStore.refreshKeyboardSnapshot` に集約
+- 起動時自動読込の表示文言生成を `RootStore.presentStartupKeymapLoadResult` に集約
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`
