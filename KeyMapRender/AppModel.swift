@@ -566,33 +566,28 @@ final class AppModel: ObservableObject {
         )
         Task { [weak self] in
             guard let self else { return }
-            let startupLoad = await self.rootStore.loadStartupKeymapAsync(
+            let workflow = await self.rootStore.runStartupKeymapLoadAsync(
                 on: selected,
                 initialRows: initialMatrix.rows,
                 initialCols: initialMatrix.cols
             )
-            let presentation = self.rootStore.presentStartupKeymapLoadResult(startupLoad)
             guard !self.isShuttingDown else { return }
             self.isDiagnosticsRunning = false
-            self.appendDiagnostics(presentation.matrixDiagnosticMessage)
-            if let rows = presentation.matrixRows, let cols = presentation.matrixCols {
+            self.appendDiagnostics(workflow.presentation.matrixDiagnosticMessage)
+            if let rows = workflow.presentation.matrixRows, let cols = workflow.presentation.matrixCols {
                 self.matrixRowsText = "\(rows)"
                 self.matrixColsText = "\(cols)"
             }
 
-            switch startupLoad.dumpResult {
-            case let .success(dump):
+            if let dump = workflow.dump {
                 self.latestKeymapDump = dump
                 self.layoutChoices = self.vialPresentationService.makeLayoutChoices(from: dump)
                 self.availableLayerCount = max(1, dump.layerCount)
                 self.setSelectedLayerIndex(self.selectedLayerIndex)
                 self.startActiveLayerTrackingIfNeeded()
-                self.keymapStatusText = presentation.keymapStatusText
-                self.appendDiagnostics(presentation.completionDiagnosticMessage)
-            case .failure:
-                self.keymapStatusText = presentation.keymapStatusText
-                self.appendDiagnostics(presentation.completionDiagnosticMessage)
             }
+            self.keymapStatusText = workflow.presentation.keymapStatusText
+            self.appendDiagnostics(workflow.presentation.completionDiagnosticMessage)
         }
     }
 }

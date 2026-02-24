@@ -66,6 +66,19 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct StartupKeymapWorkflowResult: Sendable {
+        public let presentation: StartupKeymapPresentation
+        public let dump: VialKeymapDump?
+
+        public init(
+            presentation: StartupKeymapPresentation,
+            dump: VialKeymapDump?
+        ) {
+            self.presentation = presentation
+            self.dump = dump
+        }
+    }
+
     public struct VialProbePresentation: Sendable {
         public let vialStatusText: String
         public let diagnosticMessage: String
@@ -407,6 +420,25 @@ public final class RootStore: Composable {
             matrixInfo: matrixInfo,
             dumpResult: dumpResult
         )
+    }
+
+    public nonisolated func runStartupKeymapLoadAsync(
+        on device: HIDKeyboardDevice,
+        initialRows: Int,
+        initialCols: Int
+    ) async -> StartupKeymapWorkflowResult {
+        let result = await loadStartupKeymapAsync(
+            on: device,
+            initialRows: initialRows,
+            initialCols: initialCols
+        )
+        let presentation = await MainActor.run { presentStartupKeymapLoadResult(result) }
+        switch result.dumpResult {
+        case let .success(dump):
+            return StartupKeymapWorkflowResult(presentation: presentation, dump: dump)
+        case .failure:
+            return StartupKeymapWorkflowResult(presentation: presentation, dump: nil)
+        }
     }
 
     public nonisolated func runVialProbeAsync(on device: HIDKeyboardDevice) async -> VialProbeWorkflowResult {

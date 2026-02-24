@@ -105,6 +105,7 @@
 - 状態: 自動起動設定更新の診断メッセージ生成を `RootStore` APIへ集約
 - 状態: Rows/Cols 入力パースと起動時初期matrix解決を `RootStore` APIへ集約
 - 状態: Vial非同期ユースケース（probe/keymap/matrix/definition）を `RootStore` workflow API（実行+表示統合）へ集約し、`AppModel` の分岐を縮小
+- 状態: 起動時自動読込ユースケース（matrix推定→keymap取得→表示文言）を `RootStore.runStartupKeymapLoadAsync` へ集約
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

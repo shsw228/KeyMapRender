@@ -93,6 +93,32 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func runStartupKeymapLoadAsync_returnsPresentationAndOptionalDump() async {
+        let successSUT = RootStore(.testDependencies(
+            vialRawHIDClient: testDependency(of: VialRawHIDClient.self) {
+                $0.inferMatrix = { _ in .success(.init(rows: 4, cols: 5, backend: "python")) }
+                $0.readKeymap = { _, _, _ in .success(dump) }
+            }
+        ))
+        let success = await successSUT.runStartupKeymapLoadAsync(on: device, initialRows: 6, initialCols: 17)
+        #expect(success.dump != nil)
+        #expect(success.presentation.matrixDiagnosticMessage.contains("起動時自動読込"))
+        #expect(success.presentation.keymapStatusText.contains("起動時読込成功"))
+        #expect(success.presentation.completionDiagnosticMessage.contains("起動時全マップ読出し成功"))
+
+        let failureSUT = RootStore(.testDependencies(
+            vialRawHIDClient: testDependency(of: VialRawHIDClient.self) {
+                $0.inferMatrix = { _ in .failure(.message("infer failed")) }
+                $0.readKeymap = { _, _, _ in .failure(.message("decode error")) }
+            }
+        ))
+        let failure = await failureSUT.runStartupKeymapLoadAsync(on: device, initialRows: 6, initialCols: 17)
+        #expect(failure.dump == nil)
+        #expect(failure.presentation.keymapStatusText == "起動時読込失敗: decode error")
+        #expect(failure.presentation.completionDiagnosticMessage == "起動時全マップ読出し失敗: decode error")
+    }
+
+    @MainActor @Test
     func visibleKeyboards_excludesIgnoredDevices() async {
         let sut = RootStore(.testDependencies())
         sut.addIgnoredDeviceID(device.id)
