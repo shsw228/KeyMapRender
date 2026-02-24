@@ -75,9 +75,7 @@ final class AppModel: ObservableObject {
         )
         guard workflow.shouldStart else { return }
         hasStarted = true
-        if let permissionStatusText = workflow.permissionStatusText {
-            self.permissionStatusText = permissionStatusText
-        }
+        applyPermissionStatusTextIfPresent(workflow.permissionStatusText)
         refreshKeyboards()
         startKeyboardHotplugMonitor()
         refreshLaunchAtLoginStatus()
@@ -88,14 +86,7 @@ final class AppModel: ObservableObject {
         guard !isShuttingDown else { return }
         isShuttingDown = true
         stopActiveLayerTracking()
-        if let keyboardHotplugSession {
-            rootStore.stopKeyboardHotplugMonitoring(keyboardHotplugSession)
-            self.keyboardHotplugSession = nil
-        }
-        if let globalKeyMonitorSession {
-            rootStore.stopGlobalKeyMonitoring(globalKeyMonitorSession)
-            self.globalKeyMonitorSession = nil
-        }
+        stopMonitoringSessions()
         rootStore.hideOverlay()
         isOverlayVisible = false
     }
@@ -331,10 +322,7 @@ final class AppModel: ObservableObject {
     }
 
     private func pollActiveLayerFromKeyboard(generation: UInt64) async -> Bool {
-        guard generation == activeLayerTrackingGeneration else { return false }
-        guard !Task.isCancelled else { return false }
-        guard !isShuttingDown else { return false }
-        guard isOverlayVisible else { return false }
+        guard isActiveLayerPollingContextValid(generation: generation) else { return false }
         guard let selected = selectedKeyboard else { return false }
         guard let dump = latestKeymapDump else { return false }
         let baseLayer = manualSelectedLayerIndex
@@ -345,9 +333,7 @@ final class AppModel: ObservableObject {
             cols: dump.matrixCols
         )
 
-        guard generation == activeLayerTrackingGeneration else { return false }
-        guard !Task.isCancelled else { return false }
-        guard isOverlayVisible else { return false }
+        guard isActiveLayerPollingContextValid(generation: generation) else { return false }
 
         let workflow = rootStore.runResolveActiveLayerPollResult(
             result,
@@ -363,6 +349,14 @@ final class AppModel: ObservableObject {
             appendDiagnostics(diagnosticMessage)
         }
         return workflow.isAnyKeyPressed
+    }
+
+    private func isActiveLayerPollingContextValid(generation: UInt64) -> Bool {
+        guard generation == activeLayerTrackingGeneration else { return false }
+        guard !Task.isCancelled else { return false }
+        guard !isShuttingDown else { return false }
+        guard isOverlayVisible else { return false }
+        return true
     }
 
     private func appendDiagnostics(_ message: String) {
@@ -517,6 +511,22 @@ final class AppModel: ObservableObject {
     private func applyMatrixSize(rows: Int, cols: Int) {
         matrixRowsText = "\(rows)"
         matrixColsText = "\(cols)"
+    }
+
+    private func applyPermissionStatusTextIfPresent(_ statusText: String?) {
+        guard let statusText else { return }
+        permissionStatusText = statusText
+    }
+
+    private func stopMonitoringSessions() {
+        if let keyboardHotplugSession {
+            rootStore.stopKeyboardHotplugMonitoring(keyboardHotplugSession)
+            self.keyboardHotplugSession = nil
+        }
+        if let globalKeyMonitorSession {
+            rootStore.stopGlobalKeyMonitoring(globalKeyMonitorSession)
+            self.globalKeyMonitorSession = nil
+        }
     }
 
     private func runDiagnosticsTask(_ operation: @escaping @MainActor (AppModel) async -> Void) {
