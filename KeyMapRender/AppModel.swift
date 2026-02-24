@@ -159,14 +159,15 @@ final class AppModel: ObservableObject {
             initialStatusText: rootStore.vialProbeInProgressStatusText()
         ) { model, selected in
             let workflow = await model.rootStore.runVialProbeAsync(on: selected)
-            guard !model.isShuttingDown else { return }
-            model.vialStatusText = workflow.presentation.vialStatusText
-            model.appendDiagnostics(workflow.presentation.diagnosticMessage)
-            if workflow.probe != nil {
-                if let availableLayerCount = workflow.presentation.availableLayerCount {
-                    model.availableLayerCount = availableLayerCount
+            model.applyIfNotShuttingDown {
+                model.vialStatusText = workflow.presentation.vialStatusText
+                model.appendDiagnostics(workflow.presentation.diagnosticMessage)
+                if workflow.probe != nil {
+                    if let availableLayerCount = workflow.presentation.availableLayerCount {
+                        model.availableLayerCount = availableLayerCount
+                    }
+                    model.setSelectedLayerIndex(model.selectedLayerIndex)
                 }
-                model.setSelectedLayerIndex(model.selectedLayerIndex)
             }
         }
     }
@@ -184,15 +185,16 @@ final class AppModel: ObservableObject {
                 rows: matrix.rows,
                 cols: matrix.cols
             )
-            guard !model.isShuttingDown else { return }
-            model.applyKeymapPresentation(
-                statusText: workflow.presentation.keymapStatusText,
-                diagnosticMessage: workflow.presentation.diagnosticMessage
-            )
-            model.adoptKeymapDumpIfPresent(
-                workflow.dump,
-                availableLayerCountOverride: workflow.presentation.availableLayerCount
-            )
+            model.applyIfNotShuttingDown {
+                model.applyKeymapPresentation(
+                    statusText: workflow.presentation.keymapStatusText,
+                    diagnosticMessage: workflow.presentation.diagnosticMessage
+                )
+                model.adoptKeymapDumpIfPresent(
+                    workflow.dump,
+                    availableLayerCountOverride: workflow.presentation.availableLayerCount
+                )
+            }
         }
     }
 
@@ -255,15 +257,16 @@ final class AppModel: ObservableObject {
             initialStatusText: rootStore.matrixInferenceInProgressStatusText()
         ) { model, selected in
             let workflow = await model.rootStore.runInferVialMatrixAsync(on: selected)
-            guard !model.isShuttingDown else { return }
-            model.applyKeymapPresentation(
-                statusText: workflow.presentation.keymapStatusText,
-                diagnosticMessage: workflow.presentation.diagnosticMessage
-            )
-            model.applyMatrixSizeIfPresent(
-                rows: workflow.presentation.matrixRows,
-                cols: workflow.presentation.matrixCols
-            )
+            model.applyIfNotShuttingDown {
+                model.applyKeymapPresentation(
+                    statusText: workflow.presentation.keymapStatusText,
+                    diagnosticMessage: workflow.presentation.diagnosticMessage
+                )
+                model.applyMatrixSizeIfPresent(
+                    rows: workflow.presentation.matrixRows,
+                    cols: workflow.presentation.matrixCols
+                )
+            }
         }
     }
 
@@ -272,11 +275,12 @@ final class AppModel: ObservableObject {
             initialStatusText: rootStore.vialDefinitionReadInProgressStatusText()
         ) { model, selected in
             let presentation = await model.rootStore.runExportVialDefinitionAsync(on: selected)
-            guard !model.isShuttingDown else { return }
-            model.applyKeymapPresentation(
-                statusText: presentation.keymapStatusText,
-                diagnosticMessage: presentation.diagnosticMessage
-            )
+            model.applyIfNotShuttingDown {
+                model.applyKeymapPresentation(
+                    statusText: presentation.keymapStatusText,
+                    diagnosticMessage: presentation.diagnosticMessage
+                )
+            }
         }
     }
 
@@ -479,15 +483,16 @@ final class AppModel: ObservableObject {
                 initialRows: initialRows,
                 initialCols: initialCols
             )
-            guard !model.isShuttingDown else { return }
-            model.appendDiagnostics(workflow.presentation.matrixDiagnosticMessage)
-            model.applyMatrixSizeIfPresent(
-                rows: workflow.presentation.matrixRows,
-                cols: workflow.presentation.matrixCols
-            )
-            model.adoptKeymapDumpIfPresent(workflow.dump)
-            model.keymapStatusText = workflow.presentation.keymapStatusText
-            model.appendDiagnostics(workflow.presentation.completionDiagnosticMessage)
+            model.applyIfNotShuttingDown {
+                model.appendDiagnostics(workflow.presentation.matrixDiagnosticMessage)
+                model.applyMatrixSizeIfPresent(
+                    rows: workflow.presentation.matrixRows,
+                    cols: workflow.presentation.matrixCols
+                )
+                model.adoptKeymapDumpIfPresent(workflow.dump)
+                model.keymapStatusText = workflow.presentation.keymapStatusText
+                model.appendDiagnostics(workflow.presentation.completionDiagnosticMessage)
+            }
         }
     }
 
@@ -557,6 +562,11 @@ final class AppModel: ObservableObject {
     private func applyLaunchAtLoginState(enabled: Bool, diagnosticMessage: String?) {
         launchAtLoginEnabled = enabled
         appendDiagnosticsIfPresent(diagnosticMessage)
+    }
+
+    private func applyIfNotShuttingDown(_ operation: () -> Void) {
+        guard !isShuttingDown else { return }
+        operation()
     }
 
     private func stopMonitoringSessions() {
