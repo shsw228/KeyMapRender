@@ -6,6 +6,12 @@ import SwiftUI
 
 @MainActor
 final class AppModel: ObservableObject {
+    private struct ActiveLayerPollingContext {
+        let selected: HIDKeyboardDevice
+        let dump: VialKeymapDump
+        let baseLayer: Int
+    }
+
     @Published var targetKeyCodeText: String
     @Published var longPressDuration: Double
     @Published var overlayShowAnimationDuration: Double
@@ -289,20 +295,20 @@ final class AppModel: ObservableObject {
     }
 
     private func pollActiveLayerFromKeyboard(generation: UInt64) async -> Bool {
-        guard let polling = makeActiveLayerPollingContext(generation: generation) else { return false }
+        guard let context = makeActiveLayerPollingContext(generation: generation) else { return false }
 
         let result = await rootStore.readVialSwitchMatrixStateAsync(
-            on: polling.selected,
-            rows: polling.dump.matrixRows,
-            cols: polling.dump.matrixCols
+            on: context.selected,
+            rows: context.dump.matrixRows,
+            cols: context.dump.matrixCols
         )
 
         guard isActiveLayerPollingContextValid(generation: generation) else { return false }
 
         let workflow = rootStore.runResolveActiveLayerPollResult(
             result,
-            dump: polling.dump,
-            baseLayer: polling.baseLayer,
+            dump: context.dump,
+            baseLayer: context.baseLayer,
             failureCount: matrixPollFailureCount
         )
         return applyActiveLayerPollWorkflow(workflow)
@@ -323,11 +329,15 @@ final class AppModel: ObservableObject {
         return activeLayerTrackingTask == nil
     }
 
-    private func makeActiveLayerPollingContext(generation: UInt64) -> (selected: HIDKeyboardDevice, dump: VialKeymapDump, baseLayer: Int)? {
+    private func makeActiveLayerPollingContext(generation: UInt64) -> ActiveLayerPollingContext? {
         guard isActiveLayerPollingContextValid(generation: generation) else { return nil }
         guard let selected = selectedKeyboard else { return nil }
         guard let dump = latestKeymapDump else { return nil }
-        return (selected, dump, manualSelectedLayerIndex)
+        return ActiveLayerPollingContext(
+            selected: selected,
+            dump: dump,
+            baseLayer: manualSelectedLayerIndex
+        )
     }
 
     private func appendDiagnostics(_ message: String) {
