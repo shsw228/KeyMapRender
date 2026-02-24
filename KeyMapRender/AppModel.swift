@@ -64,7 +64,7 @@ final class AppModel: ObservableObject {
         self.overlayShowAnimationDuration = preferences.overlayShowAnimationDuration
         self.overlayHideAnimationDuration = preferences.overlayHideAnimationDuration
         self.showSettingsOnLaunch = preferences.showSettingsOnLaunch
-        self.layout = KeyboardLayoutLoader.loadDefaultLayout()
+        self.layout = KeyboardLayoutService.loadDefaultLayout()
         self.matrixRowsText = "6"
         self.matrixColsText = "17"
         self.ignoredDeviceCount = self.rootStore.currentIgnoredDeviceIDs().count
