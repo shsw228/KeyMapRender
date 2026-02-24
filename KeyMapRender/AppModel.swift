@@ -102,11 +102,10 @@ final class AppModel: ObservableObject {
     }
 
     func refreshLaunchAtLoginStatus() {
-        switch rootStore.launchAtLoginStatus() {
-        case let .success(enabled):
-            launchAtLoginEnabled = enabled
-        case .failure:
-            launchAtLoginEnabled = false
+        let workflow = rootStore.runRefreshLaunchAtLoginStatus()
+        launchAtLoginEnabled = workflow.enabled
+        if let diagnosticMessage = workflow.diagnosticMessage {
+            appendDiagnostics(diagnosticMessage)
         }
     }
 

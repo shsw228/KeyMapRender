@@ -59,6 +59,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - グローバルキー監視開始とキーボードホットプラグ監視開始の分岐を `RootStore` workflow APIへ集約
 - アクティブレイヤ追従ポーリング結果の解釈（成功時レイヤ導出/失敗時ログ間引き）を `RootStore.runResolveActiveLayerPollResult` に集約
 - デバイス無視追加/全解除後の再読込スナップショット生成を `RootStore` workflow API へ集約
+- Launch at Login 状態取得の成功/失敗分岐を `RootStore.runRefreshLaunchAtLoginStatus` へ集約
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

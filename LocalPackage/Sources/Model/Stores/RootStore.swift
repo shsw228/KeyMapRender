@@ -209,6 +209,16 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct LaunchAtLoginStatusWorkflowResult: Sendable {
+        public let enabled: Bool
+        public let diagnosticMessage: String?
+
+        public init(enabled: Bool, diagnosticMessage: String?) {
+            self.enabled = enabled
+            self.diagnosticMessage = diagnosticMessage
+        }
+    }
+
     public struct GlobalMonitoringWorkflowResult: Sendable {
         public let session: GlobalKeyMonitorSession?
         public let permissionStatusText: String
@@ -868,6 +878,21 @@ public final class RootStore: Composable {
         }
     }
 
+    public func runRefreshLaunchAtLoginStatus() -> LaunchAtLoginStatusWorkflowResult {
+        switch launchAtLoginStatus() {
+        case let .success(enabled):
+            return LaunchAtLoginStatusWorkflowResult(
+                enabled: enabled,
+                diagnosticMessage: nil
+            )
+        case let .failure(.message(message)):
+            return LaunchAtLoginStatusWorkflowResult(
+                enabled: false,
+                diagnosticMessage: launchAtLoginStatusFailureDiagnosticMessage(message)
+            )
+        }
+    }
+
     public nonisolated func inputAccessStatus(
         promptAccessibility: Bool,
         requestInputMonitoring: Bool
@@ -1003,6 +1028,10 @@ public final class RootStore: Composable {
 
     public func launchAtLoginUpdateFailureDiagnosticMessage(_ detail: String) -> String {
         "自動起動設定の更新失敗: \(detail)"
+    }
+
+    public func launchAtLoginStatusFailureDiagnosticMessage(_ detail: String) -> String {
+        "自動起動状態の取得失敗: \(detail)"
     }
 
     public nonisolated func copyToClipboard(_ text: String) {

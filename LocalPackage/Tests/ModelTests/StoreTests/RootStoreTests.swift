@@ -569,6 +569,27 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func runRefreshLaunchAtLoginStatus_returnsWorkflowResult() async {
+        let successSUT = RootStore(.testDependencies(
+            launchAtLoginClient: testDependency(of: LaunchAtLoginClient.self) {
+                $0.status = { .success(true) }
+            }
+        ))
+        let success = successSUT.runRefreshLaunchAtLoginStatus()
+        #expect(success.enabled)
+        #expect(success.diagnosticMessage == nil)
+
+        let failureSUT = RootStore(.testDependencies(
+            launchAtLoginClient: testDependency(of: LaunchAtLoginClient.self) {
+                $0.status = { .failure(.message("unavailable")) }
+            }
+        ))
+        let failure = failureSUT.runRefreshLaunchAtLoginStatus()
+        #expect(failure.enabled == false)
+        #expect(failure.diagnosticMessage == "自動起動状態の取得失敗: unavailable")
+    }
+
+    @MainActor @Test
     func runStartGlobalMonitoring_returnsSessionAndStatusText() async {
         let successSUT = RootStore(.testDependencies(
             globalKeyMonitorClient: testDependency(of: GlobalKeyMonitorClient.self) {
@@ -712,6 +733,7 @@ struct RootStoreTests {
         #expect(sut.launchAtLoginUpdatedDiagnosticMessage(enabled: true) == "自動起動設定を更新: ON")
         #expect(sut.launchAtLoginUpdatedDiagnosticMessage(enabled: false) == "自動起動設定を更新: OFF")
         #expect(sut.launchAtLoginUpdateFailureDiagnosticMessage("denied") == "自動起動設定の更新失敗: denied")
+        #expect(sut.launchAtLoginStatusFailureDiagnosticMessage("denied") == "自動起動状態の取得失敗: denied")
         #expect(sut.overlayKeyboardName(for: device) == "Test Test Keyboard")
         let blankDevice = HIDKeyboardDevice(
             id: "blank",
