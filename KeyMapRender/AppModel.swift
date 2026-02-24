@@ -160,8 +160,11 @@ final class AppModel: ObservableObject {
         ) { model, selected in
             let workflow = await model.rootStore.runVialProbeAsync(on: selected)
             model.applyIfNotShuttingDown {
-                model.vialStatusText = workflow.presentation.vialStatusText
-                model.appendDiagnostics(workflow.presentation.diagnosticMessage)
+                model.applyStatusAndDiagnostics(
+                    statusKeyPath: \.vialStatusText,
+                    statusText: workflow.presentation.vialStatusText,
+                    diagnosticMessage: workflow.presentation.diagnosticMessage
+                )
                 if workflow.probe != nil {
                     if let availableLayerCount = workflow.presentation.availableLayerCount {
                         model.availableLayerCount = availableLayerCount
@@ -401,7 +404,19 @@ final class AppModel: ObservableObject {
     }
 
     private func applyKeymapPresentation(statusText: String, diagnosticMessage: String) {
-        keymapStatusText = statusText
+        applyStatusAndDiagnostics(
+            statusKeyPath: \.keymapStatusText,
+            statusText: statusText,
+            diagnosticMessage: diagnosticMessage
+        )
+    }
+
+    private func applyStatusAndDiagnostics(
+        statusKeyPath: ReferenceWritableKeyPath<AppModel, String>,
+        statusText: String,
+        diagnosticMessage: String
+    ) {
+        self[keyPath: statusKeyPath] = statusText
         appendDiagnostics(diagnosticMessage)
     }
 
