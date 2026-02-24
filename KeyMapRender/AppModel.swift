@@ -678,22 +678,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func runSelectedKeyboardDiagnostics(
-        statusKeyPath: ReferenceWritableKeyPath<AppModel, String> = \.keymapStatusText,
-        initialStatusText: String,
-        missingMessage: String? = nil,
-        operation: @escaping @MainActor (AppModel, HIDKeyboardDevice) async -> Void
-    ) {
-        guard let selected = requireSelectedKeyboard(
-            statusKeyPath: statusKeyPath,
-            missingMessage: missingMessage
-        ) else { return }
-        self[keyPath: statusKeyPath] = initialStatusText
-        runDiagnosticsTask { model in
-            await operation(model, selected)
-        }
-    }
-
     private func runSelectedKeyboardWorkflow<Workflow>(
         statusKeyPath: ReferenceWritableKeyPath<AppModel, String> = \.keymapStatusText,
         initialStatusText: String,
@@ -701,11 +685,12 @@ final class AppModel: ObservableObject {
         operation: @escaping @MainActor (AppModel, HIDKeyboardDevice) async -> Workflow,
         apply: @escaping @MainActor (AppModel, Workflow) -> Void
     ) {
-        runSelectedKeyboardDiagnostics(
+        guard let selected = requireSelectedKeyboard(
             statusKeyPath: statusKeyPath,
-            initialStatusText: initialStatusText,
             missingMessage: missingMessage
-        ) { model, selected in
+        ) else { return }
+        self[keyPath: statusKeyPath] = initialStatusText
+        runDiagnosticsTask { model in
             let workflow = await operation(model, selected)
             model.applyIfNotShuttingDown {
                 apply(model, workflow)
