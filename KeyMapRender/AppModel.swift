@@ -46,7 +46,7 @@ final class AppModel: ObservableObject {
     private let activeLayerPollingService = ActiveLayerPollingService()
     private let layerSelectionService = LayerSelectionService()
     private let vialPresentationService = VialPresentationService()
-    private let vialDiagnosticsService = VialDiagnosticsService()
+    private let keymapLayerRenderingService = KeymapLayerRenderingService()
     private let diagnosticsLogBufferService = DiagnosticsLogBufferService()
     private let vialDefinitionValidationService = VialDefinitionValidationService()
     private let logger = Logger(
@@ -276,32 +276,14 @@ final class AppModel: ObservableObject {
     func applySelectedLayerToLatestDump() {
         guard let dump = latestKeymapDump else { return }
         let layer = max(0, min(selectedLayerIndex, dump.layerCount - 1))
-        let overlayName = currentOverlayKeyboardName()
-        keymapPreviewText = makePreview(
+        let renderResult = keymapLayerRenderingService.render(
             dump: dump,
-            layer: layer,
-            maxRows: min(4, dump.matrixRows),
-            maxCols: min(10, dump.matrixCols)
+            requestedLayer: layer,
+            selectedLayoutChoices: layoutChoices,
+            overlayName: currentOverlayKeyboardName()
         )
-        if let keymapRows = dump.layoutKeymapRows {
-            layout = KeyboardLayoutLoader.makePhysicalLayoutFromVialKeymap(
-                keymapRows: keymapRows,
-                keycodes: dump.keycodes,
-                layer: layer,
-                selectedLayoutOptions: selectedLayoutOptions(),
-                fallbackRows: dump.matrixRows,
-                fallbackCols: dump.matrixCols,
-                name: overlayName
-            )
-        } else {
-            layout = KeyboardLayoutLoader.makeMatrixLayout(
-                rows: dump.matrixRows,
-                cols: dump.matrixCols,
-                keycodes: dump.keycodes,
-                layer: layer,
-                name: overlayName
-            )
-        }
+        keymapPreviewText = renderResult.keymapPreviewText
+        layout = renderResult.layout
         if isOverlayVisible {
             rootStore.showOverlay(
                 layout: layout,
@@ -310,20 +292,7 @@ final class AppModel: ObservableObject {
             )
             appendDiagnostics("オーバーレイ更新: L\(selectedLayerIndex)/\(max(0, availableLayerCount - 1))")
         }
-        let diagnosticKeys = layout.positionedKeys.map {
-            VialDiagnosticsKey(
-                label: $0.label,
-                x: $0.x,
-                y: $0.y,
-                matrixRow: $0.matrixRow,
-                matrixCol: $0.matrixCol,
-                rawKeycode: $0.rawKeycode
-            )
-        }
-        if let message = vialDiagnosticsService.bottomLeftThirdKeyMessage(layer: layer, keys: diagnosticKeys) {
-            appendDiagnostics(message)
-        }
-        for message in vialDiagnosticsService.numericLabelMessages(layer: layer, keys: diagnosticKeys) {
+        for message in renderResult.diagnosticMessages {
             appendDiagnostics(message)
         }
     }
@@ -538,10 +507,6 @@ final class AppModel: ObservableObject {
         await rootStore.readVialSwitchMatrixStateAsync(on: device, rows: matrixRows, cols: matrixCols)
     }
 
-    private func makePreview(dump: VialKeymapDump, layer: Int, maxRows: Int, maxCols: Int) -> String {
-        vialPresentationService.makePreview(from: dump, layer: layer, maxRows: maxRows, maxCols: maxCols)
-    }
-
     private func appendDiagnostics(_ message: String) {
         let result = diagnosticsLogBufferService.append(
             existingText: diagnosticsLogText,
@@ -574,12 +539,6 @@ final class AppModel: ObservableObject {
         let product = keyboard.productName.trimmingCharacters(in: .whitespacesAndNewlines)
         let joined = "\(manufacturer) \(product)".trimmingCharacters(in: .whitespacesAndNewlines)
         return joined.isEmpty ? "Keyboard" : joined
-    }
-
-    private func selectedLayoutOptions() -> [Int: Int] {
-        layoutChoices.reduce(into: [Int: Int]()) { result, item in
-            result[item.id] = item.selected
-        }
     }
 
     private var selectedKeyboard: HIDKeyboardDevice? {

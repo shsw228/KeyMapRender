@@ -42,6 +42,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - キーボード再読込の選択補正/状態文言生成を `RootStore.refreshKeyboardSnapshot` に集約
 - 起動時自動読込の表示文言生成を `RootStore.presentStartupKeymapLoadResult` に集約
 - Vial通信テスト/全マップ読出し/matrix自動取得の表示文言生成を `RootStore` プレゼンテーションAPIへ集約
+- レイヤ反映時のプレビュー/レイアウト/診断メッセージ生成を `Model.KeymapLayerRenderingService` へ集約
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`
