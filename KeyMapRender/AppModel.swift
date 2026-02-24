@@ -175,9 +175,7 @@ final class AppModel: ObservableObject {
 
     func refreshKeyboards() {
         let snapshot = rootStore.refreshKeyboardSnapshot(currentSelectedID: selectedKeyboardID)
-        applyKeyboardSnapshot(snapshot)
-        if connectedKeyboards.isEmpty { return }
-        autoLoadKeymapIfPossibleOnStartup()
+        applyKeyboardSnapshotAndAutoLoadIfNeeded(snapshot)
     }
 
     func probeVialOnSelectedKeyboard() {
@@ -341,7 +339,7 @@ final class AppModel: ObservableObject {
             selected,
             currentSelectedID: selectedKeyboardID
         )
-        applyKeyboardSnapshot(workflow.snapshot)
+        applyKeyboardSnapshotAndAutoLoadIfNeeded(workflow.snapshot)
         appendDiagnostics(workflow.diagnosticMessage)
     }
 
@@ -349,7 +347,7 @@ final class AppModel: ObservableObject {
         let workflow = rootStore.runClearIgnoredDevicesAndRefresh(
             currentSelectedID: selectedKeyboardID
         )
-        applyKeyboardSnapshot(workflow.snapshot)
+        applyKeyboardSnapshotAndAutoLoadIfNeeded(workflow.snapshot)
         appendDiagnostics(workflow.diagnosticMessage)
     }
 
@@ -437,6 +435,12 @@ final class AppModel: ObservableObject {
         selectedKeyboardID = snapshot.selectedKeyboardID
         keyboardStatusText = snapshot.keyboardStatusText
         ignoredDeviceCount = snapshot.ignoredDeviceCount
+    }
+
+    private func applyKeyboardSnapshotAndAutoLoadIfNeeded(_ snapshot: RootStore.KeyboardRefreshResult) {
+        applyKeyboardSnapshot(snapshot)
+        guard !connectedKeyboards.isEmpty else { return }
+        autoLoadKeymapIfPossibleOnStartup()
     }
 
     private func currentOverlayKeyboardName() -> String {
