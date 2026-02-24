@@ -144,15 +144,12 @@ final class AppModel: ObservableObject {
         ) { model, selected in
             let workflow = await model.rootStore.runVialProbeAsync(on: selected)
             model.applyIfNotShuttingDown {
-                model.applyStatusAndDiagnostics(
-                    statusKeyPath: \.vialStatusText,
+                model.applyVialPresentation(
                     statusText: workflow.presentation.vialStatusText,
                     diagnosticMessage: workflow.presentation.diagnosticMessage
                 )
                 if workflow.probe != nil {
-                    if let availableLayerCount = workflow.presentation.availableLayerCount {
-                        model.availableLayerCount = availableLayerCount
-                    }
+                    model.applyAvailableLayerCountIfPresent(workflow.presentation.availableLayerCount)
                     model.setSelectedLayerIndex(model.selectedLayerIndex)
                 }
             }
@@ -173,12 +170,10 @@ final class AppModel: ObservableObject {
                 cols: matrix.cols
             )
             model.applyIfNotShuttingDown {
-                model.applyKeymapPresentation(
+                model.applyKeymapPresentationResult(
                     statusText: workflow.presentation.keymapStatusText,
-                    diagnosticMessage: workflow.presentation.diagnosticMessage
-                )
-                model.adoptKeymapDumpIfPresent(
-                    workflow.dump,
+                    diagnosticMessage: workflow.presentation.diagnosticMessage,
+                    dump: workflow.dump,
                     availableLayerCountOverride: workflow.presentation.availableLayerCount
                 )
             }
@@ -245,11 +240,9 @@ final class AppModel: ObservableObject {
         ) { model, selected in
             let workflow = await model.rootStore.runInferVialMatrixAsync(on: selected)
             model.applyIfNotShuttingDown {
-                model.applyKeymapPresentation(
+                model.applyKeymapPresentationResult(
                     statusText: workflow.presentation.keymapStatusText,
-                    diagnosticMessage: workflow.presentation.diagnosticMessage
-                )
-                model.applyMatrixSizeIfPresent(
+                    diagnosticMessage: workflow.presentation.diagnosticMessage,
                     rows: workflow.presentation.matrixRows,
                     cols: workflow.presentation.matrixCols
                 )
@@ -263,7 +256,7 @@ final class AppModel: ObservableObject {
         ) { model, selected in
             let presentation = await model.rootStore.runExportVialDefinitionAsync(on: selected)
             model.applyIfNotShuttingDown {
-                model.applyKeymapPresentation(
+                model.applyKeymapPresentationResult(
                     statusText: presentation.keymapStatusText,
                     diagnosticMessage: presentation.diagnosticMessage
                 )
@@ -504,14 +497,7 @@ final class AppModel: ObservableObject {
                 initialCols: initialCols
             )
             model.applyIfNotShuttingDown {
-                model.appendDiagnostics(workflow.presentation.matrixDiagnosticMessage)
-                model.applyMatrixSizeIfPresent(
-                    rows: workflow.presentation.matrixRows,
-                    cols: workflow.presentation.matrixCols
-                )
-                model.adoptKeymapDumpIfPresent(workflow.dump)
-                model.keymapStatusText = workflow.presentation.keymapStatusText
-                model.appendDiagnostics(workflow.presentation.completionDiagnosticMessage)
+                model.applyStartupKeymapPresentation(workflow.presentation, dump: workflow.dump)
             }
         }
     }
