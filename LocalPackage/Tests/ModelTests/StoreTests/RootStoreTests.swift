@@ -182,6 +182,44 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func runRenderSelectedLayer_buildsPreviewLayoutAndOverlayDiagnostic() async {
+        let sut = RootStore(.testDependencies())
+        let renderDump = VialKeymapDump(
+            protocolVersion: "0x0009",
+            layerCount: 1,
+            matrixRows: 1,
+            matrixCols: 1,
+            keycodes: [[[0x0029]]],
+            layoutKeymapRows: nil,
+            layoutLabels: nil,
+            layoutOptions: nil,
+            backend: "python"
+        )
+
+        let visible = sut.runRenderSelectedLayer(
+            dump: renderDump,
+            selectedLayerIndex: 0,
+            availableLayerCount: 3,
+            selectedLayoutChoices: [],
+            overlayName: "Overlay",
+            isOverlayVisible: true
+        )
+        #expect(visible.keymapPreviewText.contains("L0 R0"))
+        #expect(visible.layout.name == "Overlay L0")
+        #expect(visible.diagnosticMessages.first == "オーバーレイ更新: L0/2")
+
+        let hidden = sut.runRenderSelectedLayer(
+            dump: renderDump,
+            selectedLayerIndex: 0,
+            availableLayerCount: 3,
+            selectedLayoutChoices: [],
+            overlayName: "Overlay",
+            isOverlayVisible: false
+        )
+        #expect(hidden.diagnosticMessages.first != "オーバーレイ更新: L0/2")
+    }
+
+    @MainActor @Test
     func visibleKeyboards_excludesIgnoredDevices() async {
         let sut = RootStore(.testDependencies())
         sut.addIgnoredDeviceID(device.id)

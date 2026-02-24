@@ -240,29 +240,24 @@ final class AppModel: ObservableObject {
 
     func applySelectedLayerToLatestDump() {
         guard let dump = latestKeymapDump else { return }
-        let layer = max(0, min(selectedLayerIndex, dump.layerCount - 1))
-        let renderResult = rootStore.renderKeymapLayer(
+        let workflow = rootStore.runRenderSelectedLayer(
             dump: dump,
-            requestedLayer: layer,
+            selectedLayerIndex: selectedLayerIndex,
+            availableLayerCount: availableLayerCount,
             selectedLayoutChoices: layoutChoices,
-            overlayName: currentOverlayKeyboardName()
+            overlayName: currentOverlayKeyboardName(),
+            isOverlayVisible: isOverlayVisible
         )
-        keymapPreviewText = renderResult.keymapPreviewText
-        layout = renderResult.layout
+        keymapPreviewText = workflow.keymapPreviewText
+        layout = workflow.layout
         if isOverlayVisible {
             rootStore.showOverlay(
                 layout: layout,
                 currentLayer: selectedLayerIndex,
                 totalLayers: availableLayerCount
             )
-            appendDiagnostics(
-                rootStore.overlayUpdatedDiagnosticMessage(
-                    currentLayer: selectedLayerIndex,
-                    totalLayers: availableLayerCount
-                )
-            )
         }
-        for message in renderResult.diagnosticMessages {
+        for message in workflow.diagnosticMessages {
             appendDiagnostics(message)
         }
     }

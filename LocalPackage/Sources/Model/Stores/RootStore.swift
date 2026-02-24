@@ -286,6 +286,22 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct SelectedLayerRenderWorkflowResult: Sendable {
+        public let keymapPreviewText: String
+        public let layout: KeyboardLayout
+        public let diagnosticMessages: [String]
+
+        public init(
+            keymapPreviewText: String,
+            layout: KeyboardLayout,
+            diagnosticMessages: [String]
+        ) {
+            self.keymapPreviewText = keymapPreviewText
+            self.layout = layout
+            self.diagnosticMessages = diagnosticMessages
+        }
+    }
+
     public struct GlobalMonitoringWorkflowResult: Sendable {
         public let session: GlobalKeyMonitorSession?
         public let permissionStatusText: String
@@ -1303,6 +1319,38 @@ public final class RootStore: Composable {
         return DisplayLayerSelectionWorkflowResult(
             clampedLayer: update.clampedValue,
             diagnosticMessage: diagnosticMessage
+        )
+    }
+
+    public func runRenderSelectedLayer(
+        dump: VialKeymapDump,
+        selectedLayerIndex: Int,
+        availableLayerCount: Int,
+        selectedLayoutChoices: [VialLayoutChoiceValue],
+        overlayName: String,
+        isOverlayVisible: Bool
+    ) -> SelectedLayerRenderWorkflowResult {
+        let layer = max(0, min(selectedLayerIndex, dump.layerCount - 1))
+        let renderResult = renderKeymapLayer(
+            dump: dump,
+            requestedLayer: layer,
+            selectedLayoutChoices: selectedLayoutChoices,
+            overlayName: overlayName
+        )
+        var diagnosticMessages = renderResult.diagnosticMessages
+        if isOverlayVisible {
+            diagnosticMessages.insert(
+                overlayUpdatedDiagnosticMessage(
+                    currentLayer: selectedLayerIndex,
+                    totalLayers: availableLayerCount
+                ),
+                at: 0
+            )
+        }
+        return SelectedLayerRenderWorkflowResult(
+            keymapPreviewText: renderResult.keymapPreviewText,
+            layout: renderResult.layout,
+            diagnosticMessages: diagnosticMessages
         )
     }
 
