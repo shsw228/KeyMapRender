@@ -190,12 +190,7 @@ final class AppModel: ObservableObject {
             overlayName: currentOverlayKeyboardName(),
             isOverlayVisible: isOverlayVisible
         )
-        keymapPreviewText = workflow.keymapPreviewText
-        layout = workflow.layout
-        refreshOverlayIfVisible()
-        for message in workflow.diagnosticMessages {
-            appendDiagnostics(message)
-        }
+        applySelectedLayerRenderWorkflow(workflow)
     }
 
     func setSelectedLayerIndex(_ newValue: Int) {
@@ -403,6 +398,15 @@ final class AppModel: ObservableObject {
     ) {
         self[keyPath: statusKeyPath] = statusText
         appendDiagnostics(diagnosticMessage)
+    }
+
+    private func applySelectedLayerRenderWorkflow(_ workflow: RootStore.SelectedLayerRenderWorkflowResult) {
+        keymapPreviewText = workflow.keymapPreviewText
+        layout = workflow.layout
+        refreshOverlayIfVisible()
+        for message in workflow.diagnosticMessages {
+            appendDiagnostics(message)
+        }
     }
 
     private func applyKeymapPresentationResult(
