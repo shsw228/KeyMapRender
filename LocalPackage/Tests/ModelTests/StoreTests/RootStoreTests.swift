@@ -653,28 +653,30 @@ struct RootStoreTests {
     func runStartGlobalMonitoring_returnsSessionAndStatusText() async {
         let successSUT = RootStore(.testDependencies(
             globalKeyMonitorClient: testDependency(of: GlobalKeyMonitorClient.self) {
-                $0.start = { _, _, _ in .success(.init(id: UUID())) }
+                $0.start = { _, _, _, _ in .success(.init(id: UUID())) }
                 $0.stop = { _ in }
             }
         ))
         let success = successSUT.runStartGlobalMonitoring(
             configuration: .init(targetKeyCode: 60, longPressThreshold: 0.4),
             onLongPressStart: {},
-            onLongPressEnd: {}
+            onLongPressEnd: {},
+            onShortPress: {}
         )
         #expect(success.session != nil)
         #expect(success.permissionStatusText.contains("監視中: keyCode 60"))
 
         let failureSUT = RootStore(.testDependencies(
             globalKeyMonitorClient: testDependency(of: GlobalKeyMonitorClient.self) {
-                $0.start = { _, _, _ in .failure(.message("failed")) }
+                $0.start = { _, _, _, _ in .failure(.message("failed")) }
                 $0.stop = { _ in }
             }
         ))
         let failure = failureSUT.runStartGlobalMonitoring(
             configuration: .init(targetKeyCode: 60, longPressThreshold: 0.4),
             onLongPressStart: {},
-            onLongPressEnd: {}
+            onLongPressEnd: {},
+            onShortPress: {}
         )
         #expect(failure.session == nil)
         #expect(failure.permissionStatusText == "キー監視を開始できませんでした。Accessibility / Input Monitoring を確認してください。")
@@ -719,7 +721,7 @@ struct RootStoreTests {
         let expectedSession = GlobalKeyMonitorSession(id: UUID())
         let sut = RootStore(.testDependencies(
             globalKeyMonitorClient: testDependency(of: GlobalKeyMonitorClient.self) {
-                $0.start = { _, _, _ in .success(expectedSession) }
+                $0.start = { _, _, _, _ in .success(expectedSession) }
                 $0.stop = { _ in stopped.withLock { $0 = true } }
             }
         ))
@@ -728,7 +730,8 @@ struct RootStoreTests {
             existingSession: .init(id: UUID()),
             configuration: .init(targetKeyCode: 60, longPressThreshold: 0.4),
             onLongPressStart: {},
-            onLongPressEnd: {}
+            onLongPressEnd: {},
+            onShortPress: {}
         )
 
         #expect(stopped.withLock { $0 })
@@ -1146,11 +1149,12 @@ struct RootStoreTests {
         let session = GlobalKeyMonitorSession(id: UUID())
         let sut = RootStore(.testDependencies(
             globalKeyMonitorClient: testDependency(of: GlobalKeyMonitorClient.self) {
-                $0.start = { config, onLongPressStart, onLongPressEnd in
+                $0.start = { config, onLongPressStart, onLongPressEnd, onShortPress in
                     started.withLock { $0 = true }
                     configuration.withLock { $0 = config }
                     onLongPressStart()
                     onLongPressEnd()
+                    onShortPress()
                     return .success(session)
                 }
                 $0.stop = { _ in
@@ -1162,7 +1166,8 @@ struct RootStoreTests {
         let startResult = sut.startGlobalKeyMonitoring(
             .init(targetKeyCode: 59, longPressThreshold: 0.3),
             onLongPressStart: {},
-            onLongPressEnd: {}
+            onLongPressEnd: {},
+            onShortPress: {}
         )
         switch startResult {
         case let .success(value):

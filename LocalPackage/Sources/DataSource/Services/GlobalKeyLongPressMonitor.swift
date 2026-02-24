@@ -6,6 +6,7 @@ public final class GlobalKeyLongPressMonitor {
     public var longPressThreshold: TimeInterval = 0.45
     public var onLongPressStart: (() -> Void)?
     public var onLongPressEnd: (() -> Void)?
+    public var onShortPress: (() -> Void)?
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -121,6 +122,8 @@ public final class GlobalKeyLongPressMonitor {
         if isLongPressActive {
             isLongPressActive = false
             onLongPressEnd?()
+        } else {
+            onShortPress?()
         }
     }
 

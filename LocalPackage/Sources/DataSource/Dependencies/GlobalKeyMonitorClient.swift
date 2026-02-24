@@ -29,6 +29,7 @@ public struct GlobalKeyMonitorClient: DependencyClient {
     public var start: @Sendable (
         GlobalKeyMonitorConfiguration,
         @escaping @Sendable () -> Void,
+        @escaping @Sendable () -> Void,
         @escaping @Sendable () -> Void
     ) -> Result<GlobalKeyMonitorSession, GlobalKeyMonitorError>
     public var stop: @Sendable (GlobalKeyMonitorSession) -> Void
@@ -36,6 +37,7 @@ public struct GlobalKeyMonitorClient: DependencyClient {
     public init(
         start: @escaping @Sendable (
             GlobalKeyMonitorConfiguration,
+            @escaping @Sendable () -> Void,
             @escaping @Sendable () -> Void,
             @escaping @Sendable () -> Void
         ) -> Result<GlobalKeyMonitorSession, GlobalKeyMonitorError>,
@@ -46,12 +48,12 @@ public struct GlobalKeyMonitorClient: DependencyClient {
     }
 
     public static let liveValue = Self(
-        start: { _, _, _ in .failure(.message("liveValue is not bound")) },
+        start: { _, _, _, _ in .failure(.message("liveValue is not bound")) },
         stop: { _ in }
     )
 
     public static let testValue = Self(
-        start: { _, _, _ in .failure(.message("testValue: start")) },
+        start: { _, _, _, _ in .failure(.message("testValue: start")) },
         stop: { _ in }
     )
 }

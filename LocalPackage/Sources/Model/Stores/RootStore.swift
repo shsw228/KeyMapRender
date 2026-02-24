@@ -1228,12 +1228,14 @@ public final class RootStore: Composable {
     public nonisolated func startGlobalKeyMonitoring(
         _ configuration: GlobalKeyMonitorConfiguration,
         onLongPressStart: @escaping @Sendable () -> Void,
-        onLongPressEnd: @escaping @Sendable () -> Void
+        onLongPressEnd: @escaping @Sendable () -> Void,
+        onShortPress: @escaping @Sendable () -> Void
     ) -> Result<GlobalKeyMonitorSession, GlobalKeyMonitorError> {
         appDependencies.globalKeyMonitorClient.start(
             configuration,
             onLongPressStart,
-            onLongPressEnd
+            onLongPressEnd,
+            onShortPress
         )
     }
 
@@ -1244,12 +1246,14 @@ public final class RootStore: Composable {
     public func runStartGlobalMonitoring(
         configuration: GlobalKeyMonitorConfiguration,
         onLongPressStart: @escaping @Sendable () -> Void,
-        onLongPressEnd: @escaping @Sendable () -> Void
+        onLongPressEnd: @escaping @Sendable () -> Void,
+        onShortPress: @escaping @Sendable () -> Void
     ) -> GlobalMonitoringWorkflowResult {
         switch startGlobalKeyMonitoring(
             configuration,
             onLongPressStart: onLongPressStart,
-            onLongPressEnd: onLongPressEnd
+            onLongPressEnd: onLongPressEnd,
+            onShortPress: onShortPress
         ) {
         case let .success(session):
             return GlobalMonitoringWorkflowResult(
@@ -1271,7 +1275,8 @@ public final class RootStore: Composable {
         existingSession: GlobalKeyMonitorSession?,
         configuration: GlobalKeyMonitorConfiguration,
         onLongPressStart: @escaping @Sendable () -> Void,
-        onLongPressEnd: @escaping @Sendable () -> Void
+        onLongPressEnd: @escaping @Sendable () -> Void,
+        onShortPress: @escaping @Sendable () -> Void
     ) -> RestartGlobalMonitoringWorkflowResult {
         if let existingSession {
             stopGlobalKeyMonitoring(existingSession)
@@ -1279,7 +1284,8 @@ public final class RootStore: Composable {
         let workflow = runStartGlobalMonitoring(
             configuration: configuration,
             onLongPressStart: onLongPressStart,
-            onLongPressEnd: onLongPressEnd
+            onLongPressEnd: onLongPressEnd,
+            onShortPress: onShortPress
         )
         return RestartGlobalMonitoringWorkflowResult(
             session: workflow.session,

@@ -86,7 +86,8 @@ private final class GlobalKeyMonitorRegistry {
     func start(
         _ configuration: GlobalKeyMonitorConfiguration,
         onLongPressStart: @escaping @Sendable () -> Void,
-        onLongPressEnd: @escaping @Sendable () -> Void
+        onLongPressEnd: @escaping @Sendable () -> Void,
+        onShortPress: @escaping @Sendable () -> Void
     ) -> Result<GlobalKeyMonitorSession, GlobalKeyMonitorError> {
         let id = UUID()
         let monitor = GlobalKeyLongPressMonitor()
@@ -97,6 +98,9 @@ private final class GlobalKeyMonitorRegistry {
         }
         monitor.onLongPressEnd = {
             onLongPressEnd()
+        }
+        monitor.onShortPress = {
+            onShortPress()
         }
         guard monitor.start() else {
             return .failure(.message("start failed"))
@@ -118,12 +122,13 @@ private final class GlobalKeyMonitorRegistry {
 
 extension GlobalKeyMonitorClient {
     public static let keyMapRenderLiveValue = Self(
-        start: { configuration, onLongPressStart, onLongPressEnd in
+        start: { configuration, onLongPressStart, onLongPressEnd, onShortPress in
             MainActor.assumeIsolated {
                 GlobalKeyMonitorRegistry.shared.start(
                     configuration,
                     onLongPressStart: onLongPressStart,
-                    onLongPressEnd: onLongPressEnd
+                    onLongPressEnd: onLongPressEnd,
+                    onShortPress: onShortPress
                 )
             }
         },

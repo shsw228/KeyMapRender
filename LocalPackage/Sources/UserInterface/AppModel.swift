@@ -46,6 +46,8 @@ public final class AppModel: ObservableObject {
     private var hasStarted = false
     private var keyboardHotplugSession: HIDKeyboardHotplugSession?
     private var globalKeyMonitorSession: GlobalKeyMonitorSession?
+    private var isOverlayPinnedByShortPress = false
+    private var lastShortPressTimestamp: Date?
     private let rootStore: RootStore
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
@@ -124,7 +126,8 @@ public final class AppModel: ObservableObject {
             existingSession: globalKeyMonitorSession,
             configuration: configuration,
             onLongPressStart: callbacks.onStart,
-            onLongPressEnd: callbacks.onEnd
+            onLongPressEnd: callbacks.onEnd,
+            onShortPress: callbacks.onShortPress
         )
         applyRestartMonitoringWorkflow(workflow)
     }
@@ -516,6 +519,8 @@ public final class AppModel: ObservableObject {
     }
 
     private func handleOverlayLongPressStart() {
+        isOverlayPinnedByShortPress = false
+        lastShortPressTimestamp = nil
         isOverlayVisible = true
         refreshOverlayIfVisible()
         startActiveLayerTrackingIfNeeded()
@@ -528,7 +533,38 @@ public final class AppModel: ObservableObject {
     }
 
     private func handleOverlayLongPressEnd() {
+        guard !isOverlayPinnedByShortPress else { return }
         hideOverlayAndStopTracking(restoreManualLayer: true)
+    }
+
+    private func handleOverlayShortPress() {
+        let now = Date()
+        let doublePressThreshold: TimeInterval = 0.35
+
+        if isOverlayPinnedByShortPress {
+            isOverlayPinnedByShortPress = false
+            lastShortPressTimestamp = nil
+            hideOverlayAndStopTracking(restoreManualLayer: true)
+            appendDiagnostics("短押しでオーバーレイ非表示")
+            return
+        }
+
+        guard !isOverlayVisible else {
+            lastShortPressTimestamp = nil
+            return
+        }
+
+        if let last = lastShortPressTimestamp, now.timeIntervalSince(last) <= doublePressThreshold {
+            isOverlayPinnedByShortPress = true
+            lastShortPressTimestamp = nil
+            isOverlayVisible = true
+            refreshOverlayIfVisible()
+            startActiveLayerTrackingIfNeeded()
+            appendDiagnostics("2回押しでオーバーレイ表示")
+            return
+        }
+
+        lastShortPressTimestamp = now
     }
 
     private func restoreManualDisplayedLayerOnOverlayEnd() {
@@ -537,6 +573,7 @@ public final class AppModel: ObservableObject {
 
     private func hideOverlayAndStopTracking(restoreManualLayer: Bool) {
         isOverlayVisible = false
+        isOverlayPinnedByShortPress = false
         stopActiveLayerTracking()
         if restoreManualLayer {
             restoreManualDisplayedLayerOnOverlayEnd()
@@ -634,7 +671,11 @@ public final class AppModel: ObservableObject {
         permissionStatusText = workflow.permissionStatusText
     }
 
-    private func makeLongPressCallbacks() -> (onStart: @Sendable () -> Void, onEnd: @Sendable () -> Void) {
+    private func makeLongPressCallbacks() -> (
+        onStart: @Sendable () -> Void,
+        onEnd: @Sendable () -> Void,
+        onShortPress: @Sendable () -> Void
+    ) {
         let onStart: @Sendable () -> Void = { [weak self] in
             self?.runMainActorTask { model in
                 model.handleOverlayLongPressStart()
@@ -645,7 +686,12 @@ public final class AppModel: ObservableObject {
                 model.handleOverlayLongPressEnd()
             }
         }
-        return (onStart, onEnd)
+        let onShortPress: @Sendable () -> Void = { [weak self] in
+            self?.runMainActorTask { model in
+                model.handleOverlayShortPress()
+            }
+        }
+        return (onStart, onEnd, onShortPress)
     }
 
     private func applyLaunchAtLoginState(enabled: Bool, diagnosticMessage: String?) {
