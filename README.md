@@ -1,6 +1,6 @@
 # KeyMapRender
 
-[![CI](https://github.com/shsw228/KeyMapRender/actions/workflows/ci.yml/badge.svg)](https://github.com/shsw228/KeyMapRender/actions/workflows/ci.yml)
+[![CI](https://github.com/shsw228/KeyMapRender/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/shsw228/KeyMapRender/actions/workflows/ci.yml?query=branch%3Amain)
 
 [日本語版 README](README.ja.md)
 
