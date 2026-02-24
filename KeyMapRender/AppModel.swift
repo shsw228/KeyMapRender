@@ -144,28 +144,13 @@ final class AppModel: ObservableObject {
             onLongPressStart: { [weak self] in
                 Task { @MainActor in
                     guard let self else { return }
-                    self.isOverlayVisible = true
-                    self.rootStore.showOverlay(
-                        layout: self.layout,
-                        currentLayer: self.selectedLayerIndex,
-                        totalLayers: self.availableLayerCount
-                    )
-                    self.startActiveLayerTrackingIfNeeded()
-                    self.appendDiagnostics(
-                        self.rootStore.overlayShownDiagnosticMessage(
-                            currentLayer: self.selectedLayerIndex,
-                            totalLayers: self.availableLayerCount
-                        )
-                    )
+                    self.handleOverlayLongPressStart()
                 }
             },
             onLongPressEnd: { [weak self] in
                 Task { @MainActor in
                     guard let self else { return }
-                    self.isOverlayVisible = false
-                    self.stopActiveLayerTracking()
-                    self.setDisplayedLayerIndex(self.manualSelectedLayerIndex, reason: "長押し終了", emitLog: false)
-                    self.rootStore.hideOverlay()
+                    self.handleOverlayLongPressEnd()
                 }
             }
         )
@@ -179,10 +164,7 @@ final class AppModel: ObservableObject {
     }
 
     func probeVialOnSelectedKeyboard() {
-        guard let selected = selectedKeyboard else {
-            vialStatusText = rootStore.keyboardSelectionRequiredMessage()
-            return
-        }
+        guard let selected = requireSelectedKeyboard(statusKeyPath: \.vialStatusText) else { return }
         vialStatusText = rootStore.vialProbeInProgressStatusText()
         runDiagnosticsTask { [weak self] in
             guard let self else { return }
@@ -200,10 +182,7 @@ final class AppModel: ObservableObject {
     }
 
     func readFullVialKeymapOnSelectedKeyboard() {
-        guard let selected = selectedKeyboard else {
-            keymapStatusText = rootStore.keyboardSelectionRequiredMessage()
-            return
-        }
+        guard let selected = requireSelectedKeyboard(statusKeyPath: \.keymapStatusText) else { return }
         guard let matrix = rootStore.parseMatrixSize(rowsText: matrixRowsText, colsText: matrixColsText) else {
             keymapStatusText = rootStore.matrixInputValidationFailureMessage()
             return
@@ -285,10 +264,7 @@ final class AppModel: ObservableObject {
     }
 
     func autoDetectMatrixOnSelectedKeyboard() {
-        guard let selected = selectedKeyboard else {
-            keymapStatusText = rootStore.keyboardSelectionRequiredMessage()
-            return
-        }
+        guard let selected = requireSelectedKeyboard(statusKeyPath: \.keymapStatusText) else { return }
         keymapStatusText = rootStore.matrixInferenceInProgressStatusText()
         runDiagnosticsTask { [weak self] in
             guard let self else { return }
@@ -303,10 +279,7 @@ final class AppModel: ObservableObject {
     }
 
     func exportVialDefinitionOnSelectedKeyboard() {
-        guard let selected = selectedKeyboard else {
-            keymapStatusText = rootStore.keyboardSelectionRequiredMessage()
-            return
-        }
+        guard let selected = requireSelectedKeyboard(statusKeyPath: \.keymapStatusText) else { return }
         keymapStatusText = rootStore.vialDefinitionReadInProgressStatusText()
         runDiagnosticsTask { [weak self] in
             guard let self else { return }
@@ -322,10 +295,10 @@ final class AppModel: ObservableObject {
     }
 
     func ignoreSelectedKeyboard() {
-        guard let selected = selectedKeyboard else {
-            keyboardStatusText = rootStore.ignoredKeyboardSelectionRequiredMessage()
-            return
-        }
+        guard let selected = requireSelectedKeyboard(
+            statusKeyPath: \.keyboardStatusText,
+            missingMessage: rootStore.ignoredKeyboardSelectionRequiredMessage()
+        ) else { return }
         let workflow = rootStore.runIgnoreDeviceAndRefresh(
             selected,
             currentSelectedID: selectedKeyboardID
@@ -442,6 +415,17 @@ final class AppModel: ObservableObject {
         connectedKeyboards.first(where: { $0.id == selectedKeyboardID })
     }
 
+    private func requireSelectedKeyboard(
+        statusKeyPath: ReferenceWritableKeyPath<AppModel, String>,
+        missingMessage: String? = nil
+    ) -> HIDKeyboardDevice? {
+        guard let selected = selectedKeyboard else {
+            self[keyPath: statusKeyPath] = missingMessage ?? rootStore.keyboardSelectionRequiredMessage()
+            return nil
+        }
+        return selected
+    }
+
     private func startKeyboardHotplugMonitor() {
         guard keyboardHotplugSession == nil else { return }
         let workflow = rootStore.runStartKeyboardHotplugMonitoring { [weak self] in
@@ -518,6 +502,25 @@ final class AppModel: ObservableObject {
         availableLayerCount = availableLayerCountOverride ?? adoption.availableLayerCount
         setSelectedLayerIndex(selectedLayerIndex)
         startActiveLayerTrackingIfNeeded()
+    }
+
+    private func handleOverlayLongPressStart() {
+        isOverlayVisible = true
+        refreshOverlayIfVisible()
+        startActiveLayerTrackingIfNeeded()
+        appendDiagnostics(
+            rootStore.overlayShownDiagnosticMessage(
+                currentLayer: selectedLayerIndex,
+                totalLayers: availableLayerCount
+            )
+        )
+    }
+
+    private func handleOverlayLongPressEnd() {
+        isOverlayVisible = false
+        stopActiveLayerTracking()
+        setDisplayedLayerIndex(manualSelectedLayerIndex, reason: "長押し終了", emitLog: false)
+        rootStore.hideOverlay()
     }
 
     private func applyMatrixSize(rows: Int, cols: Int) {
