@@ -304,10 +304,7 @@ final class AppModel: ObservableObject {
     }
 
     private func startActiveLayerTrackingIfNeeded() {
-        guard isOverlayVisible else { return }
-        guard latestKeymapDump != nil else { return }
-        guard selectedKeyboard != nil else { return }
-        if activeLayerTrackingTask != nil { return }
+        guard canStartActiveLayerTracking else { return }
 
         matrixPollFailureCount = 0
         activeLayerTrackingGeneration &+= 1
@@ -326,23 +323,20 @@ final class AppModel: ObservableObject {
     }
 
     private func pollActiveLayerFromKeyboard(generation: UInt64) async -> Bool {
-        guard isActiveLayerPollingContextValid(generation: generation) else { return false }
-        guard let selected = selectedKeyboard else { return false }
-        guard let dump = latestKeymapDump else { return false }
-        let baseLayer = manualSelectedLayerIndex
+        guard let polling = makeActiveLayerPollingContext(generation: generation) else { return false }
 
         let result = await rootStore.readVialSwitchMatrixStateAsync(
-            on: selected,
-            rows: dump.matrixRows,
-            cols: dump.matrixCols
+            on: polling.selected,
+            rows: polling.dump.matrixRows,
+            cols: polling.dump.matrixCols
         )
 
         guard isActiveLayerPollingContextValid(generation: generation) else { return false }
 
         let workflow = rootStore.runResolveActiveLayerPollResult(
             result,
-            dump: dump,
-            baseLayer: baseLayer,
+            dump: polling.dump,
+            baseLayer: polling.baseLayer,
             failureCount: matrixPollFailureCount
         )
         matrixPollFailureCount = workflow.nextFailureCount
@@ -359,6 +353,20 @@ final class AppModel: ObservableObject {
         guard !isShuttingDown else { return false }
         guard isOverlayVisible else { return false }
         return true
+    }
+
+    private var canStartActiveLayerTracking: Bool {
+        guard isOverlayVisible else { return false }
+        guard latestKeymapDump != nil else { return false }
+        guard selectedKeyboard != nil else { return false }
+        return activeLayerTrackingTask == nil
+    }
+
+    private func makeActiveLayerPollingContext(generation: UInt64) -> (selected: HIDKeyboardDevice, dump: VialKeymapDump, baseLayer: Int)? {
+        guard isActiveLayerPollingContextValid(generation: generation) else { return nil }
+        guard let selected = selectedKeyboard else { return nil }
+        guard let dump = latestKeymapDump else { return nil }
+        return (selected, dump, manualSelectedLayerIndex)
     }
 
     private func appendDiagnostics(_ message: String) {
