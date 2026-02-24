@@ -114,23 +114,8 @@ final class AppModel: ObservableObject {
 
     func applySettings() {
         guard !isShuttingDown else { return }
-        let preparation = rootStore.runPrepareApplySettings(
-            targetKeyCodeText: targetKeyCodeText,
-            longPressDuration: longPressDuration,
-            overlayShowAnimationDuration: overlayShowAnimationDuration,
-            overlayHideAnimationDuration: overlayHideAnimationDuration,
-            showSettingsOnLaunch: showSettingsOnLaunch
-        )
-        let configuration: GlobalKeyMonitorConfiguration
-        switch preparation {
-        case let .success(value):
-            configuration = value
-        case let .failure(permissionStatusText):
-            self.permissionStatusText = permissionStatusText
-            return
-        }
-
-        let monitorWorkflow = rootStore.runRestartGlobalMonitoring(
+        guard let configuration = resolveMonitoringConfiguration() else { return }
+        let workflow = rootStore.runRestartGlobalMonitoring(
             existingSession: globalKeyMonitorSession,
             configuration: configuration,
             onLongPressStart: { [weak self] in
@@ -144,8 +129,7 @@ final class AppModel: ObservableObject {
                 }
             }
         )
-        globalKeyMonitorSession = monitorWorkflow.session
-        permissionStatusText = monitorWorkflow.permissionStatusText
+        applyRestartMonitoringWorkflow(workflow)
     }
 
     func refreshKeyboards() {
@@ -572,6 +556,28 @@ final class AppModel: ObservableObject {
     private func applyPermissionStatusTextIfPresent(_ statusText: String?) {
         guard let statusText else { return }
         permissionStatusText = statusText
+    }
+
+    private func resolveMonitoringConfiguration() -> GlobalKeyMonitorConfiguration? {
+        let preparation = rootStore.runPrepareApplySettings(
+            targetKeyCodeText: targetKeyCodeText,
+            longPressDuration: longPressDuration,
+            overlayShowAnimationDuration: overlayShowAnimationDuration,
+            overlayHideAnimationDuration: overlayHideAnimationDuration,
+            showSettingsOnLaunch: showSettingsOnLaunch
+        )
+        switch preparation {
+        case let .success(configuration):
+            return configuration
+        case let .failure(permissionStatusText):
+            self.permissionStatusText = permissionStatusText
+            return nil
+        }
+    }
+
+    private func applyRestartMonitoringWorkflow(_ workflow: RootStore.RestartGlobalMonitoringWorkflowResult) {
+        globalKeyMonitorSession = workflow.session
+        permissionStatusText = workflow.permissionStatusText
     }
 
     private func applyLaunchAtLoginState(enabled: Bool, diagnosticMessage: String?) {
