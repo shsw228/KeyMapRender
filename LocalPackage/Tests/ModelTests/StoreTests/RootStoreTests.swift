@@ -449,6 +449,45 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func runExportVialDefinitionAsync_handlesSuccessAndFailures() async {
+        let savedContent = OSAllocatedUnfairLock(initialState: "")
+        let successSUT = RootStore(.testDependencies(
+            vialRawHIDClient: testDependency(of: VialRawHIDClient.self) {
+                $0.readDefinition = { _ in
+                    .success("""
+                    {"layouts":{"keymap":[[]]},"matrix":{"rows":4,"cols":5}}
+                    """)
+                }
+            },
+            fileSaveClient: testDependency(of: FileSaveClient.self) {
+                $0.saveText = { request in
+                    savedContent.withLock { $0 = request.content }
+                    return .success(.saved(path: "/tmp/vial.json"))
+                }
+            }
+        ))
+        let success = await successSUT.runExportVialDefinitionAsync(on: device)
+        #expect(success.keymapStatusText == "vial.json保存完了: /tmp/vial.json")
+        #expect(savedContent.withLock(\.self).contains("\"layouts\""))
+
+        let readFailureSUT = RootStore(.testDependencies(
+            vialRawHIDClient: testDependency(of: VialRawHIDClient.self) {
+                $0.readDefinition = { _ in .failure(.message("timeout")) }
+            }
+        ))
+        let readFailure = await readFailureSUT.runExportVialDefinitionAsync(on: device)
+        #expect(readFailure.keymapStatusText == "vial.json取得失敗: timeout")
+
+        let validationFailureSUT = RootStore(.testDependencies(
+            vialRawHIDClient: testDependency(of: VialRawHIDClient.self) {
+                $0.readDefinition = { _ in .success("{\"matrix\":{\"rows\":4,\"cols\":5}}") }
+            }
+        ))
+        let validationFailure = await validationFailureSUT.runExportVialDefinitionAsync(on: device)
+        #expect(validationFailure.keymapStatusText.contains("vial.json検証失敗"))
+    }
+
+    @MainActor @Test
     func launchAtLogin_wrappersDelegateToDependencyClient() async {
         let sut = RootStore(.testDependencies(
             launchAtLoginClient: testDependency(of: LaunchAtLoginClient.self) {

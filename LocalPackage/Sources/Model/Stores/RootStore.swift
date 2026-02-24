@@ -211,6 +211,7 @@ public final class RootStore: Composable {
     private let vialPresentationService: VialPresentationService
     private let keymapLayerRenderingService: KeymapLayerRenderingService
     private let diagnosticsLogBufferService: DiagnosticsLogBufferService
+    private let vialDefinitionValidationService: VialDefinitionValidationService
 
     public var showSettingsOnLaunch: Bool
     public let action: (Action) async -> Void
@@ -232,6 +233,7 @@ public final class RootStore: Composable {
         self.vialPresentationService = VialPresentationService()
         self.keymapLayerRenderingService = KeymapLayerRenderingService()
         self.diagnosticsLogBufferService = DiagnosticsLogBufferService()
+        self.vialDefinitionValidationService = VialDefinitionValidationService()
         self.action = action
     }
 
@@ -528,6 +530,29 @@ public final class RootStore: Composable {
         case let .failure(.message(message)):
             let presentation = await MainActor.run { presentVialDefinitionReadFailure(message) }
             return .failure(presentation)
+        }
+    }
+
+    public func runExportVialDefinitionAsync(on device: HIDKeyboardDevice) async -> VialDefinitionPresentation {
+        let workflow = await runReadVialDefinitionAsync(on: device)
+        switch workflow {
+        case let .success(prettyJSON, suggestedFileName):
+            do {
+                try vialDefinitionValidationService.validate(prettyJSON)
+            } catch {
+                return presentVialDefinitionValidationFailure(error.localizedDescription)
+            }
+            let saveResult = saveTextFile(
+                SaveFileRequest(
+                    suggestedFileName: suggestedFileName,
+                    allowedExtensions: ["json"],
+                    title: "vial.json を保存",
+                    content: prettyJSON
+                )
+            )
+            return presentVialDefinitionSaveResult(saveResult)
+        case let .failure(presentation):
+            return presentation
         }
     }
 

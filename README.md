@@ -53,6 +53,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - 起動時自動読込（matrix推定→keymap取得→表示文言）の実行+表示統合を `RootStore.runStartupKeymapLoadAsync` へ集約
 - レイアウト選択肢生成/レイヤ描画は `RootStore` API 経由に統一し、`AppModel` から Service 直接依存を削減
 - 診断ログの追記バッファ処理を `RootStore.appendDiagnosticsLog` へ移し、`AppModel` は表示反映とOSLog出力に専念
+- `vial.json` エクスポート（取得→検証→保存）のユースケースを `RootStore.runExportVialDefinitionAsync` に集約
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

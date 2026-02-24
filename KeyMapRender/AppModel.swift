@@ -45,7 +45,6 @@ final class AppModel: ObservableObject {
     private let activeLayerTrackingService = ActiveLayerTrackingService()
     private let activeLayerPollingService = ActiveLayerPollingService()
     private let layerSelectionService = LayerSelectionService()
-    private let vialDefinitionValidationService = VialDefinitionValidationService()
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.shsw228.KeyMapRender",
         category: "AppModel"
@@ -377,34 +376,11 @@ final class AppModel: ObservableObject {
         keymapStatusText = rootStore.vialDefinitionReadInProgressStatusText()
         Task { [weak self] in
             guard let self else { return }
-            let workflow = await self.rootStore.runReadVialDefinitionAsync(on: selected)
+            let presentation = await self.rootStore.runExportVialDefinitionAsync(on: selected)
             guard !self.isShuttingDown else { return }
             self.isDiagnosticsRunning = false
-            switch workflow {
-            case let .success(prettyJSON, suggestedName):
-                do {
-                    try vialDefinitionValidationService.validate(prettyJSON)
-                } catch {
-                    let presentation = self.rootStore.presentVialDefinitionValidationFailure(error.localizedDescription)
-                    self.keymapStatusText = presentation.keymapStatusText
-                    self.appendDiagnostics(presentation.diagnosticMessage)
-                    return
-                }
-                let saveResult = self.rootStore.saveTextFile(
-                    SaveFileRequest(
-                        suggestedFileName: suggestedName,
-                        allowedExtensions: ["json"],
-                        title: "vial.json を保存",
-                        content: prettyJSON
-                    )
-                )
-                let presentation = self.rootStore.presentVialDefinitionSaveResult(saveResult)
-                self.keymapStatusText = presentation.keymapStatusText
-                self.appendDiagnostics(presentation.diagnosticMessage)
-            case let .failure(presentation):
-                self.keymapStatusText = presentation.keymapStatusText
-                self.appendDiagnostics(presentation.diagnosticMessage)
-            }
+            self.keymapStatusText = presentation.keymapStatusText
+            self.appendDiagnostics(presentation.diagnosticMessage)
         }
     }
 
