@@ -208,6 +208,8 @@ public final class RootStore: Composable {
     private var userDefaultsRepository: UserDefaultsRepository
     private var didConsumeInitialSettingsOpenRequest: Bool
     private var ignoredDeviceIDs: Set<String>
+    private let vialPresentationService: VialPresentationService
+    private let keymapLayerRenderingService: KeymapLayerRenderingService
 
     public var showSettingsOnLaunch: Bool
     public let action: (Action) async -> Void
@@ -226,6 +228,8 @@ public final class RootStore: Composable {
         self.showSettingsOnLaunch = initialShowSettingsOnLaunch
         self.ignoredDeviceIDs = initialIgnoredDeviceIDs
         self.didConsumeInitialSettingsOpenRequest = didConsumeInitialSettingsOpenRequest
+        self.vialPresentationService = VialPresentationService()
+        self.keymapLayerRenderingService = KeymapLayerRenderingService()
         self.action = action
     }
 
@@ -439,6 +443,24 @@ public final class RootStore: Composable {
         case .failure:
             return StartupKeymapWorkflowResult(presentation: presentation, dump: nil)
         }
+    }
+
+    public func makeLayoutChoices(from dump: VialKeymapDump) -> [VialLayoutChoiceValue] {
+        vialPresentationService.makeLayoutChoices(from: dump)
+    }
+
+    public func renderKeymapLayer(
+        dump: VialKeymapDump,
+        requestedLayer: Int,
+        selectedLayoutChoices: [VialLayoutChoiceValue],
+        overlayName: String
+    ) -> KeymapLayerRenderResult {
+        keymapLayerRenderingService.render(
+            dump: dump,
+            requestedLayer: requestedLayer,
+            selectedLayoutChoices: selectedLayoutChoices,
+            overlayName: overlayName
+        )
     }
 
     public nonisolated func runVialProbeAsync(on device: HIDKeyboardDevice) async -> VialProbeWorkflowResult {

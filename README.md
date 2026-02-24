@@ -51,6 +51,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - Rows/Cols 入力パースと起動時初期matrix解決を `RootStore` APIへ集約
 - Vial非同期ユースケース（probe/keymap/matrix/definition）の実行+表示統合を `RootStore` workflow APIへ移し、`AppModel` の条件分岐を縮小
 - 起動時自動読込（matrix推定→keymap取得→表示文言）の実行+表示統合を `RootStore.runStartupKeymapLoadAsync` へ集約
+- レイアウト選択肢生成/レイヤ描画は `RootStore` API 経由に統一し、`AppModel` から Service 直接依存を削減
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

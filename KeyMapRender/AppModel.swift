@@ -45,8 +45,6 @@ final class AppModel: ObservableObject {
     private let activeLayerTrackingService = ActiveLayerTrackingService()
     private let activeLayerPollingService = ActiveLayerPollingService()
     private let layerSelectionService = LayerSelectionService()
-    private let vialPresentationService = VialPresentationService()
-    private let keymapLayerRenderingService = KeymapLayerRenderingService()
     private let diagnosticsLogBufferService = DiagnosticsLogBufferService()
     private let vialDefinitionValidationService = VialDefinitionValidationService()
     private let logger = Logger(
@@ -262,7 +260,7 @@ final class AppModel: ObservableObject {
             self.appendDiagnostics(workflow.presentation.diagnosticMessage)
             if let dump = workflow.dump {
                 self.latestKeymapDump = dump
-                self.layoutChoices = self.vialPresentationService.makeLayoutChoices(from: dump)
+                self.layoutChoices = self.rootStore.makeLayoutChoices(from: dump)
                 if let availableLayerCount = workflow.presentation.availableLayerCount {
                     self.availableLayerCount = availableLayerCount
                 }
@@ -275,7 +273,7 @@ final class AppModel: ObservableObject {
     func applySelectedLayerToLatestDump() {
         guard let dump = latestKeymapDump else { return }
         let layer = max(0, min(selectedLayerIndex, dump.layerCount - 1))
-        let renderResult = keymapLayerRenderingService.render(
+        let renderResult = rootStore.renderKeymapLayer(
             dump: dump,
             requestedLayer: layer,
             selectedLayoutChoices: layoutChoices,
@@ -581,7 +579,7 @@ final class AppModel: ObservableObject {
 
             if let dump = workflow.dump {
                 self.latestKeymapDump = dump
-                self.layoutChoices = self.vialPresentationService.makeLayoutChoices(from: dump)
+                self.layoutChoices = self.rootStore.makeLayoutChoices(from: dump)
                 self.availableLayerCount = max(1, dump.layerCount)
                 self.setSelectedLayerIndex(self.selectedLayerIndex)
                 self.startActiveLayerTrackingIfNeeded()

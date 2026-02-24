@@ -119,6 +119,47 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func keymapPresentationWrappers_delegateToServices() async {
+        let sut = RootStore(.testDependencies())
+        let choiceDump = VialKeymapDump(
+            protocolVersion: "0x0009",
+            layerCount: 1,
+            matrixRows: 1,
+            matrixCols: 1,
+            keycodes: [[[0x0029]]],
+            layoutKeymapRows: nil,
+            layoutLabels: ["Split Space", ["Layout", "ANSI", "ISO"]],
+            layoutOptions: 0b10,
+            backend: "python"
+        )
+
+        let choices = sut.makeLayoutChoices(from: choiceDump)
+        #expect(choices.count == 2)
+        #expect(choices[0].title == "Split Space")
+        #expect(choices[1].title == "Layout")
+
+        let renderDump = VialKeymapDump(
+            protocolVersion: "0x0009",
+            layerCount: 1,
+            matrixRows: 2,
+            matrixCols: 2,
+            keycodes: [[[0x0029, 0x0004], [0x0005, 0x0006]]],
+            layoutKeymapRows: nil,
+            layoutLabels: nil,
+            layoutOptions: nil,
+            backend: "python"
+        )
+        let rendered = sut.renderKeymapLayer(
+            dump: renderDump,
+            requestedLayer: 0,
+            selectedLayoutChoices: [],
+            overlayName: "Overlay Test"
+        )
+        #expect(rendered.layout.name == "Overlay Test L0")
+        #expect(rendered.keymapPreviewText.contains("L0 R0"))
+    }
+
+    @MainActor @Test
     func visibleKeyboards_excludesIgnoredDevices() async {
         let sut = RootStore(.testDependencies())
         sut.addIgnoredDeviceID(device.id)
