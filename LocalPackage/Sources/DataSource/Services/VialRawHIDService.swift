@@ -1,8 +1,7 @@
 import Foundation
 import IOKit.hid
-import DataSource
 
-enum VialRawHIDService {
+public enum VialRawHIDService {
     private nonisolated static let reportLength = 32
     private nonisolated static let reportIDs: [CFIndex] = [0, 1]
     private nonisolated static let hidSendRetries = 20
@@ -32,7 +31,7 @@ enum VialRawHIDService {
         var response: [UInt8]?
     }
 
-    nonisolated static func probe(device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError> {
+    public nonisolated static func probe(device: HIDKeyboardDevice) -> Result<VialProbeResult, VialProbeError> {
         if let bridge = probeViaPythonBridge(device: device) {
             return bridge
         }
@@ -50,7 +49,7 @@ enum VialRawHIDService {
         }
     }
 
-    nonisolated static func readKeymap(device: HIDKeyboardDevice, matrixRows: Int, matrixCols: Int) -> Result<VialKeymapDump, VialProbeError> {
+    public nonisolated static func readKeymap(device: HIDKeyboardDevice, matrixRows: Int, matrixCols: Int) -> Result<VialKeymapDump, VialProbeError> {
         guard matrixRows > 0, matrixCols > 0 else {
             return .failure(.message("matrixRows と matrixCols は 1 以上で指定してください。"))
         }
@@ -95,7 +94,7 @@ enum VialRawHIDService {
         }
     }
 
-    nonisolated static func inferMatrix(device: HIDKeyboardDevice) -> Result<VialMatrixInfo, VialProbeError> {
+    public nonisolated static func inferMatrix(device: HIDKeyboardDevice) -> Result<VialMatrixInfo, VialProbeError> {
         guard let json = runPythonBridge(mode: .matrix, device: device, rows: nil, cols: nil) else {
             return .failure(.message("python bridge が見つかりません。"))
         }
@@ -113,7 +112,7 @@ enum VialRawHIDService {
         return .success(VialMatrixInfo(rows: rows, cols: cols, backend: "python"))
     }
 
-    nonisolated static func readDefinition(device: HIDKeyboardDevice) -> Result<String, VialProbeError> {
+    public nonisolated static func readDefinition(device: HIDKeyboardDevice) -> Result<String, VialProbeError> {
         guard let json = runPythonBridge(mode: .definition, device: device, rows: nil, cols: nil) else {
             return .failure(.message("python bridge が見つかりません。"))
         }
@@ -139,7 +138,7 @@ enum VialRawHIDService {
         }
     }
 
-    nonisolated static func readSwitchMatrixState(
+    public nonisolated static func readSwitchMatrixState(
         device: HIDKeyboardDevice,
         matrixRows: Int,
         matrixCols: Int

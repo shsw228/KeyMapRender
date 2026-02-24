@@ -1,6 +1,5 @@
 import Foundation
 import IOKit.hid
-import DataSource
 
 nonisolated struct HIDInterfaceCandidate {
     let device: IOHIDDevice
@@ -9,8 +8,8 @@ nonisolated struct HIDInterfaceCandidate {
     let productName: String
 }
 
-enum HIDKeyboardService {
-    nonisolated static func listKeyboards() -> [HIDKeyboardDevice] {
+public enum HIDKeyboardService {
+    public nonisolated static func listKeyboards() -> [HIDKeyboardDevice] {
         let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
         let options = IOOptionBits(kIOHIDOptionsTypeNone)
 
