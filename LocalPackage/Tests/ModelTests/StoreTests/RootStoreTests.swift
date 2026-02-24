@@ -325,6 +325,34 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func permissionAndMonitoringPresentation_buildsExpectedMessages() async {
+        let sut = RootStore(.testDependencies())
+        let granted = sut.permissionStatusText(
+            for: .init(accessibilityTrusted: true, inputMonitoringTrusted: true)
+        )
+        #expect(granted == "権限: Accessibility/Input Monitoring 許可済み")
+
+        let denied = sut.permissionStatusText(
+            for: .init(accessibilityTrusted: true, inputMonitoringTrusted: false)
+        )
+        #expect(denied == "権限不足: Accessibility と Input Monitoring を許可してください。")
+
+        let monitoring = sut.monitoringStatusText(targetKeyCode: 60, longPressDuration: 0.5)
+        #expect(monitoring.contains("監視中: keyCode 60"))
+        #expect(monitoring.contains("0.50"))
+        #expect(sut.monitoringStartFailureStatusText().contains("キー監視を開始できませんでした"))
+    }
+
+    @MainActor @Test
+    func parseTargetKeyCode_validatesRangeAndFormat() async {
+        let sut = RootStore(.testDependencies())
+        #expect(sut.parseTargetKeyCode("42") == 42)
+        #expect(sut.parseTargetKeyCode("128") == nil)
+        #expect(sut.parseTargetKeyCode("abc") == nil)
+        #expect(sut.invalidTargetKeyCodeMessage() == "キーコードは 0-127 の整数で入力してください。")
+    }
+
+    @MainActor @Test
     func copyToClipboard_delegatesToDependencyClient() async {
         let copied = OSAllocatedUnfairLock(initialState: "")
         let sut = RootStore(.testDependencies(

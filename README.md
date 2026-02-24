@@ -44,6 +44,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - Vial通信テスト/全マップ読出し/matrix自動取得の表示文言生成を `RootStore` プレゼンテーションAPIへ集約
 - レイヤ反映時のプレビュー/レイアウト/診断メッセージ生成を `Model.KeymapLayerRenderingService` へ集約
 - `vial.json` エクスポートのファイル名/結果文言生成を `RootStore` プレゼンテーションAPIへ集約
+- 権限状態/ターゲットキー入力検証/監視状態文言を `RootStore` APIへ集約
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

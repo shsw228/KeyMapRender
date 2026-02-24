@@ -84,12 +84,7 @@ final class AppModel: ObservableObject {
             promptAccessibility: true,
             requestInputMonitoring: true
         )
-
-        if accessStatus.accessibilityTrusted && accessStatus.inputMonitoringTrusted {
-            permissionStatusText = "権限: Accessibility/Input Monitoring 許可済み"
-        } else {
-            permissionStatusText = "権限不足: Accessibility と Input Monitoring を許可してください。"
-        }
+        permissionStatusText = rootStore.permissionStatusText(for: accessStatus)
         refreshKeyboards()
         startKeyboardHotplugMonitor()
         refreshLaunchAtLoginStatus()
@@ -140,8 +135,8 @@ final class AppModel: ObservableObject {
 
     func applySettings() {
         guard !isShuttingDown else { return }
-        guard let keyCodeValue = UInt16(targetKeyCodeText), keyCodeValue <= 127 else {
-            permissionStatusText = "キーコードは 0-127 の整数で入力してください。"
+        guard let keyCodeValue = rootStore.parseTargetKeyCode(targetKeyCodeText) else {
+            permissionStatusText = rootStore.invalidTargetKeyCodeMessage()
             return
         }
 
@@ -193,9 +188,12 @@ final class AppModel: ObservableObject {
         switch monitorResult {
         case let .success(session):
             globalKeyMonitorSession = session
-            permissionStatusText = "監視中: keyCode \(keyCodeValue), 長押し \(longPressDuration.formatted(.number.precision(.fractionLength(2)))) 秒"
+            permissionStatusText = rootStore.monitoringStatusText(
+                targetKeyCode: keyCodeValue,
+                longPressDuration: longPressDuration
+            )
         case .failure:
-            permissionStatusText = "キー監視を開始できませんでした。Accessibility / Input Monitoring を確認してください。"
+            permissionStatusText = rootStore.monitoringStartFailureStatusText()
         }
     }
 

@@ -511,6 +511,32 @@ public final class RootStore: Composable {
         appDependencies.inputAccessClient.checkStatus(promptAccessibility, requestInputMonitoring)
     }
 
+    public func permissionStatusText(for status: InputAccessStatus) -> String {
+        if status.accessibilityTrusted && status.inputMonitoringTrusted {
+            return "権限: Accessibility/Input Monitoring 許可済み"
+        }
+        return "権限不足: Accessibility と Input Monitoring を許可してください。"
+    }
+
+    public func parseTargetKeyCode(_ text: String) -> UInt16? {
+        guard let value = UInt16(text), value <= 127 else {
+            return nil
+        }
+        return value
+    }
+
+    public func invalidTargetKeyCodeMessage() -> String {
+        "キーコードは 0-127 の整数で入力してください。"
+    }
+
+    public func monitoringStatusText(targetKeyCode: UInt16, longPressDuration: Double) -> String {
+        "監視中: keyCode \(targetKeyCode), 長押し \(longPressDuration.formatted(.number.precision(.fractionLength(2)))) 秒"
+    }
+
+    public func monitoringStartFailureStatusText() -> String {
+        "キー監視を開始できませんでした。Accessibility / Input Monitoring を確認してください。"
+    }
+
     public nonisolated func copyToClipboard(_ text: String) {
         appDependencies.clipboardClient.copyString(text)
     }
