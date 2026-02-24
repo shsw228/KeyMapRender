@@ -229,6 +229,25 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct ActiveLayerPollWorkflowResult: Sendable {
+        public let trackedLayer: Int?
+        public let isAnyKeyPressed: Bool
+        public let nextFailureCount: Int
+        public let diagnosticMessage: String?
+
+        public init(
+            trackedLayer: Int?,
+            isAnyKeyPressed: Bool,
+            nextFailureCount: Int,
+            diagnosticMessage: String?
+        ) {
+            self.trackedLayer = trackedLayer
+            self.isAnyKeyPressed = isAnyKeyPressed
+            self.nextFailureCount = nextFailureCount
+            self.diagnosticMessage = diagnosticMessage
+        }
+    }
+
     public enum VialDefinitionWorkflowResult: Sendable {
         case success(prettyJSON: String, suggestedFileName: String)
         case failure(VialDefinitionPresentation)
@@ -547,6 +566,40 @@ public final class RootStore: Composable {
         poll: @escaping @Sendable () async -> Bool
     ) -> Task<Void, Never> {
         activeLayerPollingService.makePollingTask(poll: poll)
+    }
+
+    public func runResolveActiveLayerPollResult(
+        _ result: Result<VialSwitchMatrixState, VialProbeError>,
+        dump: VialKeymapDump,
+        baseLayer: Int,
+        failureCount: Int
+    ) -> ActiveLayerPollWorkflowResult {
+        switch result {
+        case let .success(state):
+            let trackedLayer = deriveTrackedLayer(
+                from: state.pressed,
+                dump: dump,
+                baseLayer: baseLayer
+            )
+            let isAnyKeyPressed = state.pressed.contains { row in row.contains(true) }
+            return ActiveLayerPollWorkflowResult(
+                trackedLayer: trackedLayer,
+                isAnyKeyPressed: isAnyKeyPressed,
+                nextFailureCount: 0,
+                diagnosticMessage: nil
+            )
+        case let .failure(.message(message)):
+            let nextFailureCount = failureCount + 1
+            let shouldEmit = nextFailureCount == 1 || nextFailureCount.isMultiple(of: 20)
+            return ActiveLayerPollWorkflowResult(
+                trackedLayer: nil,
+                isAnyKeyPressed: false,
+                nextFailureCount: nextFailureCount,
+                diagnosticMessage: shouldEmit
+                    ? activeLayerTrackingFailureDiagnosticMessage(message)
+                    : nil
+            )
+        }
     }
 
     public nonisolated func runVialProbeAsync(on device: HIDKeyboardDevice) async -> VialProbeWorkflowResult {

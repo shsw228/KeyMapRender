@@ -733,6 +733,69 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func runResolveActiveLayerPollResult_returnsTrackedLayerOnSuccess() async {
+        let sut = RootStore(.testDependencies())
+        let twoLayerDump = VialKeymapDump(
+            protocolVersion: "0x0009",
+            layerCount: 2,
+            matrixRows: 1,
+            matrixCols: 1,
+            keycodes: [[[0x0029]], [[0x5001]]],
+            layoutKeymapRows: nil,
+            layoutLabels: nil,
+            layoutOptions: nil,
+            backend: "python"
+        )
+
+        let result = sut.runResolveActiveLayerPollResult(
+            .success(.init(rows: 1, cols: 1, pressed: [[true]], backend: "python")),
+            dump: twoLayerDump,
+            baseLayer: 0,
+            failureCount: 4
+        )
+
+        #expect(result.trackedLayer == 0)
+        #expect(result.isAnyKeyPressed)
+        #expect(result.nextFailureCount == 0)
+        #expect(result.diagnosticMessage == nil)
+    }
+
+    @MainActor @Test
+    func runResolveActiveLayerPollResult_emitsDiagnosticOnFirstAndPeriodicFailure() async {
+        let sut = RootStore(.testDependencies())
+        let failure: Result<VialSwitchMatrixState, VialProbeError> = .failure(.message("timeout"))
+
+        let first = sut.runResolveActiveLayerPollResult(
+            failure,
+            dump: dump,
+            baseLayer: 0,
+            failureCount: 0
+        )
+        #expect(first.trackedLayer == nil)
+        #expect(first.isAnyKeyPressed == false)
+        #expect(first.nextFailureCount == 1)
+        #expect(first.diagnosticMessage == "アクティブレイヤー追従失敗: timeout")
+
+        let skip = sut.runResolveActiveLayerPollResult(
+            failure,
+            dump: dump,
+            baseLayer: 0,
+            failureCount: 1
+        )
+        #expect(skip.nextFailureCount == 2)
+        #expect(skip.diagnosticMessage == nil)
+
+        let twentieth = sut.runResolveActiveLayerPollResult(
+            failure,
+            dump: dump,
+            baseLayer: 0,
+            failureCount: 19
+        )
+        #expect(twentieth.nextFailureCount == 20)
+        #expect(twentieth.diagnosticMessage == "アクティブレイヤー追従失敗: timeout")
+    }
+
+    @MainActor @Test
     func copyToClipboard_delegatesToDependencyClient() async {
         let copied = OSAllocatedUnfairLock(initialState: "")
         let sut = RootStore(.testDependencies(

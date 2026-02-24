@@ -430,23 +430,20 @@ final class AppModel: ObservableObject {
         guard !Task.isCancelled else { return false }
         guard isOverlayVisible else { return false }
 
-        switch result {
-        case let .success(state):
-            matrixPollFailureCount = 0
-            let trackedLayer = rootStore.deriveTrackedLayer(
-                from: state.pressed,
-                dump: dump,
-                baseLayer: baseLayer
-            )
+        let workflow = rootStore.runResolveActiveLayerPollResult(
+            result,
+            dump: dump,
+            baseLayer: baseLayer,
+            failureCount: matrixPollFailureCount
+        )
+        matrixPollFailureCount = workflow.nextFailureCount
+        if let trackedLayer = workflow.trackedLayer {
             setDisplayedLayerIndex(trackedLayer, reason: "押下追従", emitLog: false)
-            return state.pressed.contains { row in row.contains(true) }
-        case let .failure(.message(message)):
-            matrixPollFailureCount += 1
-            if matrixPollFailureCount == 1 || matrixPollFailureCount % 20 == 0 {
-                appendDiagnostics(rootStore.activeLayerTrackingFailureDiagnosticMessage(message))
-            }
-            return false
         }
+        if let diagnosticMessage = workflow.diagnosticMessage {
+            appendDiagnostics(diagnosticMessage)
+        }
+        return workflow.isAnyKeyPressed
     }
 
     private func readSwitchMatrixStateAsync(
