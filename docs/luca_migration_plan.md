@@ -149,3 +149,7 @@
 2. `DependencyClient` / `AppDependencies` / `Composable` を最小実装
 3. `VialRawHIDClient` と `HIDKeyboardClient` を追加し、既存実装を委譲
 4. `AppModel` の呼び出し先を client 経由に切替（機能同等）
+
+## 8. TODO（後段実施）
+- TODO: `AppModel` の大規模リファクタ（メソッド再編/分割）は Package 移行完了後に実施する。
+- TODO: 現フェーズでは機能移行（DataSource/Model/UserInterface への責務移動）を優先し、`AppModel` は必要最小限の差分に留める。
