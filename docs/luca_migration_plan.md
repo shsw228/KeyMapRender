@@ -67,6 +67,7 @@
 - 状態: `HIDKeyboardService` / `VialRawHIDService` の実装本体を `DataSource/Services` へ移設し、アプリターゲット側からインフラ実装を除去
 - 状態: `HIDKeyboardHotplugMonitor` / `GlobalKeyLongPressMonitor` の実装本体を `DataSource/Services` へ移設し、監視ロジックを Package 側へ集約
 - 状態: HID/Vial/監視系クライアントの live 実装（`*.keyMapRenderLiveValue`）を `DataSource/Dependencies` へ移し、`AppDependencies+Live` の責務を AppKit 依存部分へ限定
+- 状態: オーバーレイ表示実装（`OverlayWindowController` / `KeyboardOverlayView`）を `DataSource/Services` へ移設し、アプリターゲットから表示実装本体を除去
 - 状態: アプリ側の依存コンテナ実装を削除し、`Model.AppDependencies` を実行時DIの基準へ切替済み
 
 ### Phase 2: Store分割

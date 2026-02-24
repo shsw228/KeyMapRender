@@ -1,9 +1,8 @@
 import AppKit
 import SwiftUI
-import DataSource
 
 @MainActor
-final class OverlayWindowController {
+public final class OverlayWindowController {
     private var window: NSWindow?
     private let slideDistance: CGFloat = 96
     private var showDuration: TimeInterval = 0.24
@@ -12,12 +11,14 @@ final class OverlayWindowController {
     private var isAnimatingHide = false
     private var animationGeneration: UInt64 = 0
 
-    func updateAnimationDurations(show: TimeInterval, hide: TimeInterval) {
+    public init() {}
+
+    public func updateAnimationDurations(show: TimeInterval, hide: TimeInterval) {
         showDuration = max(0.05, min(show, 1.2))
         hideDuration = max(0.05, min(hide, 1.2))
     }
 
-    func show(layout: KeyboardLayout, currentLayer: Int, totalLayers: Int) {
+    public func show(layout: KeyboardLayout, currentLayer: Int, totalLayers: Int) {
         let window = window ?? makeWindow()
         let wasVisible = window.isVisible
         window.contentView = NSHostingView(
@@ -71,7 +72,7 @@ final class OverlayWindowController {
         self.window = window
     }
 
-    func hide() {
+    public func hide() {
         guard let window else { return }
         guard window.isVisible else { return }
         animationGeneration &+= 1

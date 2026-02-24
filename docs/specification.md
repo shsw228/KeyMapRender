@@ -70,6 +70,7 @@
   - HID/Vial 通信の実装本体（`HIDKeyboardService` / `VialRawHIDService`）を `DataSource/Services` へ移設
   - 監視実装本体（`HIDKeyboardHotplugMonitor` / `GlobalKeyLongPressMonitor`）を `DataSource/Services` へ移設
   - HID/Vial/監視系クライアントの live 実装（`*.keyMapRenderLiveValue`）を `DataSource/Dependencies` へ移設
+  - オーバーレイ表示実装本体（`OverlayWindowController` / `KeyboardOverlayView`）を `DataSource/Services` へ移設
   - `AppModel` の依存注入先を `Model.AppDependencies` ベースへ切替
   - 起動時設定（showSettingsOnLaunch）の状態管理を `Model.RootStore` へ移設
   - 設定永続化（target key / long press / overlay animation / ignored devices）を `RootStore` + `UserDefaultsRepository` 経由へ移行
