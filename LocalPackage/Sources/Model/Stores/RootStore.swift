@@ -199,6 +199,16 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct LaunchAtLoginWorkflowResult: Sendable {
+        public let enabled: Bool
+        public let diagnosticMessage: String
+
+        public init(enabled: Bool, diagnosticMessage: String) {
+            self.enabled = enabled
+            self.diagnosticMessage = diagnosticMessage
+        }
+    }
+
     public enum VialDefinitionWorkflowResult: Sendable {
         case success(prettyJSON: String, suggestedFileName: String)
         case failure(VialDefinitionPresentation)
@@ -688,6 +698,28 @@ public final class RootStore: Composable {
 
     public nonisolated func setLaunchAtLoginEnabled(_ enabled: Bool) -> Result<Bool, LaunchAtLoginError> {
         appDependencies.launchAtLoginClient.setEnabled(enabled)
+    }
+
+    public func runSetLaunchAtLogin(_ enabled: Bool) -> LaunchAtLoginWorkflowResult {
+        switch setLaunchAtLoginEnabled(enabled) {
+        case let .success(updated):
+            return LaunchAtLoginWorkflowResult(
+                enabled: updated,
+                diagnosticMessage: launchAtLoginUpdatedDiagnosticMessage(enabled: updated)
+            )
+        case let .failure(.message(message)):
+            let fallbackEnabled: Bool
+            switch launchAtLoginStatus() {
+            case let .success(status):
+                fallbackEnabled = status
+            case .failure:
+                fallbackEnabled = false
+            }
+            return LaunchAtLoginWorkflowResult(
+                enabled: fallbackEnabled,
+                diagnosticMessage: launchAtLoginUpdateFailureDiagnosticMessage(message)
+            )
+        }
     }
 
     public nonisolated func inputAccessStatus(

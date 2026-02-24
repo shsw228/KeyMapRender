@@ -514,6 +514,29 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func runSetLaunchAtLogin_returnsWorkflowMessageAndResolvedState() async {
+        let successSUT = RootStore(.testDependencies(
+            launchAtLoginClient: testDependency(of: LaunchAtLoginClient.self) {
+                $0.status = { .success(false) }
+                $0.setEnabled = { enabled in .success(enabled) }
+            }
+        ))
+        let success = successSUT.runSetLaunchAtLogin(true)
+        #expect(success.enabled)
+        #expect(success.diagnosticMessage == "自動起動設定を更新: ON")
+
+        let failureSUT = RootStore(.testDependencies(
+            launchAtLoginClient: testDependency(of: LaunchAtLoginClient.self) {
+                $0.status = { .success(true) }
+                $0.setEnabled = { _ in .failure(.message("denied")) }
+            }
+        ))
+        let failure = failureSUT.runSetLaunchAtLogin(false)
+        #expect(failure.enabled)
+        #expect(failure.diagnosticMessage == "自動起動設定の更新失敗: denied")
+    }
+
+    @MainActor @Test
     func shouldOpenSettingsWindowOnLaunch_returnsTrueOnlyFirstTime() async {
         let sut = RootStore(.testDependencies(), showSettingsOnLaunch: true)
         #expect(sut.shouldOpenSettingsWindowOnLaunch())

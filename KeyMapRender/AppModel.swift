@@ -114,14 +114,9 @@ final class AppModel: ObservableObject {
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
-        switch rootStore.setLaunchAtLoginEnabled(enabled) {
-        case let .success(updated):
-            launchAtLoginEnabled = updated
-            appendDiagnostics(rootStore.launchAtLoginUpdatedDiagnosticMessage(enabled: updated))
-        case let .failure(.message(message)):
-            refreshLaunchAtLoginStatus()
-            appendDiagnostics(rootStore.launchAtLoginUpdateFailureDiagnosticMessage(message))
-        }
+        let workflow = rootStore.runSetLaunchAtLogin(enabled)
+        launchAtLoginEnabled = workflow.enabled
+        appendDiagnostics(workflow.diagnosticMessage)
     }
 
     func setShowSettingsOnLaunch(_ enabled: Bool) {
