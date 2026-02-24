@@ -49,6 +49,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - オーバーレイ表示名とオーバーレイ/追従/ignore関連の診断メッセージ生成を `RootStore` APIへ集約
 - 自動起動設定更新の診断メッセージ生成を `RootStore` APIへ集約
 - Rows/Cols 入力パースと起動時初期matrix解決を `RootStore` APIへ集約
+- Vial非同期ユースケース（probe/keymap/matrix/definition）の実行+表示統合を `RootStore` workflow APIへ移し、`AppModel` の条件分岐を縮小
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

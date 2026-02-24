@@ -224,20 +224,16 @@ final class AppModel: ObservableObject {
         vialStatusText = rootStore.vialProbeInProgressStatusText()
         Task { [weak self] in
             guard let self else { return }
-            let result = await self.rootStore.probeVialAsync(on: selected)
-            let presentation = self.rootStore.presentVialProbeResult(result)
+            let workflow = await self.rootStore.runVialProbeAsync(on: selected)
             guard !self.isShuttingDown else { return }
             self.isDiagnosticsRunning = false
-            self.vialStatusText = presentation.vialStatusText
-            self.appendDiagnostics(presentation.diagnosticMessage)
-            switch result {
-            case .success:
-                if let availableLayerCount = presentation.availableLayerCount {
+            self.vialStatusText = workflow.presentation.vialStatusText
+            self.appendDiagnostics(workflow.presentation.diagnosticMessage)
+            if workflow.probe != nil {
+                if let availableLayerCount = workflow.presentation.availableLayerCount {
                     self.availableLayerCount = availableLayerCount
                 }
                 self.setSelectedLayerIndex(self.selectedLayerIndex)
-            case .failure:
-                break
             }
         }
     }
@@ -255,27 +251,23 @@ final class AppModel: ObservableObject {
         keymapStatusText = rootStore.keymapReadInProgressStatusText()
         Task { [weak self] in
             guard let self else { return }
-            let result = await self.rootStore.readVialKeymapAsync(
+            let workflow = await self.rootStore.runReadVialKeymapAsync(
                 on: selected,
                 rows: matrix.rows,
                 cols: matrix.cols
             )
-            let presentation = self.rootStore.presentVialKeymapReadResult(result)
             guard !self.isShuttingDown else { return }
             self.isDiagnosticsRunning = false
-            self.keymapStatusText = presentation.keymapStatusText
-            self.appendDiagnostics(presentation.diagnosticMessage)
-            switch result {
-            case let .success(dump):
+            self.keymapStatusText = workflow.presentation.keymapStatusText
+            self.appendDiagnostics(workflow.presentation.diagnosticMessage)
+            if let dump = workflow.dump {
                 self.latestKeymapDump = dump
                 self.layoutChoices = self.vialPresentationService.makeLayoutChoices(from: dump)
-                if let availableLayerCount = presentation.availableLayerCount {
+                if let availableLayerCount = workflow.presentation.availableLayerCount {
                     self.availableLayerCount = availableLayerCount
                 }
                 self.setSelectedLayerIndex(self.selectedLayerIndex)
                 self.startActiveLayerTrackingIfNeeded()
-            case .failure:
-                break
             }
         }
     }
@@ -367,13 +359,12 @@ final class AppModel: ObservableObject {
         keymapStatusText = rootStore.matrixInferenceInProgressStatusText()
         Task { [weak self] in
             guard let self else { return }
-            let result = await self.rootStore.inferVialMatrixAsync(on: selected)
-            let presentation = self.rootStore.presentVialMatrixInferenceResult(result)
+            let workflow = await self.rootStore.runInferVialMatrixAsync(on: selected)
             guard !self.isShuttingDown else { return }
             self.isDiagnosticsRunning = false
-            self.keymapStatusText = presentation.keymapStatusText
-            self.appendDiagnostics(presentation.diagnosticMessage)
-            if let rows = presentation.matrixRows, let cols = presentation.matrixCols {
+            self.keymapStatusText = workflow.presentation.keymapStatusText
+            self.appendDiagnostics(workflow.presentation.diagnosticMessage)
+            if let rows = workflow.presentation.matrixRows, let cols = workflow.presentation.matrixCols {
                 self.matrixRowsText = "\(rows)"
                 self.matrixColsText = "\(cols)"
             }
@@ -389,11 +380,11 @@ final class AppModel: ObservableObject {
         keymapStatusText = rootStore.vialDefinitionReadInProgressStatusText()
         Task { [weak self] in
             guard let self else { return }
-            let result = await self.rootStore.readVialDefinitionAsync(on: selected)
+            let workflow = await self.rootStore.runReadVialDefinitionAsync(on: selected)
             guard !self.isShuttingDown else { return }
             self.isDiagnosticsRunning = false
-            switch result {
-            case let .success(prettyJSON):
+            switch workflow {
+            case let .success(prettyJSON, suggestedName):
                 do {
                     try vialDefinitionValidationService.validate(prettyJSON)
                 } catch {
@@ -402,7 +393,6 @@ final class AppModel: ObservableObject {
                     self.appendDiagnostics(presentation.diagnosticMessage)
                     return
                 }
-                let suggestedName = self.rootStore.suggestedVialDefinitionFileName(for: selected)
                 let saveResult = self.rootStore.saveTextFile(
                     SaveFileRequest(
                         suggestedFileName: suggestedName,
@@ -414,8 +404,7 @@ final class AppModel: ObservableObject {
                 let presentation = self.rootStore.presentVialDefinitionSaveResult(saveResult)
                 self.keymapStatusText = presentation.keymapStatusText
                 self.appendDiagnostics(presentation.diagnosticMessage)
-            case let .failure(.message(message)):
-                let presentation = self.rootStore.presentVialDefinitionReadFailure(message)
+            case let .failure(presentation):
                 self.keymapStatusText = presentation.keymapStatusText
                 self.appendDiagnostics(presentation.diagnosticMessage)
             }

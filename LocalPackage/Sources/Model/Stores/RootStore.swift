@@ -152,6 +152,45 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct VialProbeWorkflowResult: Sendable {
+        public let presentation: VialProbePresentation
+        public let probe: VialProbeResult?
+
+        public init(
+            presentation: VialProbePresentation,
+            probe: VialProbeResult?
+        ) {
+            self.presentation = presentation
+            self.probe = probe
+        }
+    }
+
+    public struct VialKeymapWorkflowResult: Sendable {
+        public let presentation: VialKeymapPresentation
+        public let dump: VialKeymapDump?
+
+        public init(
+            presentation: VialKeymapPresentation,
+            dump: VialKeymapDump?
+        ) {
+            self.presentation = presentation
+            self.dump = dump
+        }
+    }
+
+    public struct VialMatrixWorkflowResult: Sendable {
+        public let presentation: VialMatrixPresentation
+
+        public init(presentation: VialMatrixPresentation) {
+            self.presentation = presentation
+        }
+    }
+
+    public enum VialDefinitionWorkflowResult: Sendable {
+        case success(prettyJSON: String, suggestedFileName: String)
+        case failure(VialDefinitionPresentation)
+    }
+
     private nonisolated let appDependencies: AppDependencies
     private var userDefaultsRepository: UserDefaultsRepository
     private var didConsumeInitialSettingsOpenRequest: Bool
@@ -368,6 +407,62 @@ public final class RootStore: Composable {
             matrixInfo: matrixInfo,
             dumpResult: dumpResult
         )
+    }
+
+    public nonisolated func runVialProbeAsync(on device: HIDKeyboardDevice) async -> VialProbeWorkflowResult {
+        let result = await probeVialAsync(on: device)
+        let presentation = await MainActor.run { presentVialProbeResult(result) }
+        switch result {
+        case let .success(probe):
+            return VialProbeWorkflowResult(
+                presentation: presentation,
+                probe: probe
+            )
+        case .failure:
+            return VialProbeWorkflowResult(
+                presentation: presentation,
+                probe: nil
+            )
+        }
+    }
+
+    public nonisolated func runReadVialKeymapAsync(
+        on device: HIDKeyboardDevice,
+        rows: Int,
+        cols: Int
+    ) async -> VialKeymapWorkflowResult {
+        let result = await readVialKeymapAsync(on: device, rows: rows, cols: cols)
+        let presentation = await MainActor.run { presentVialKeymapReadResult(result) }
+        switch result {
+        case let .success(dump):
+            return VialKeymapWorkflowResult(
+                presentation: presentation,
+                dump: dump
+            )
+        case .failure:
+            return VialKeymapWorkflowResult(
+                presentation: presentation,
+                dump: nil
+            )
+        }
+    }
+
+    public nonisolated func runInferVialMatrixAsync(on device: HIDKeyboardDevice) async -> VialMatrixWorkflowResult {
+        let result = await inferVialMatrixAsync(on: device)
+        let presentation = await MainActor.run { presentVialMatrixInferenceResult(result) }
+        return VialMatrixWorkflowResult(presentation: presentation)
+    }
+
+    public nonisolated func runReadVialDefinitionAsync(on device: HIDKeyboardDevice) async -> VialDefinitionWorkflowResult {
+        let result = await readVialDefinitionAsync(on: device)
+        switch result {
+        case let .success(prettyJSON):
+            let suggestedFileName = await MainActor.run { suggestedVialDefinitionFileName(for: device) }
+            return .success(prettyJSON: prettyJSON, suggestedFileName: suggestedFileName)
+        case let .failure(.message(message)):
+            let presentation = await MainActor.run { presentVialDefinitionReadFailure(message) }
+            return .failure(presentation)
+        }
     }
 
     public func presentStartupKeymapLoadResult(_ result: StartupKeymapLoadResult) -> StartupKeymapPresentation {

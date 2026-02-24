@@ -215,6 +215,38 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func runVialProbeAsync_returnsPresentationAndOptionalProbe() async {
+        let successSUT = RootStore(.testDependencies(
+            vialRawHIDClient: testDependency(of: VialRawHIDClient.self) {
+                $0.probe = { _ in
+                    .success(
+                        VialProbeResult(
+                            protocolVersion: "0x0009",
+                            layerCount: 8,
+                            keycodeL0R0C0: 0x2B,
+                            backend: "python"
+                        )
+                    )
+                }
+            }
+        ))
+        let success = await successSUT.runVialProbeAsync(on: device)
+        #expect(success.probe != nil)
+        #expect(success.presentation.vialStatusText.contains("Vial応答(python)"))
+        #expect(success.presentation.availableLayerCount == 8)
+
+        let failureSUT = RootStore(.testDependencies(
+            vialRawHIDClient: testDependency(of: VialRawHIDClient.self) {
+                $0.probe = { _ in .failure(.message("timeout")) }
+            }
+        ))
+        let failure = await failureSUT.runVialProbeAsync(on: device)
+        #expect(failure.probe == nil)
+        #expect(failure.presentation.vialStatusText == "Vial応答なし: timeout")
+        #expect(failure.presentation.availableLayerCount == nil)
+    }
+
+    @MainActor @Test
     func presentVialKeymapReadResult_buildsSuccessAndFailureMessages() async {
         let sut = RootStore(.testDependencies())
         let success = sut.presentVialKeymapReadResult(.success(dump))
@@ -226,6 +258,29 @@ struct RootStoreTests {
         #expect(failure.keymapStatusText == "取得失敗: decode error")
         #expect(failure.diagnosticMessage == "全マップ読出し失敗: decode error")
         #expect(failure.availableLayerCount == nil)
+    }
+
+    @MainActor @Test
+    func runReadVialKeymapAsync_returnsPresentationAndOptionalDump() async {
+        let successSUT = RootStore(.testDependencies(
+            vialRawHIDClient: testDependency(of: VialRawHIDClient.self) {
+                $0.readKeymap = { _, _, _ in .success(dump) }
+            }
+        ))
+        let success = await successSUT.runReadVialKeymapAsync(on: device, rows: 4, cols: 5)
+        #expect(success.dump != nil)
+        #expect(success.presentation.keymapStatusText.contains("取得成功(python)"))
+        #expect(success.presentation.availableLayerCount == 1)
+
+        let failureSUT = RootStore(.testDependencies(
+            vialRawHIDClient: testDependency(of: VialRawHIDClient.self) {
+                $0.readKeymap = { _, _, _ in .failure(.message("decode error")) }
+            }
+        ))
+        let failure = await failureSUT.runReadVialKeymapAsync(on: device, rows: 4, cols: 5)
+        #expect(failure.dump == nil)
+        #expect(failure.presentation.keymapStatusText == "取得失敗: decode error")
+        #expect(failure.presentation.availableLayerCount == nil)
     }
 
     @MainActor @Test
@@ -244,6 +299,29 @@ struct RootStoreTests {
         #expect(failure.diagnosticMessage == "matrix自動取得失敗: unsupported")
         #expect(failure.matrixRows == nil)
         #expect(failure.matrixCols == nil)
+    }
+
+    @MainActor @Test
+    func runInferVialMatrixAsync_returnsMatrixPresentation() async {
+        let successSUT = RootStore(.testDependencies(
+            vialRawHIDClient: testDependency(of: VialRawHIDClient.self) {
+                $0.inferMatrix = { _ in .success(.init(rows: 14, cols: 8, backend: "python")) }
+            }
+        ))
+        let success = await successSUT.runInferVialMatrixAsync(on: device)
+        #expect(success.presentation.keymapStatusText == "matrix自動取得成功(python): 14x8")
+        #expect(success.presentation.matrixRows == 14)
+        #expect(success.presentation.matrixCols == 8)
+
+        let failureSUT = RootStore(.testDependencies(
+            vialRawHIDClient: testDependency(of: VialRawHIDClient.self) {
+                $0.inferMatrix = { _ in .failure(.message("unsupported")) }
+            }
+        ))
+        let failure = await failureSUT.runInferVialMatrixAsync(on: device)
+        #expect(failure.presentation.keymapStatusText == "matrix自動取得失敗: unsupported")
+        #expect(failure.presentation.matrixRows == nil)
+        #expect(failure.presentation.matrixCols == nil)
     }
 
     @MainActor @Test
@@ -270,6 +348,37 @@ struct RootStoreTests {
         let saveFailure = sut.presentVialDefinitionSaveResult(.failure(.message("no permission")))
         #expect(saveFailure.keymapStatusText == "vial.json保存失敗: no permission")
         #expect(saveFailure.diagnosticMessage == "vial.json保存失敗: no permission")
+    }
+
+    @MainActor @Test
+    func runReadVialDefinitionAsync_returnsWorkflowResult() async {
+        let successSUT = RootStore(.testDependencies(
+            vialRawHIDClient: testDependency(of: VialRawHIDClient.self) {
+                $0.readDefinition = { _ in .success("{\"layouts\":{}}") }
+            }
+        ))
+        let success = await successSUT.runReadVialDefinitionAsync(on: device)
+        switch success {
+        case let .success(prettyJSON, suggestedFileName):
+            #expect(prettyJSON == "{\"layouts\":{}}")
+            #expect(suggestedFileName == "vial-1234-5678.json")
+        case .failure:
+            Issue.record("Expected runReadVialDefinitionAsync success.")
+        }
+
+        let failureSUT = RootStore(.testDependencies(
+            vialRawHIDClient: testDependency(of: VialRawHIDClient.self) {
+                $0.readDefinition = { _ in .failure(.message("timeout")) }
+            }
+        ))
+        let failure = await failureSUT.runReadVialDefinitionAsync(on: device)
+        switch failure {
+        case .success:
+            Issue.record("Expected runReadVialDefinitionAsync failure.")
+        case let .failure(presentation):
+            #expect(presentation.keymapStatusText == "vial.json取得失敗: timeout")
+            #expect(presentation.diagnosticMessage == "vial.json取得失敗: timeout")
+        }
     }
 
     @MainActor @Test
