@@ -318,12 +318,7 @@ final class AppModel: ObservableObject {
             baseLayer: polling.baseLayer,
             failureCount: matrixPollFailureCount
         )
-        matrixPollFailureCount = workflow.nextFailureCount
-        if let trackedLayer = workflow.trackedLayer {
-            setDisplayedLayerIndex(trackedLayer, reason: "押下追従", emitLog: false)
-        }
-        appendDiagnosticsIfPresent(workflow.diagnosticMessage)
-        return workflow.isAnyKeyPressed
+        return applyActiveLayerPollWorkflow(workflow)
     }
 
     private func isActiveLayerPollingContextValid(generation: UInt64) -> Bool {
@@ -407,6 +402,15 @@ final class AppModel: ObservableObject {
         for message in workflow.diagnosticMessages {
             appendDiagnostics(message)
         }
+    }
+
+    private func applyActiveLayerPollWorkflow(_ workflow: RootStore.ActiveLayerPollWorkflowResult) -> Bool {
+        matrixPollFailureCount = workflow.nextFailureCount
+        if let trackedLayer = workflow.trackedLayer {
+            setDisplayedLayerIndex(trackedLayer, reason: "押下追従", emitLog: false)
+        }
+        appendDiagnosticsIfPresent(workflow.diagnosticMessage)
+        return workflow.isAnyKeyPressed
     }
 
     private func applyKeymapPresentationResult(
