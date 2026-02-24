@@ -247,7 +247,7 @@ final class AppModel: ObservableObject {
             keymapStatusText = rootStore.keyboardSelectionRequiredMessage()
             return
         }
-        guard let rows = Int(matrixRowsText), let cols = Int(matrixColsText), rows > 0, cols > 0 else {
+        guard let matrix = rootStore.parseMatrixSize(rowsText: matrixRowsText, colsText: matrixColsText) else {
             keymapStatusText = rootStore.matrixInputValidationFailureMessage()
             return
         }
@@ -255,7 +255,11 @@ final class AppModel: ObservableObject {
         keymapStatusText = rootStore.keymapReadInProgressStatusText()
         Task { [weak self] in
             guard let self else { return }
-            let result = await self.rootStore.readVialKeymapAsync(on: selected, rows: rows, cols: cols)
+            let result = await self.rootStore.readVialKeymapAsync(
+                on: selected,
+                rows: matrix.rows,
+                cols: matrix.cols
+            )
             let presentation = self.rootStore.presentVialKeymapReadResult(result)
             guard !self.isShuttingDown else { return }
             self.isDiagnosticsRunning = false
@@ -567,14 +571,16 @@ final class AppModel: ObservableObject {
 
         isDiagnosticsRunning = true
         keymapStatusText = rootStore.startupAutoLoadInProgressStatusText()
-        let initialRows = Int(matrixRowsText) ?? 6
-        let initialCols = Int(matrixColsText) ?? 17
+        let initialMatrix = rootStore.resolveInitialMatrixSize(
+            rowsText: matrixRowsText,
+            colsText: matrixColsText
+        )
         Task { [weak self] in
             guard let self else { return }
             let startupLoad = await self.rootStore.loadStartupKeymapAsync(
                 on: selected,
-                initialRows: initialRows,
-                initialCols: initialCols
+                initialRows: initialMatrix.rows,
+                initialCols: initialMatrix.cols
             )
             let presentation = self.rootStore.presentStartupKeymapLoadResult(startupLoad)
             guard !self.isShuttingDown else { return }

@@ -353,6 +353,20 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func parseMatrixSize_andResolveInitialMatrixSize_behaveAsExpected() async {
+        let sut = RootStore(.testDependencies())
+        let parsed = sut.parseMatrixSize(rowsText: "14", colsText: "8")
+        #expect(parsed?.rows == 14)
+        #expect(parsed?.cols == 8)
+        #expect(sut.parseMatrixSize(rowsText: "0", colsText: "8") == nil)
+        #expect(sut.parseMatrixSize(rowsText: "x", colsText: "8") == nil)
+
+        let fallback = sut.resolveInitialMatrixSize(rowsText: "x", colsText: "y")
+        #expect(fallback.rows == 6)
+        #expect(fallback.cols == 17)
+    }
+
+    @MainActor @Test
     func commonStatusMessages_returnExpectedValues() async {
         let sut = RootStore(.testDependencies())
         #expect(sut.keyboardSelectionRequiredMessage() == "キーボードを選択してください。")

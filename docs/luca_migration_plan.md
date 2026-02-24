@@ -103,6 +103,7 @@
 - 状態: キーボード未選択/読込中などの共通固定メッセージを `RootStore` APIへ集約
 - 状態: オーバーレイ表示名とオーバーレイ/追従/ignore関連の診断メッセージ生成を `RootStore` APIへ集約
 - 状態: 自動起動設定更新の診断メッセージ生成を `RootStore` APIへ集約
+- 状態: Rows/Cols 入力パースと起動時初期matrix解決を `RootStore` APIへ集約
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

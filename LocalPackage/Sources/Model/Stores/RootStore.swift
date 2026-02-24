@@ -529,6 +529,30 @@ public final class RootStore: Composable {
         "キーコードは 0-127 の整数で入力してください。"
     }
 
+    public func parseMatrixSize(rowsText: String, colsText: String) -> (rows: Int, cols: Int)? {
+        guard
+            let rows = Int(rowsText),
+            let cols = Int(colsText),
+            rows > 0,
+            cols > 0
+        else {
+            return nil
+        }
+        return (rows, cols)
+    }
+
+    public func resolveInitialMatrixSize(
+        rowsText: String,
+        colsText: String,
+        defaultRows: Int = 6,
+        defaultCols: Int = 17
+    ) -> (rows: Int, cols: Int) {
+        guard let parsed = parseMatrixSize(rowsText: rowsText, colsText: colsText) else {
+            return (rows: defaultRows, cols: defaultCols)
+        }
+        return parsed
+    }
+
     public func monitoringStatusText(targetKeyCode: UInt16, longPressDuration: Double) -> String {
         "監視中: keyCode \(targetKeyCode), 長押し \(longPressDuration.formatted(.number.precision(.fractionLength(2)))) 秒"
     }
