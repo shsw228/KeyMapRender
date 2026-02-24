@@ -129,20 +129,19 @@ final class AppModel: ObservableObject {
     }
 
     func probeVialOnSelectedKeyboard() {
-        runSelectedKeyboardDiagnostics(
+        runSelectedKeyboardWorkflow(
             statusKeyPath: \.vialStatusText,
             initialStatusText: rootStore.vialProbeInProgressStatusText()
         ) { model, selected in
-            let workflow = await model.rootStore.runVialProbeAsync(on: selected)
-            model.applyIfNotShuttingDown {
-                model.applyVialPresentation(
-                    statusText: workflow.presentation.vialStatusText,
-                    diagnosticMessage: workflow.presentation.diagnosticMessage
-                )
-                if workflow.probe != nil {
-                    model.applyAvailableLayerCountIfPresent(workflow.presentation.availableLayerCount)
-                    model.setSelectedLayerIndex(model.selectedLayerIndex)
-                }
+            await model.rootStore.runVialProbeAsync(on: selected)
+        } apply: { model, workflow in
+            model.applyVialPresentation(
+                statusText: workflow.presentation.vialStatusText,
+                diagnosticMessage: workflow.presentation.diagnosticMessage
+            )
+            if workflow.probe != nil {
+                model.applyAvailableLayerCountIfPresent(workflow.presentation.availableLayerCount)
+                model.setSelectedLayerIndex(model.selectedLayerIndex)
             }
         }
     }
@@ -152,22 +151,21 @@ final class AppModel: ObservableObject {
             keymapStatusText = rootStore.matrixInputValidationFailureMessage()
             return
         }
-        runSelectedKeyboardDiagnostics(
+        runSelectedKeyboardWorkflow(
             initialStatusText: rootStore.keymapReadInProgressStatusText()
         ) { model, selected in
-            let workflow = await model.rootStore.runReadVialKeymapAsync(
+            await model.rootStore.runReadVialKeymapAsync(
                 on: selected,
                 rows: matrix.rows,
                 cols: matrix.cols
             )
-            model.applyIfNotShuttingDown {
-                model.applyKeymapPresentationResult(
-                    statusText: workflow.presentation.keymapStatusText,
-                    diagnosticMessage: workflow.presentation.diagnosticMessage,
-                    dump: workflow.dump,
-                    availableLayerCountOverride: workflow.presentation.availableLayerCount
-                )
-            }
+        } apply: { model, workflow in
+            model.applyKeymapPresentationResult(
+                statusText: workflow.presentation.keymapStatusText,
+                diagnosticMessage: workflow.presentation.diagnosticMessage,
+                dump: workflow.dump,
+                availableLayerCountOverride: workflow.presentation.availableLayerCount
+            )
         }
     }
 
@@ -221,32 +219,30 @@ final class AppModel: ObservableObject {
     }
 
     func autoDetectMatrixOnSelectedKeyboard() {
-        runSelectedKeyboardDiagnostics(
+        runSelectedKeyboardWorkflow(
             initialStatusText: rootStore.matrixInferenceInProgressStatusText()
         ) { model, selected in
-            let workflow = await model.rootStore.runInferVialMatrixAsync(on: selected)
-            model.applyIfNotShuttingDown {
-                model.applyKeymapPresentationResult(
-                    statusText: workflow.presentation.keymapStatusText,
-                    diagnosticMessage: workflow.presentation.diagnosticMessage,
-                    rows: workflow.presentation.matrixRows,
-                    cols: workflow.presentation.matrixCols
-                )
-            }
+            await model.rootStore.runInferVialMatrixAsync(on: selected)
+        } apply: { model, workflow in
+            model.applyKeymapPresentationResult(
+                statusText: workflow.presentation.keymapStatusText,
+                diagnosticMessage: workflow.presentation.diagnosticMessage,
+                rows: workflow.presentation.matrixRows,
+                cols: workflow.presentation.matrixCols
+            )
         }
     }
 
     func exportVialDefinitionOnSelectedKeyboard() {
-        runSelectedKeyboardDiagnostics(
+        runSelectedKeyboardWorkflow(
             initialStatusText: rootStore.vialDefinitionReadInProgressStatusText()
         ) { model, selected in
-            let presentation = await model.rootStore.runExportVialDefinitionAsync(on: selected)
-            model.applyIfNotShuttingDown {
-                model.applyKeymapPresentationResult(
-                    statusText: presentation.keymapStatusText,
-                    diagnosticMessage: presentation.diagnosticMessage
-                )
-            }
+            await model.rootStore.runExportVialDefinitionAsync(on: selected)
+        } apply: { model, presentation in
+            model.applyKeymapPresentationResult(
+                statusText: presentation.keymapStatusText,
+                diagnosticMessage: presentation.diagnosticMessage
+            )
         }
     }
 
@@ -685,6 +681,25 @@ final class AppModel: ObservableObject {
         self[keyPath: statusKeyPath] = initialStatusText
         runDiagnosticsTask { model in
             await operation(model, selected)
+        }
+    }
+
+    private func runSelectedKeyboardWorkflow<Workflow>(
+        statusKeyPath: ReferenceWritableKeyPath<AppModel, String> = \.keymapStatusText,
+        initialStatusText: String,
+        missingMessage: String? = nil,
+        operation: @escaping @MainActor (AppModel, HIDKeyboardDevice) async -> Workflow,
+        apply: @escaping @MainActor (AppModel, Workflow) -> Void
+    ) {
+        runSelectedKeyboardDiagnostics(
+            statusKeyPath: statusKeyPath,
+            initialStatusText: initialStatusText,
+            missingMessage: missingMessage
+        ) { model, selected in
+            let workflow = await operation(model, selected)
+            model.applyIfNotShuttingDown {
+                apply(model, workflow)
+            }
         }
     }
 
