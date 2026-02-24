@@ -922,6 +922,43 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func runResolveDisplayedLayerSelection_returnsLayerAndOptionalDiagnostic() async {
+        let sut = RootStore(.testDependencies())
+
+        let noChange = sut.runResolveDisplayedLayerSelection(
+            current: 1,
+            requested: 1,
+            totalLayers: 3,
+            forceApply: false,
+            reason: "手動",
+            emitLog: true
+        )
+        #expect(noChange == nil)
+
+        let changed = sut.runResolveDisplayedLayerSelection(
+            current: 0,
+            requested: 2,
+            totalLayers: 3,
+            forceApply: false,
+            reason: "手動",
+            emitLog: true
+        )
+        #expect(changed?.clampedLayer == 2)
+        #expect(changed?.diagnosticMessage == "表示レイヤー変更(手動): L2/2")
+
+        let silent = sut.runResolveDisplayedLayerSelection(
+            current: 0,
+            requested: 2,
+            totalLayers: 3,
+            forceApply: false,
+            reason: "押下追従",
+            emitLog: false
+        )
+        #expect(silent?.clampedLayer == 2)
+        #expect(silent?.diagnosticMessage == nil)
+    }
+
+    @MainActor @Test
     func runResolveActiveLayerPollResult_returnsTrackedLayerOnSuccess() async {
         let sut = RootStore(.testDependencies())
         let twoLayerDump = VialKeymapDump(

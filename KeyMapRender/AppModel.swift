@@ -282,13 +282,15 @@ final class AppModel: ObservableObject {
         emitLog: Bool = true,
         forceApply: Bool = false
     ) {
-        guard let update = rootStore.resolveLayerSelectionUpdate(
+        guard let workflow = rootStore.runResolveDisplayedLayerSelection(
             current: selectedLayerIndex,
             requested: newValue,
             totalLayers: availableLayerCount,
-            forceApply: forceApply
+            forceApply: forceApply,
+            reason: reason,
+            emitLog: emitLog
         ) else { return }
-        selectedLayerIndex = update.clampedValue
+        selectedLayerIndex = workflow.clampedLayer
         applySelectedLayerToLatestDump()
         if isOverlayVisible {
             rootStore.showOverlay(
@@ -297,14 +299,8 @@ final class AppModel: ObservableObject {
                 totalLayers: availableLayerCount
             )
         }
-        if update.changed, emitLog {
-            appendDiagnostics(
-                rootStore.displayLayerChangedDiagnosticMessage(
-                    reason: reason,
-                    currentLayer: selectedLayerIndex,
-                    totalLayers: availableLayerCount
-                )
-            )
+        if let diagnosticMessage = workflow.diagnosticMessage {
+            appendDiagnostics(diagnosticMessage)
         }
     }
 

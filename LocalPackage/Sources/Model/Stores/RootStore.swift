@@ -276,6 +276,16 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct DisplayLayerSelectionWorkflowResult: Sendable {
+        public let clampedLayer: Int
+        public let diagnosticMessage: String?
+
+        public init(clampedLayer: Int, diagnosticMessage: String?) {
+            self.clampedLayer = clampedLayer
+            self.diagnosticMessage = diagnosticMessage
+        }
+    }
+
     public struct GlobalMonitoringWorkflowResult: Sendable {
         public let session: GlobalKeyMonitorSession?
         public let permissionStatusText: String
@@ -1263,6 +1273,36 @@ public final class RootStore: Composable {
         return RestartGlobalMonitoringWorkflowResult(
             session: workflow.session,
             permissionStatusText: workflow.permissionStatusText
+        )
+    }
+
+    public func runResolveDisplayedLayerSelection(
+        current: Int,
+        requested: Int,
+        totalLayers: Int,
+        forceApply: Bool,
+        reason: String,
+        emitLog: Bool
+    ) -> DisplayLayerSelectionWorkflowResult? {
+        guard let update = resolveLayerSelectionUpdate(
+            current: current,
+            requested: requested,
+            totalLayers: totalLayers,
+            forceApply: forceApply
+        ) else { return nil }
+        let diagnosticMessage: String?
+        if update.changed, emitLog {
+            diagnosticMessage = displayLayerChangedDiagnosticMessage(
+                reason: reason,
+                currentLayer: update.clampedValue,
+                totalLayers: totalLayers
+            )
+        } else {
+            diagnosticMessage = nil
+        }
+        return DisplayLayerSelectionWorkflowResult(
+            clampedLayer: update.clampedValue,
+            diagnosticMessage: diagnosticMessage
         )
     }
 

@@ -118,6 +118,7 @@
 - 状態: `start()` の初期起動判定と起動時自動読込の事前条件判定を `RootStore` workflow API へ集約
 - 状態: `VialKeymapDump` 反映時のレイアウト選択肢/レイヤ数解決を `RootStore.runAdoptKeymapDump` へ集約
 - 状態: 設定適用時の入力検証/永続化とグローバル監視再起動を `RootStore` workflow API へ集約
+- 状態: 表示レイヤ選択の更新判定/診断文生成を `RootStore.runResolveDisplayedLayerSelection` へ集約
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出
