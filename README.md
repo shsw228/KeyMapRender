@@ -27,3 +27,9 @@ KeyMapRender is a macOS utility that shows a semi-transparent keyboard overlay w
 ## Project Docs
 - Specification: `docs/specification.md`
 - LUCA migration notes: `docs/luca_migration_plan.md`
+
+## License
+- This repository is licensed under **GNU General Public License v3.0**.
+- See `LICENSE` for details.
+- Third-party licenses can be viewed from the app menu (`Third-Party Licenses…`) and are bundled under:
+  - `KeyMapRender/Resources/python_deps/hidapi-0.15.0.dist-info/licenses/`
