@@ -395,6 +395,14 @@ final class AppModel: ObservableObject {
         )
     }
 
+    private func applyVialPresentation(statusText: String, diagnosticMessage: String) {
+        applyStatusAndDiagnostics(
+            statusKeyPath: \.vialStatusText,
+            statusText: statusText,
+            diagnosticMessage: diagnosticMessage
+        )
+    }
+
     private func applyStatusAndDiagnostics(
         statusKeyPath: ReferenceWritableKeyPath<AppModel, String>,
         statusText: String,
@@ -402,6 +410,19 @@ final class AppModel: ObservableObject {
     ) {
         self[keyPath: statusKeyPath] = statusText
         appendDiagnostics(diagnosticMessage)
+    }
+
+    private func applyKeymapPresentationResult(
+        statusText: String,
+        diagnosticMessage: String,
+        rows: Int? = nil,
+        cols: Int? = nil,
+        dump: VialKeymapDump? = nil,
+        availableLayerCountOverride: Int? = nil
+    ) {
+        applyKeymapPresentation(statusText: statusText, diagnosticMessage: diagnosticMessage)
+        applyMatrixSizeIfPresent(rows: rows, cols: cols)
+        adoptKeymapDumpIfPresent(dump, availableLayerCountOverride: availableLayerCountOverride)
     }
 
     private func applyKeyboardSnapshot(_ snapshot: RootStore.KeyboardRefreshResult) {
@@ -545,12 +566,31 @@ final class AppModel: ObservableObject {
         applyMatrixSize(rows: rows, cols: cols)
     }
 
+    private func applyAvailableLayerCountIfPresent(_ count: Int?) {
+        guard let count else { return }
+        availableLayerCount = count
+    }
+
     private func adoptKeymapDumpIfPresent(
         _ dump: VialKeymapDump?,
         availableLayerCountOverride: Int? = nil
     ) {
         guard let dump else { return }
         adoptKeymapDump(dump, availableLayerCountOverride: availableLayerCountOverride)
+    }
+
+    private func applyStartupKeymapPresentation(
+        _ presentation: RootStore.StartupKeymapPresentation,
+        dump: VialKeymapDump?
+    ) {
+        appendDiagnostics(presentation.matrixDiagnosticMessage)
+        applyKeymapPresentationResult(
+            statusText: presentation.keymapStatusText,
+            diagnosticMessage: presentation.completionDiagnosticMessage,
+            rows: presentation.matrixRows,
+            cols: presentation.matrixCols,
+            dump: dump
+        )
     }
 
     private func applyPermissionStatusTextIfPresent(_ statusText: String?) {
