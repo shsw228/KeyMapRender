@@ -17,6 +17,8 @@ public final class AppModel: ObservableObject {
     @Published public var overlayShowAnimationDuration: Double
     @Published public var overlayHideAnimationDuration: Double
     @Published public var permissionStatusText = "権限確認中..."
+    @Published public var accessibilityPermissionGranted = false
+    @Published public var inputMonitoringPermissionGranted = false
     @Published public var isOverlayVisible = false
     @Published public var layout: KeyboardLayout
     @Published public var connectedKeyboards: [HIDKeyboardDevice] = []
@@ -45,6 +47,7 @@ public final class AppModel: ObservableObject {
     private var matrixPollFailureCount = 0
     private var hasStarted = false
     private var keyboardHotplugSession: HIDKeyboardHotplugSession?
+    private var keyboardHotplugFallbackTask: Task<Void, Never>?
     private var globalKeyMonitorSession: GlobalKeyMonitorSession?
     private var isOverlayPinnedByShortPress = false
     private var lastShortPressTimestamp: Date?
@@ -84,6 +87,7 @@ public final class AppModel: ObservableObject {
         guard workflow.shouldStart else { return }
         hasStarted = true
         applyPermissionStatusTextIfPresent(workflow.permissionStatusText)
+        refreshPermissionAccessState()
         refreshKeyboards()
         startKeyboardHotplugMonitor()
         refreshLaunchAtLoginStatus()
@@ -116,6 +120,18 @@ public final class AppModel: ObservableObject {
     public func setShowSettingsOnLaunch(_ enabled: Bool) {
         rootStore.setShowSettingsOnLaunch(enabled)
         showSettingsOnLaunch = enabled
+    }
+
+    public func refreshPermissionAccessState(
+        promptAccessibility: Bool = false,
+        requestInputMonitoring: Bool = false
+    ) {
+        let status = rootStore.inputAccessStatus(
+            promptAccessibility: promptAccessibility,
+            requestInputMonitoring: requestInputMonitoring
+        )
+        accessibilityPermissionGranted = status.accessibilityTrusted
+        inputMonitoringPermissionGranted = status.inputMonitoringTrusted
     }
 
     public func applySettings() {
@@ -469,17 +485,53 @@ public final class AppModel: ObservableObject {
 
     private func startKeyboardHotplugMonitor() {
         guard keyboardHotplugSession == nil else { return }
-        let workflow = rootStore.runStartKeyboardHotplugMonitoring { [weak self] in
+        let workflow = rootStore.runStartKeyboardHotplugMonitoring(onChanged: makeKeyboardHotplugOnChanged())
+        if let session = workflow.session {
+            keyboardHotplugSession = session
+            stopKeyboardHotplugFallbackTask()
+        } else {
+            appendDiagnosticsIfPresent(workflow.diagnosticMessage)
+            startKeyboardHotplugFallbackTaskIfNeeded()
+        }
+    }
+
+    private func makeKeyboardHotplugOnChanged() -> @Sendable () -> Void {
+        { [weak self] in
             self?.runMainActorTask { model in
                 guard !model.isShuttingDown else { return }
                 model.refreshKeyboards()
             }
         }
-        if let session = workflow.session {
-            keyboardHotplugSession = session
-        } else {
-            appendDiagnosticsIfPresent(workflow.diagnosticMessage)
+    }
+
+    private func startKeyboardHotplugFallbackTaskIfNeeded() {
+        guard keyboardHotplugFallbackTask == nil else { return }
+        appendDiagnostics("接続監視フォールバック: ポーリング監視を開始")
+        keyboardHotplugFallbackTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            var retryCounter = 0
+            while !Task.isCancelled, !self.isShuttingDown, self.keyboardHotplugSession == nil {
+                self.refreshKeyboards()
+                retryCounter += 1
+                if retryCounter % 5 == 0 {
+                    let workflow = self.rootStore.runStartKeyboardHotplugMonitoring(
+                        onChanged: self.makeKeyboardHotplugOnChanged()
+                    )
+                    if let session = workflow.session {
+                        self.keyboardHotplugSession = session
+                        self.appendDiagnostics("接続監視フォールバック: イベント監視へ復帰")
+                        break
+                    }
+                }
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+            self.keyboardHotplugFallbackTask = nil
         }
+    }
+
+    private func stopKeyboardHotplugFallbackTask() {
+        keyboardHotplugFallbackTask?.cancel()
+        keyboardHotplugFallbackTask = nil
     }
 
     private func autoLoadKeymapIfPossibleOnStartup() {
@@ -705,6 +757,7 @@ public final class AppModel: ObservableObject {
     }
 
     private func stopMonitoringSessions() {
+        stopKeyboardHotplugFallbackTask()
         if let keyboardHotplugSession {
             rootStore.stopKeyboardHotplugMonitoring(keyboardHotplugSession)
             self.keyboardHotplugSession = nil

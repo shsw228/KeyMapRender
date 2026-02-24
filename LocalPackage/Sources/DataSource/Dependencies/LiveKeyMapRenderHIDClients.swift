@@ -43,7 +43,18 @@ private final class HotplugMonitorRegistry {
             onChanged()
         }
         guard monitor.start() else {
-            return .failure(.message("start failed"))
+            let code = monitor.lastOpenResult
+            let hex = String(format: "0x%08X", code)
+            let reason: String
+            switch code {
+            case kIOReturnNotPermitted:
+                reason = "kIOReturnNotPermitted"
+            case kIOReturnExclusiveAccess:
+                reason = "kIOReturnExclusiveAccess"
+            default:
+                reason = "unknown"
+            }
+            return .failure(.message("IOHIDManagerOpen failed: \(hex) (\(reason))"))
         }
         lock.lock()
         monitors[id] = monitor

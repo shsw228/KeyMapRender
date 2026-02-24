@@ -5,6 +5,7 @@ public final class HIDKeyboardHotplugMonitor {
     private let manager: IOHIDManager
     private let callback: @Sendable () -> Void
     private var isRunning = false
+    public private(set) var lastOpenResult: IOReturn = kIOReturnSuccess
 
     public init(callback: @escaping @Sendable () -> Void) {
         self.manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
@@ -31,6 +32,7 @@ public final class HIDKeyboardHotplugMonitor {
         IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
 
         let openResult = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
+        lastOpenResult = openResult
         guard openResult == kIOReturnSuccess else {
             IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
             IOHIDManagerRegisterDeviceMatchingCallback(manager, nil, nil)

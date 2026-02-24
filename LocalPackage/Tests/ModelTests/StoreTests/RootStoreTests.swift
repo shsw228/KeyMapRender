@@ -759,7 +759,7 @@ struct RootStoreTests {
         ))
         let failure = failureSUT.runStartKeyboardHotplugMonitoring(onChanged: {})
         #expect(failure.session == nil)
-        #expect(failure.diagnosticMessage == "キーボード接続監視の開始に失敗しました。")
+        #expect(failure.diagnosticMessage?.hasPrefix("キーボード接続監視の開始に失敗しました") == true)
     }
 
     @MainActor @Test

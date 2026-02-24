@@ -66,11 +66,44 @@ struct GeneralSettingsView: View {
                     )
                 )
             }
+
+            Section("権限状態") {
+                permissionRow(
+                    title: "Accessibility",
+                    granted: appModel.accessibilityPermissionGranted
+                )
+                permissionRow(
+                    title: "Input Monitoring",
+                    granted: appModel.inputMonitoringPermissionGranted
+                )
+                HStack {
+                    Button("権限状態を再確認") {
+                        appModel.refreshPermissionAccessState()
+                    }
+                    Text("未許可の場合は macOS 設定 > プライバシーとセキュリティ で許可")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .formStyle(.grouped)
         .padding(12)
         .onDisappear {
             stopTargetKeyCapture()
+        }
+        .onAppear {
+            appModel.refreshPermissionAccessState()
+        }
+    }
+
+    @ViewBuilder
+    private func permissionRow(title: String, granted: Bool) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Label(granted ? "許可済み" : "未許可", systemImage: granted ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.caption)
+                .foregroundStyle(granted ? .green : .red)
         }
     }
 

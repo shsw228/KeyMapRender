@@ -2,9 +2,11 @@ import SwiftUI
 import DataSource
 
 public struct KeyMapRenderRootScene: Scene {
-    @StateObject private var appModel = AppModel()
+    @ObservedObject private var appModel: AppModel
 
-    public init() {}
+    public init(appModel: AppModel) {
+        self.appModel = appModel
+    }
 
     public var body: some Scene {
         MenuBarExtra("KeyMapRender", systemImage: "keyboard") {
@@ -15,9 +17,6 @@ public struct KeyMapRenderRootScene: Scene {
             ContentView()
                 .environmentObject(appModel)
                 .frame(minWidth: 640, minHeight: 380)
-                .onAppear {
-                    appModel.start()
-                }
         }
         .commands {
             CommandGroup(after: .appInfo) {

@@ -21,13 +21,5 @@ struct MenuBarContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
             appModel.shutdown()
         }
-        .onAppear {
-            appModel.start()
-            appModel.refreshLaunchAtLoginStatus()
-            if appModel.shouldOpenSettingsWindowOnLaunch() {
-                openSettings()
-                NSApp.activate(ignoringOtherApps: true)
-            }
-        }
     }
 }

@@ -1,4 +1,5 @@
 import DataSource
+import Foundation
 import Observation
 
 @MainActor @Observable
@@ -1155,8 +1156,11 @@ public final class RootStore: Composable {
         "起動時自動読込中..."
     }
 
-    public func keyboardHotplugStartFailureDiagnosticMessage() -> String {
-        "キーボード接続監視の開始に失敗しました。"
+    public func keyboardHotplugStartFailureDiagnosticMessage(_ detail: String? = nil) -> String {
+        guard let detail, !detail.isEmpty else {
+            return "キーボード接続監視の開始に失敗しました。"
+        }
+        return "キーボード接続監視の開始に失敗しました: \(detail)"
     }
 
     public func overlayKeyboardName(for keyboard: HIDKeyboardDevice?) -> String {
@@ -1364,10 +1368,10 @@ public final class RootStore: Composable {
                 session: session,
                 diagnosticMessage: nil
             )
-        case .failure:
+        case let .failure(error):
             return KeyboardHotplugWorkflowResult(
                 session: nil,
-                diagnosticMessage: keyboardHotplugStartFailureDiagnosticMessage()
+                diagnosticMessage: keyboardHotplugStartFailureDiagnosticMessage(errorDescription(error))
             )
         }
     }
@@ -1386,6 +1390,38 @@ public final class RootStore: Composable {
 
     public nonisolated func hideOverlay() {
         appDependencies.overlayWindowClient.hide()
+    }
+
+    private func errorDescription(_ error: some Error) -> String {
+        if let error = error as? HIDKeyboardHotplugError {
+            switch error {
+            case let .message(message):
+                if !message.isEmpty { return message }
+            }
+        }
+        if let error = error as? GlobalKeyMonitorError {
+            switch error {
+            case let .message(message):
+                if !message.isEmpty { return message }
+            }
+        }
+        if let error = error as? LaunchAtLoginError {
+            switch error {
+            case let .message(message):
+                if !message.isEmpty { return message }
+            }
+        }
+        if let error = error as? SaveFileError {
+            switch error {
+            case let .message(message):
+                if !message.isEmpty { return message }
+            }
+        }
+        let message = (error as NSError).localizedDescription
+        if !message.isEmpty {
+            return message
+        }
+        return String(describing: error)
     }
 
     public enum Action: Sendable {
