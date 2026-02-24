@@ -129,6 +129,8 @@
 - 状態: 表示レイヤ選択の更新判定/診断文生成を `RootStore.runResolveDisplayedLayerSelection` へ集約
 - 状態: レイヤ描画時のプレビュー/レイアウト/オーバーレイ更新診断の組み立てを `RootStore.runRenderSelectedLayer` へ集約
 - 状態: 設定UI（`ContentView`/各Pane）・メニューバーUI・`AppModel` 実体を `UserInterface` へ移設し、appターゲットは `KeyMapRenderRootScene` 呼び出しと互換ラッパーへ縮退
+- 状態: appターゲットの互換ラッパー/未使用UIファイルを削除し、`KeyMapRenderApp.swift` のみをエントリポイントとして残置
+- 状態: appターゲットの package 直接依存を `UserInterface` のみに整理（`DataSource`/`Model` への直接リンクを除去）
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

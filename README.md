@@ -66,6 +66,7 @@ KeyMapRender プロジェクトの概要と運用情報を管理するための 
 - 表示レイヤ選択の更新判定/診断文生成を `RootStore.runResolveDisplayedLayerSelection` へ集約
 - レイヤ描画時のプレビュー/レイアウト/オーバーレイ更新診断の組み立てを `RootStore.runRenderSelectedLayer` へ集約
 - 設定UI（`ContentView`/各Pane）・メニューバーUI・`AppModel` 実体を `LocalPackage/Sources/UserInterface` へ移設し、appターゲットはエントリポイント + 互換ラッパーへ縮退
+- appターゲットから `DataSource`/`Model` の直接リンクを外し、`UserInterface` のみを直接参照する依存方向に整理
 
 ## ドキュメント
 - 仕様書: `docs/specification.md`

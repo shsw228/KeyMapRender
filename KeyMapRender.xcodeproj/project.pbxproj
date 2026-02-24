@@ -7,9 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1B2C3D4E5F60718293A4B6C /* DataSource in Frameworks */ = {isa = PBXBuildFile; productRef = D4E5F60718293A4B6C7D8E9F /* DataSource */; };
 		C4D5E6F708192A3B4C5D6E7F /* UserInterface in Frameworks */ = {isa = PBXBuildFile; productRef = C5D6E7F8091A2B3C4D5E6F70 /* UserInterface */; };
-		F1A2B3C4D5E60718293A4B6C /* Model in Frameworks */ = {isa = PBXBuildFile; productRef = F2A3B4C5D6E70718293A4B6C /* Model */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,8 +28,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1B2C3D4E5F60718293A4B6C /* DataSource in Frameworks */,
-				F1A2B3C4D5E60718293A4B6C /* Model in Frameworks */,
 				C4D5E6F708192A3B4C5D6E7F /* UserInterface in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -76,8 +72,6 @@
 			);
 			name = KeyMapRender;
 			packageProductDependencies = (
-				D4E5F60718293A4B6C7D8E9F /* DataSource */,
-				F2A3B4C5D6E70718293A4B6C /* Model */,
 				C5D6E7F8091A2B3C4D5E6F70 /* UserInterface */,
 			);
 			productName = KeyMapRender;
@@ -363,16 +357,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E5F60718293A4B6C7D8E9F0A /* XCLocalSwiftPackageReference "LocalPackage" */;
 			productName = UserInterface;
-		};
-		D4E5F60718293A4B6C7D8E9F /* DataSource */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = E5F60718293A4B6C7D8E9F0A /* XCLocalSwiftPackageReference "LocalPackage" */;
-			productName = DataSource;
-		};
-		F2A3B4C5D6E70718293A4B6C /* Model */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = E5F60718293A4B6C7D8E9F0A /* XCLocalSwiftPackageReference "LocalPackage" */;
-			productName = Model;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
