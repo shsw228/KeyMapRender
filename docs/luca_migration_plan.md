@@ -116,6 +116,7 @@
 - 状態: デバイス無視追加/全解除後の再読込スナップショット生成を `RootStore` workflow API へ集約
 - 状態: Launch at Login 状態取得の成功/失敗分岐を `RootStore.runRefreshLaunchAtLoginStatus` へ集約
 - 状態: `start()` の初期起動判定と起動時自動読込の事前条件判定を `RootStore` workflow API へ集約
+- 状態: `VialKeymapDump` 反映時のレイアウト選択肢/レイヤ数解決を `RootStore.runAdoptKeymapDump` へ集約
 
 ### Phase 3: Service分離とテスト
 - レイヤ追従・キーラベル解釈・レイアウト反映を Service へ抽出

@@ -235,10 +235,10 @@ final class AppModel: ObservableObject {
             self.appendDiagnostics(workflow.presentation.diagnosticMessage)
             if let dump = workflow.dump {
                 self.latestKeymapDump = dump
-                self.layoutChoices = self.rootStore.makeLayoutChoices(from: dump)
-                if let availableLayerCount = workflow.presentation.availableLayerCount {
-                    self.availableLayerCount = availableLayerCount
-                }
+                let dumpAdoption = self.rootStore.runAdoptKeymapDump(dump)
+                self.layoutChoices = dumpAdoption.layoutChoices
+                self.availableLayerCount = workflow.presentation.availableLayerCount
+                    ?? dumpAdoption.availableLayerCount
                 self.setSelectedLayerIndex(self.selectedLayerIndex)
                 self.startActiveLayerTrackingIfNeeded()
             }
@@ -543,8 +543,9 @@ final class AppModel: ObservableObject {
 
             if let dump = workflow.dump {
                 self.latestKeymapDump = dump
-                self.layoutChoices = self.rootStore.makeLayoutChoices(from: dump)
-                self.availableLayerCount = max(1, dump.layerCount)
+                let dumpAdoption = self.rootStore.runAdoptKeymapDump(dump)
+                self.layoutChoices = dumpAdoption.layoutChoices
+                self.availableLayerCount = dumpAdoption.availableLayerCount
                 self.setSelectedLayerIndex(self.selectedLayerIndex)
                 self.startActiveLayerTrackingIfNeeded()
             }

@@ -251,6 +251,16 @@ public final class RootStore: Composable {
         }
     }
 
+    public struct KeymapDumpAdoptionResult: Sendable {
+        public let layoutChoices: [VialLayoutChoiceValue]
+        public let availableLayerCount: Int
+
+        public init(layoutChoices: [VialLayoutChoiceValue], availableLayerCount: Int) {
+            self.layoutChoices = layoutChoices
+            self.availableLayerCount = availableLayerCount
+        }
+    }
+
     public struct GlobalMonitoringWorkflowResult: Sendable {
         public let session: GlobalKeyMonitorSession?
         public let permissionStatusText: String
@@ -579,6 +589,13 @@ public final class RootStore: Composable {
 
     public func makeLayoutChoices(from dump: VialKeymapDump) -> [VialLayoutChoiceValue] {
         vialPresentationService.makeLayoutChoices(from: dump)
+    }
+
+    public func runAdoptKeymapDump(_ dump: VialKeymapDump) -> KeymapDumpAdoptionResult {
+        KeymapDumpAdoptionResult(
+            layoutChoices: makeLayoutChoices(from: dump),
+            availableLayerCount: max(1, dump.layerCount)
+        )
     }
 
     public func renderKeymapLayer(

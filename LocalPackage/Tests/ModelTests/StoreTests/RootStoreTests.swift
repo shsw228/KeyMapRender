@@ -160,6 +160,28 @@ struct RootStoreTests {
     }
 
     @MainActor @Test
+    func runAdoptKeymapDump_returnsLayoutChoicesAndLayerCount() async {
+        let sut = RootStore(.testDependencies())
+        let choiceDump = VialKeymapDump(
+            protocolVersion: "0x0009",
+            layerCount: 0,
+            matrixRows: 1,
+            matrixCols: 1,
+            keycodes: [[[0x0029]]],
+            layoutKeymapRows: nil,
+            layoutLabels: ["Split Space"],
+            layoutOptions: 0,
+            backend: "python"
+        )
+
+        let adopted = sut.runAdoptKeymapDump(choiceDump)
+
+        #expect(adopted.layoutChoices.count == 1)
+        #expect(adopted.layoutChoices[0].title == "Split Space")
+        #expect(adopted.availableLayerCount == 1)
+    }
+
+    @MainActor @Test
     func visibleKeyboards_excludesIgnoredDevices() async {
         let sut = RootStore(.testDependencies())
         sut.addIgnoredDeviceID(device.id)
